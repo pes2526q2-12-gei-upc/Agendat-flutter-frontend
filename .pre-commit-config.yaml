@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      # 1. Formata el codi automàticament
+      - id: flutter-format
+        name: flutter format
+        entry: flutter format .
+        language: system
+        pass_filenames: false
+        files: \.dart$
+
+      # 2. L'equivalent a Pylint: Analitzador estàtic
+      - id: flutter-analyze
+        name: flutter analyze
+        entry: flutter analyze
+        language: system
+        pass_filenames: false
+        files: \.dart$
+
+      # 3. Opcional: Executa els tests abans de pujar
+      - id: flutter-test
+        name: flutter test
+        entry: flutter test
+        language: system
+        pass_filenames: false
+        files: \.dart$
