@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Botons de zoom del mapa.
 class MapZoomControls extends StatelessWidget {
   const MapZoomControls({
     super.key,
@@ -8,10 +7,7 @@ class MapZoomControls extends StatelessWidget {
     required this.onZoomOut,
   });
 
-  /// Accio per augmentar zoom.
   final VoidCallback onZoomIn;
-
-  /// Accio per reduir zoom.
   final VoidCallback onZoomOut;
 
   @override
@@ -19,7 +15,6 @@ class MapZoomControls extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Botó Z+
         FloatingActionButton(
           heroTag: 'zoomIn',
           mini: true,
@@ -29,7 +24,6 @@ class MapZoomControls extends StatelessWidget {
           child: const Icon(Icons.add),
         ),
         const SizedBox(height: 12),
-        // Botó Z-
         FloatingActionButton(
           heroTag: 'zoomOut',
           mini: true,
