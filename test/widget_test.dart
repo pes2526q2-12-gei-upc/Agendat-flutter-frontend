@@ -9,7 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:agendat/features/map/presentation/screens/map.dart';
+//import 'package:agendat/features/map/presentation/screens/map.dart';
+import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/main.dart';
 
 const _geolocatorChannel = MethodChannel('flutter.baseflow.com/geolocator');
@@ -37,6 +38,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(MaterialApp), findsOneWidget);
-    expect(find.byType(MapScreen), findsOneWidget);
+    expect(find.byType(LoginScreen), findsOneWidget);
+    //expect(find.byType(MapScreen), findsOneWidget);
   });
 }
