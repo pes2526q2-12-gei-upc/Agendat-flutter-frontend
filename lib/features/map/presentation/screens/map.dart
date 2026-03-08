@@ -7,14 +7,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:agendat/core/widgets/navigationBar.dart';
 import 'package:agendat/features/map/presentation/widgets/map_widgets.dart';
 
-class MyWidget extends StatefulWidget {
-  const MyWidget({super.key});
+class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
 
   @override
-  State<MyWidget> createState() => _MyWidgetState();
+  State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MyWidgetState extends State<MyWidget> {
+class _MapScreenState extends State<MapScreen> {
   // Controller del mapa (per zoom i moviments manuals)
   final MapController _mapController = MapController();
   // Calcula distancia entre dos punts del mapa
@@ -187,21 +187,21 @@ class _MyWidgetState extends State<MyWidget> {
       if (_currentUserLocation != null)
         Marker(
           point: _currentUserLocation!,
-          width: 34,
-          height: 34,
+          width: 24,
+          height: 24,
           // Punt blau petit per ubi actual
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.blue.withValues(alpha: 0.18),
             ),
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             child: const DecoratedBox(
               decoration: BoxDecoration(
                 color: Colors.blue,
                 shape: BoxShape.circle,
                 border: Border.fromBorderSide(
-                  BorderSide(color: Colors.white, width: 1.5),
+                  BorderSide(color: Colors.white, width: 1.2),
                 ),
               ),
             ),
