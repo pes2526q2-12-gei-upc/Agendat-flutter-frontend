@@ -6,16 +6,37 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:agendat/features/map/presentation/screens/map.dart';
 import 'package:agendat/main.dart';
-import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+
+const _geolocatorChannel = MethodChannel('flutter.baseflow.com/geolocator');
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_geolocatorChannel, (call) async {
+          if (call.method == 'isLocationServiceEnabled') {
+            return false;
+          }
+          return null;
+        });
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_geolocatorChannel, null);
+  });
+
   testWidgets('App smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pump();
 
     expect(find.byType(MaterialApp), findsOneWidget);
-    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(MapScreen), findsOneWidget);
   });
 }
