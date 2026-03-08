@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/features/map/presentation/screens/map.dart';
 
 /// Deep red used for primary actions and header (matches design).
 const _kPrimaryRed = Color(0xFFB71C1C);
@@ -205,7 +206,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 28),
                   FilledButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                      );
+                    },
                     style: FilledButton.styleFrom(
                       backgroundColor: _kPrimaryRed,
                       foregroundColor: Colors.white,
@@ -257,7 +263,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                      );
+                    },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black87,
                       side: BorderSide(color: Colors.grey.shade300),
