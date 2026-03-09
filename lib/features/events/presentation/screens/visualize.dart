@@ -31,8 +31,10 @@ class EventItem {
   });
 
   factory EventItem.fromJson(Map<String, dynamic> json) {
-    final code = (json['code'] ?? '').toString().trim();
-    final title = (json['title'] ?? '').toString().trim();
+    final code = _capitalizeFirst((json['code'] ?? '').toString().trim());
+    final title = _capitalizeFirst(
+      (json['title'] ?? json['denomination'] ?? '').toString().trim(),
+    );
 
     if (code.isEmpty || title.isEmpty) {
       throw const FormatException('Each event must include code and title');
@@ -47,7 +49,7 @@ class EventItem {
       provincia: _stringOrNull(json['provincia']),
       comarca: _stringOrNull(json['comarca']),
       municipi: _stringOrNull(json['municipi']),
-      categories: _stringOrNull(json['categories'] ?? json['category']),
+      categories: _categoriesToString(json['categories'] ?? json['category']),
       free: _toBool(json['free'] ?? json['isFree'] ?? json['is_free']),
     );
   }
@@ -55,7 +57,12 @@ class EventItem {
   static String? _stringOrNull(dynamic value) {
     if (value == null) return null;
     final text = value.toString().trim();
-    return text.isEmpty ? null : text;
+    return text.isEmpty ? null : _capitalizeFirst(text);
+  }
+
+  static String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return '${text[0].toUpperCase()}${text.substring(1)}';
   }
 
   static bool _toBool(dynamic value) {
@@ -68,11 +75,42 @@ class EventItem {
     return false;
   }
 
+  static String? _categoriesToString(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      final text = value.trim();
+      return text.isEmpty ? null : _capitalizeFirst(text);
+    }
+
+    if (value is List) {
+      final names = <String>[];
+      for (final item in value) {
+        if (item == null) continue;
+        if (item is Map<String, dynamic>) {
+          final name = item['name']?.toString().trim();
+          if (name != null && name.isNotEmpty) {
+            names.add(_capitalizeFirst(name));
+          }
+          continue;
+        }
+        final text = item.toString().trim();
+        if (text.isNotEmpty) names.add(_capitalizeFirst(text));
+      }
+      if (names.isEmpty) return null;
+      return names.join(', ');
+    }
+
+    final fallback = value.toString().trim();
+    return fallback.isEmpty ? null : _capitalizeFirst(fallback);
+  }
+
   String get location {
-    final parts = [municipi, comarca, provincia]
-        .whereType<String>()
-        .where((p) => p.trim().isNotEmpty)
-        .toList();
+    final parts = [
+      municipi,
+      comarca,
+      provincia,
+    ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
     if (parts.isEmpty) return 'No especificat';
     return parts.join(', ');
   }
@@ -80,6 +118,32 @@ class EventItem {
   String get displayDate {
     final raw = startDate?.trim();
     if (raw == null || raw.isEmpty) return 'No especificada';
+
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) {
+      final day = parsed.day.toString().padLeft(2, '0');
+      final month = parsed.month.toString().padLeft(2, '0');
+      final year = parsed.year.toString().padLeft(4, '0');
+      return '$day-$month-$year';
+    }
+
+    // Fallback for non-ISO values that still include a date prefix.
+    final normalized = raw.split('T').first.split(' ').first;
+    final parts = normalized.split(RegExp(r'[-/]'));
+    if (parts.length == 3) {
+      if (parts[0].length == 4) {
+        final year = parts[0].padLeft(4, '0');
+        final month = parts[1].padLeft(2, '0');
+        final day = parts[2].padLeft(2, '0');
+        return '$day-$month-$year';
+      }
+
+      final day = parts[0].padLeft(2, '0');
+      final month = parts[1].padLeft(2, '0');
+      final year = parts[2].padLeft(4, '0');
+      return '$day-$month-$year';
+    }
+
     return raw;
   }
 
@@ -104,9 +168,9 @@ class VisualizeScreen extends StatefulWidget {
 }
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
-  static const String _eventsPath = '/events';
+  static const String _eventsPath = '/api/events/';
 
-  int _selectedTabIndex = 3;
+  int _selectedTabIndex = 0;
   late Future<List<EventItem>> _eventsFuture;
   String _query = '';
 
@@ -121,9 +185,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     final todayDate =
         '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-    final uri = Uri.parse('${_baseUrl()}$_eventsPath').replace(
-      queryParameters: {'date': todayDate},
-    );
+    final uri = Uri.parse(
+      '${_baseUrl()}$_eventsPath',
+    ).replace(queryParameters: {'date': todayDate});
 
     final response = await http
         .get(uri, headers: const {'Accept': 'application/json'})
@@ -156,7 +220,13 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           .map(EventItem.fromJson)
           .toList();
     }
-
+    if (decoded is Map<String, dynamic> && decoded['results'] is List) {
+      final events = decoded['results'] as List<dynamic>;
+      return events
+          .whereType<Map<String, dynamic>>()
+          .map(EventItem.fromJson)
+          .toList();
+    }
     throw const FormatException('Unexpected response format for /events');
   }
 
@@ -181,7 +251,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     setState(() {
       _selectedTabIndex = index;
     });
-
     // TODO: Connect each tab index to real route navigation.
   }
 
@@ -293,11 +362,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           eventSubtitle(event),
           const SizedBox(height: 10),
           Row(
-            children: [
-              eventDate(event),
-              const Spacer(),
-              eventPayment(event),
-            ],
+            children: [eventDate(event), const Spacer(), eventPayment(event)],
           ),
           const SizedBox(height: 4),
           eventPlace(event),
@@ -381,10 +446,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           onPressed: () {},
           child: const Text(
             'Filtres',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
           ),
         ),
       ),
@@ -427,10 +489,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return AppBar(
       title: const Text(
         "Agenda't",
-        style: TextStyle(
-          fontSize: 36,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
       ),
       backgroundColor: Colors.white,
       elevation: 0.0,
