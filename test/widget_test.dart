@@ -6,25 +6,39 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+//import 'package:agendat/features/map/presentation/screens/map.dart';
+import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/main.dart';
 
+const _geolocatorChannel = MethodChannel('flutter.baseflow.com/geolocator');
+
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_geolocatorChannel, (call) async {
+          if (call.method == 'isLocationServiceEnabled') {
+            return false;
+          }
+          return null;
+        });
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_geolocatorChannel, null);
+  });
+
+  testWidgets('App smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.byType(LoginScreen), findsOneWidget);
+    //expect(find.byType(MapScreen), findsOneWidget);
   });
 }
