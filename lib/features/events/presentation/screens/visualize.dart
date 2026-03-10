@@ -30,51 +30,52 @@ class EventItem {
     this.free = false,
   });
 
+  // factory JSON object to EventItem object
   factory EventItem.fromJson(Map<String, dynamic> json) {
-    final code = (json['code'] ?? '').toString().trim();
-    final title = (json['title'] ?? json['denomination'] ?? '')
+    final code = (json['code']).toString().trim();
+    final title = (json['denomination'])
         .toString()
         .trim();
-
-    if (code.isEmpty || title.isEmpty) {
-      throw const FormatException('Each event must include code and title');
-    }
 
     return EventItem(
       code: code,
       title: title,
-      subtitle: _stringOrNull(json['subtitle'] ?? json['description']),
-      startDate: _stringOrNull(json['startDate'] ?? json['start_date']),
-      endDate: _stringOrNull(json['endDate'] ?? json['end_date']),
+      subtitle: _stringOrNull(json['subtitle']),
+      startDate: _stringOrNull(json['start_date']),
+      endDate: _stringOrNull(json['end_date']),
       provincia: _labelOrNull(json['provincia']),
       comarca: _labelOrNull(json['comarca']),
       municipi: _labelOrNull(json['municipi']),
-      categories: _categoriesToString(json['categories'] ?? json['category']),
-      free: _toBool(json['free'] ?? json['isFree'] ?? json['is_free']),
+      categories: _categoriesToString(json['categories']),
+      free: _toBool(json['free']),
     );
   }
 
+  // Converts value to string or returns null if empty
   static String? _stringOrNull(dynamic value) {
     if (value == null) return null;
     final text = value.toString().trim();
     return text.isEmpty ? null : _capitalizeFirst(text);
   }
 
+  // Capitalizes the first letter of a string
   static String _capitalizeFirst(String text) {
     if (text.isEmpty) return text;
     return '${text[0].toUpperCase()}${text.substring(1)}';
   }
 
+  // Cleans text by replacing dashes/underscores with spaces
   static String _normalizeLabel(String text) {
     return text.replaceAll(RegExp(r'[-_]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
+  // Converts a label to a clean formatted string or returns null
   static String? _labelOrNull(dynamic value) {
     if (value == null) return null;
     final normalized = _normalizeLabel(value.toString());
     return normalized.isEmpty ? null : _capitalizeFirst(normalized);
   }
-
+  // Converts to bool
   static bool _toBool(dynamic value) {
     if (value is bool) return value;
     if (value is num) return value != 0;
@@ -85,6 +86,7 @@ class EventItem {
     return false;
   }
 
+  // Converts the categories field into a readable string
   static String? _categoriesToString(dynamic value) {
     if (value == null) return null;
 
@@ -107,29 +109,28 @@ class EventItem {
       if (names.isEmpty) return null;
       return names.join(', ');
     }
-
     return _labelOrNull(value);
   }
-
+  // Returns the event location
   String get location {
     final parts = [
       municipi,
       provincia,
     ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
-    if (parts.isEmpty) return 'No especificat';
+    if (parts.isEmpty) return 'Per determinar';
     return parts.join(', ');
   }
-
-  String get displayDate {
-    final raw = startDate?.trim();
-    if (raw == null || raw.isEmpty) return 'No especificada';
+  // Converts the API date format (DD/MM/YYYY)
+  static String? _formatDisplayDate(String? input) {
+    final raw = input?.trim();
+    if (raw == null || raw.isEmpty) return null;
 
     final parsed = DateTime.tryParse(raw);
     if (parsed != null) {
       final day = parsed.day.toString().padLeft(2, '0');
       final month = parsed.month.toString().padLeft(2, '0');
       final year = parsed.year.toString().padLeft(4, '0');
-      return '$day-$month-$year';
+      return '$day/$month/$year';
     }
 
     final normalized = raw.split('T').first.split(' ').first;
@@ -151,15 +152,28 @@ class EventItem {
     return raw;
   }
 
+  // Returns the event date range
+  String get displayDateRange {
+    final start = _formatDisplayDate(startDate);
+    final end = _formatDisplayDate(endDate);
+
+    if (start == null && end == null) return 'Per determinar';
+    if (start != null && end != null) return '$start - $end';
+    if (start != null) return '$start - Per determinar';
+    return 'Per determinar - $end';
+  }
+
+  // Returns the category or a default value
   String get displayCategory {
     final raw = categories?.trim();
     if (raw == null || raw.isEmpty) return 'General';
     return raw;
   }
 
+  // Returns the subtitle or a default text
   String get displaySubtitle {
     final raw = subtitle?.trim();
-    if (raw == null || raw.isEmpty) return 'Sense descripcio';
+    if (raw == null || raw.isEmpty) return 'Sense descripció';
     return raw;
   }
 }
@@ -184,14 +198,17 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsFuture = fetchEvents();
   }
 
+  // Calls the API and downloads the list of events
   Future<List<EventItem>> fetchEvents() async {
     final today = DateTime.now();
-    final todayDate =
-        '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-
+    final todayDate = _formatDate(today);
+    final dateFrom = _formatDate(_subtractMonths(today, 6));
     final uri = Uri.parse(
       '${_baseUrl()}$_eventsPath',
-    ).replace(queryParameters: {'date': todayDate});
+    ).replace(queryParameters: {
+      'date': todayDate,
+      'date_from': dateFrom,
+    });
 
     final response = await http
         .get(uri, headers: const {'Accept': 'application/json'})
@@ -209,32 +226,35 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return _parseEventsBody(response.body);
   }
 
-  List<EventItem> _parseEventsBody(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is List) {
-      return decoded
-          .whereType<Map<String, dynamic>>()
-          .map(EventItem.fromJson)
-          .toList();
-    }
-    if (decoded is Map<String, dynamic> && decoded['events'] is List) {
-      final events = decoded['events'] as List<dynamic>;
-      return events
-          .whereType<Map<String, dynamic>>()
-          .map(EventItem.fromJson)
-          .toList();
-    }
-    if (decoded is Map<String, dynamic> && decoded['results'] is List) {
-      final events = decoded['results'] as List<dynamic>;
-      return events
-          .whereType<Map<String, dynamic>>()
-          .map(EventItem.fromJson)
-          .toList();
-    }
+  // Subtracts a number of months from a given date
+  DateTime _subtractMonths(DateTime date, int months) {
+    final totalMonths = date.year * 12 + (date.month - 1) - months;
+    final year = totalMonths ~/ 12;
+    final month = (totalMonths % 12) + 1;
+    final lastDayOfTargetMonth = DateTime(year, month + 1, 0).day;
+    final day = date.day > lastDayOfTargetMonth ? lastDayOfTargetMonth : date.day;
 
-    throw const FormatException('Unexpected response format for /events');
+    return DateTime(year, month, day);
   }
 
+  // Formats a DateTime object into YYYY-MM-DD
+  String _formatDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  // Converts the API response body into a list of EventItem objects
+  List<EventItem> _parseEventsBody(String body) {
+  final decoded = jsonDecode(body) as List;
+
+  return decoded
+      .map((event) => EventItem.fromJson(event))
+      .toList();
+}
+
+  // Returns the correct API base URL depending on the platform
   String _baseUrl() {
     const customBaseUrl = String.fromEnvironment('API_BASE_URL');
     if (customBaseUrl.isNotEmpty) return customBaseUrl;
@@ -246,6 +266,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return 'http://localhost:8000';
   }
 
+  // Reloads the events list
   void _refresh() {
     setState(() {
       _eventsFuture = fetchEvents();
@@ -259,6 +280,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     // TODO: Connect each tab index to real route navigation.
   }
 
+  // Filters events based on the text typed in the search bar
   List<EventItem> _applySearch(List<EventItem> events) {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return events;
@@ -378,14 +400,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventPlace(EventItem event) {
     return Text(
-      'Lloc: ${event.location}',
+      '${event.location}',
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
     );
   }
 
   Text eventPayment(EventItem event) {
     return Text(
-      event.free ? 'Gratuit' : 'De pagament',
+      event.free ? 'Gratuït' : 'De pagament',
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
@@ -396,7 +418,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventDate(EventItem event) {
     return Text(
-      'Data: ${event.displayDate}',
+      event.displayDateRange,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
     );
   }
