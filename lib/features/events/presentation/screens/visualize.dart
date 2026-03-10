@@ -47,7 +47,7 @@ class EventItem {
       comarca: _labelOrNull(json['comarca']),
       municipi: _labelOrNull(json['municipi']),
       categories: _categoriesToString(json['categories']),
-      free: _toBool(json['free']),
+      free: json['free'] ?? false,
     );
   }
 
@@ -75,41 +75,14 @@ class EventItem {
     final normalized = _normalizeLabel(value.toString());
     return normalized.isEmpty ? null : _capitalizeFirst(normalized);
   }
-  // Converts to bool
-  static bool _toBool(dynamic value) {
-    if (value is bool) return value;
-    if (value is num) return value != 0;
-    if (value is String) {
-      final normalized = value.toLowerCase().trim();
-      return normalized == 'true' || normalized == '1' || normalized == 'yes';
-    }
-    return false;
-  }
 
   // Converts the categories field into a readable string
-  static String? _categoriesToString(dynamic value) {
-    if (value == null) return null;
+  static String? _categoriesToString(List<dynamic>? value) {
+    if (value == null || value.isEmpty) return null;
 
-    if (value is String) {
-      return _labelOrNull(value);
-    }
-
-    if (value is List) {
-      final names = <String>[];
-      for (final item in value) {
-        if (item == null) continue;
-        if (item is Map<String, dynamic>) {
-          final name = _labelOrNull(item['name']);
-          if (name != null) names.add(name);
-          continue;
-        }
-        final text = _labelOrNull(item);
-        if (text != null) names.add(text);
-      }
-      if (names.isEmpty) return null;
-      return names.join(', ');
-    }
-    return _labelOrNull(value);
+    return value
+        .map((e) => e['name'] as String)
+        .join(', ');
   }
   // Returns the event location
   String get location {
@@ -122,34 +95,15 @@ class EventItem {
   }
   // Converts the API date format (DD/MM/YYYY)
   static String? _formatDisplayDate(String? input) {
-    final raw = input?.trim();
-    if (raw == null || raw.isEmpty) return null;
+    if (input == null) return null;
 
-    final parsed = DateTime.tryParse(raw);
-    if (parsed != null) {
-      final day = parsed.day.toString().padLeft(2, '0');
-      final month = parsed.month.toString().padLeft(2, '0');
-      final year = parsed.year.toString().padLeft(4, '0');
-      return '$day/$month/$year';
-    }
+    final date = DateTime.parse(input);
 
-    final normalized = raw.split('T').first.split(' ').first;
-    final parts = normalized.split(RegExp(r'[-/]'));
-    if (parts.length == 3) {
-      if (parts[0].length == 4) {
-        final year = parts[0].padLeft(4, '0');
-        final month = parts[1].padLeft(2, '0');
-        final day = parts[2].padLeft(2, '0');
-        return '$day-$month-$year';
-      }
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year;
 
-      final day = parts[0].padLeft(2, '0');
-      final month = parts[1].padLeft(2, '0');
-      final year = parts[2].padLeft(4, '0');
-      return '$day-$month-$year';
-    }
-
-    return raw;
+    return '$day/$month/$year';
   }
 
   // Returns the event date range
