@@ -46,9 +46,9 @@ class EventItem {
       subtitle: _stringOrNull(json['subtitle'] ?? json['description']),
       startDate: _stringOrNull(json['startDate'] ?? json['start_date']),
       endDate: _stringOrNull(json['endDate'] ?? json['end_date']),
-      provincia: _stringOrNull(json['provincia']),
-      comarca: _stringOrNull(json['comarca']),
-      municipi: _stringOrNull(json['municipi']),
+      provincia: _labelOrNull(json['provincia']),
+      comarca: _labelOrNull(json['comarca']),
+      municipi: _labelOrNull(json['municipi']),
       categories: _categoriesToString(json['categories'] ?? json['category']),
       free: _toBool(json['free'] ?? json['isFree'] ?? json['is_free']),
     );
@@ -65,6 +65,16 @@ class EventItem {
     return '${text[0].toUpperCase()}${text.substring(1)}';
   }
 
+  static String _normalizeLabel(String text) {
+    return text.replaceAll(RegExp(r'[-_]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  static String? _labelOrNull(dynamic value) {
+    if (value == null) return null;
+    final normalized = _normalizeLabel(value.toString());
+    return normalized.isEmpty ? null : _capitalizeFirst(normalized);
+  }
+
   static bool _toBool(dynamic value) {
     if (value is bool) return value;
     if (value is num) return value != 0;
@@ -79,8 +89,7 @@ class EventItem {
     if (value == null) return null;
 
     if (value is String) {
-      final text = value.trim();
-      return text.isEmpty ? null : text;
+      return _labelOrNull(value);
     }
 
     if (value is List) {
@@ -88,25 +97,23 @@ class EventItem {
       for (final item in value) {
         if (item == null) continue;
         if (item is Map<String, dynamic>) {
-          final name = item['name']?.toString().trim();
-          if (name != null && name.isNotEmpty) names.add(name);
+          final name = _labelOrNull(item['name']);
+          if (name != null) names.add(name);
           continue;
         }
-        final text = item.toString().trim();
-        if (text.isNotEmpty) names.add(text);
+        final text = _labelOrNull(item);
+        if (text != null) names.add(text);
       }
       if (names.isEmpty) return null;
       return names.join(', ');
     }
 
-    final fallback = value.toString().trim();
-    return fallback.isEmpty ? null : fallback;
+    return _labelOrNull(value);
   }
 
   String get location {
     final parts = [
       municipi,
-      comarca,
       provincia,
     ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
     if (parts.isEmpty) return 'No especificat';
@@ -125,7 +132,6 @@ class EventItem {
       return '$day-$month-$year';
     }
 
-    // Fallback for non-ISO values that still include a date prefix.
     final normalized = raw.split('T').first.split(' ').first;
     final parts = normalized.split(RegExp(r'[-/]'));
     if (parts.length == 3) {
