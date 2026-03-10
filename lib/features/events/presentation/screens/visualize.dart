@@ -32,7 +32,9 @@ class EventItem {
 
   factory EventItem.fromJson(Map<String, dynamic> json) {
     final code = (json['code'] ?? '').toString().trim();
-    final title = (json['title'] ?? '').toString().trim();
+    final title = (json['title'] ?? json['denomination'] ?? '')
+        .toString()
+        .trim();
 
     if (code.isEmpty || title.isEmpty) {
       throw const FormatException('Each event must include code and title');
@@ -47,7 +49,7 @@ class EventItem {
       provincia: _stringOrNull(json['provincia']),
       comarca: _stringOrNull(json['comarca']),
       municipi: _stringOrNull(json['municipi']),
-      categories: _stringOrNull(json['categories'] ?? json['category']),
+      categories: _categoriesToString(json['categories'] ?? json['category']),
       free: _toBool(json['free'] ?? json['isFree'] ?? json['is_free']),
     );
   }
@@ -68,11 +70,40 @@ class EventItem {
     return false;
   }
 
+  static String? _categoriesToString(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      final text = value.trim();
+      return text.isEmpty ? null : text;
+    }
+
+    if (value is List) {
+      final names = <String>[];
+      for (final item in value) {
+        if (item == null) continue;
+        if (item is Map<String, dynamic>) {
+          final name = item['name']?.toString().trim();
+          if (name != null && name.isNotEmpty) names.add(name);
+          continue;
+        }
+        final text = item.toString().trim();
+        if (text.isNotEmpty) names.add(text);
+      }
+      if (names.isEmpty) return null;
+      return names.join(', ');
+    }
+
+    final fallback = value.toString().trim();
+    return fallback.isEmpty ? null : fallback;
+  }
+
   String get location {
-    final parts = [municipi, comarca, provincia]
-        .whereType<String>()
-        .where((p) => p.trim().isNotEmpty)
-        .toList();
+    final parts = [
+      municipi,
+      comarca,
+      provincia,
+    ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
     if (parts.isEmpty) return 'No especificat';
     return parts.join(', ');
   }
@@ -104,7 +135,7 @@ class VisualizeScreen extends StatefulWidget {
 }
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
-  static const String _eventsPath = '/events';
+  static const String _eventsPath = '/api/events/';
 
   int _selectedTabIndex = 3;
   late Future<List<EventItem>> _eventsFuture;
@@ -121,9 +152,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     final todayDate =
         '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-    final uri = Uri.parse('${_baseUrl()}$_eventsPath').replace(
-      queryParameters: {'date': todayDate},
-    );
+    final uri = Uri.parse(
+      '${_baseUrl()}$_eventsPath',
+    ).replace(queryParameters: {'date': todayDate});
 
     final response = await http
         .get(uri, headers: const {'Accept': 'application/json'})
@@ -151,6 +182,13 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     }
     if (decoded is Map<String, dynamic> && decoded['events'] is List) {
       final events = decoded['events'] as List<dynamic>;
+      return events
+          .whereType<Map<String, dynamic>>()
+          .map(EventItem.fromJson)
+          .toList();
+    }
+    if (decoded is Map<String, dynamic> && decoded['results'] is List) {
+      final events = decoded['results'] as List<dynamic>;
       return events
           .whereType<Map<String, dynamic>>()
           .map(EventItem.fromJson)
@@ -293,11 +331,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           eventSubtitle(event),
           const SizedBox(height: 10),
           Row(
-            children: [
-              eventDate(event),
-              const Spacer(),
-              eventPayment(event),
-            ],
+            children: [eventDate(event), const Spacer(), eventPayment(event)],
           ),
           const SizedBox(height: 4),
           eventPlace(event),
@@ -381,10 +415,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           onPressed: () {},
           child: const Text(
             'Filtres',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
           ),
         ),
       ),
@@ -397,7 +428,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: const Color(0xff1D1617).withOpacity(0.11),
+            color: const Color(0xff1D1617).withValues(alpha: 0.11),
             blurRadius: 40,
             spreadRadius: 0.0,
           ),
@@ -427,10 +458,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return AppBar(
       title: const Text(
         "Agenda't",
-        style: TextStyle(
-          fontSize: 36,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
       ),
       backgroundColor: Colors.white,
       elevation: 0.0,

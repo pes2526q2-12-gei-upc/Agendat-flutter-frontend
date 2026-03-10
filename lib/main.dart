@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
+
 void main() {
   runApp(const MyApp());
 }
