@@ -1,6 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/features/auth/data/models/create_user_request.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/auth/presentation/theme/utils.dart';
 
@@ -12,6 +14,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final _usernameController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -19,14 +22,92 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitSignUp() async {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+    final fullName = _nameController.text.trim();
+
+    if (username.isEmpty) {
+      _showSnackBar('Introdueix un nom d\'usuari.');
+      return;
+    }
+    if (email.isEmpty) {
+      _showSnackBar('Introdueix el correu electrònic.');
+      return;
+    }
+    if (password.length < 4) {
+      _showSnackBar('La contrasenya ha de tenir almenys 4 caràcters.');
+      return;
+    }
+    if (password != confirmPassword) {
+      _showSnackBar('Les contrasenyes no coincideixen.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final request = CreateUserRequest(
+      username: username,
+      email: email,
+      firstName: fullName.isNotEmpty ? fullName : null,
+      password: password,
+    );
+    final result = await createUser(request);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    switch (result) {
+      case CreateUserSuccess():
+        _showSnackBar(
+          'Compte creat correctament. Ara pots iniciar sessió.',
+          isError: false,
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      case CreateUserFailure(:final statusCode, :final body):
+        String message = 'No s\'ha pogut crear el compte.';
+        if (body != null) {
+          if (body['email'] != null) {
+            message = (body['email'] is List)
+                ? (body['email'] as List).join(' ')
+                : body['email'].toString();
+          } else if (body['username'] != null) {
+            message = (body['username'] is List)
+                ? (body['username'] as List).join(' ')
+                : body['username'].toString();
+          } else if (body['detail'] != null) {
+            message = body['detail'].toString();
+          }
+        } else if (statusCode == -1) {
+          message = 'Error de connexió. Comprova la xarxa.';
+        }
+        _showSnackBar(message);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? null : Colors.green.shade700,
+      ),
+    );
   }
 
   @override
@@ -163,6 +244,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _buildLabel('Nom d\'usuari'),
+                  const SizedBox(height: 8),
+                  _buildTextField(
+                    controller: _usernameController,
+                    hintText: 'Nom d\'usuari únic',
+                    keyboardType: TextInputType.text,
+                  ),
+                  const SizedBox(height: 20),
                   _buildLabel('Nom complet'),
                   const SizedBox(height: 8),
                   _buildTextField(
@@ -224,9 +313,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   const SizedBox(height: 28),
                   FilledButton(
-                    onPressed: () {
-                      // Més endavant aquí navegarem al següent pas del registre.
-                    },
+                    onPressed: _isLoading ? null : _submitSignUp,
                     style: FilledButton.styleFrom(
                       backgroundColor: kPrimaryRed,
                       foregroundColor: Colors.white,
@@ -238,14 +325,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(
-                          Icons.person_add_alt_1_outlined,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                        SizedBox(width: 8),
-                        Text('Crear compte'),
+                      children: [
+                        if (_isLoading)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        else
+                          const Icon(
+                            Icons.person_add_alt_1_outlined,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        const SizedBox(width: 8),
+                        Text(_isLoading ? 'Creant compte...' : 'Crear compte'),
                       ],
                     ),
                   ),
