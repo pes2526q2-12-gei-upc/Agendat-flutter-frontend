@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Barra de cerca d'esdeveniments que es mostra sobre el mapa.
 class MapSearchBar extends StatelessWidget {
   const MapSearchBar({
     super.key,
@@ -8,10 +7,8 @@ class MapSearchBar extends StatelessWidget {
     this.margin = const EdgeInsets.fromLTRB(20, 20, 20, 0),
   });
 
-  /// Callback opcional per capturar text de cerca quan s'implementi la llogica.
   final ValueChanged<String>? onChanged;
 
-  /// Marge configurable per poder reutilitzar la barra en diferents layouts.
   final EdgeInsetsGeometry margin;
 
   static const double _radius = 10.0;

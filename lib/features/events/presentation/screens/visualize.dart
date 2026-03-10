@@ -57,7 +57,12 @@ class EventItem {
   static String? _stringOrNull(dynamic value) {
     if (value == null) return null;
     final text = value.toString().trim();
-    return text.isEmpty ? null : text;
+    return text.isEmpty ? null : _capitalizeFirst(text);
+  }
+
+  static String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return '${text[0].toUpperCase()}${text.substring(1)}';
   }
 
   static bool _toBool(dynamic value) {
@@ -111,6 +116,32 @@ class EventItem {
   String get displayDate {
     final raw = startDate?.trim();
     if (raw == null || raw.isEmpty) return 'No especificada';
+
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) {
+      final day = parsed.day.toString().padLeft(2, '0');
+      final month = parsed.month.toString().padLeft(2, '0');
+      final year = parsed.year.toString().padLeft(4, '0');
+      return '$day-$month-$year';
+    }
+
+    // Fallback for non-ISO values that still include a date prefix.
+    final normalized = raw.split('T').first.split(' ').first;
+    final parts = normalized.split(RegExp(r'[-/]'));
+    if (parts.length == 3) {
+      if (parts[0].length == 4) {
+        final year = parts[0].padLeft(4, '0');
+        final month = parts[1].padLeft(2, '0');
+        final day = parts[2].padLeft(2, '0');
+        return '$day-$month-$year';
+      }
+
+      final day = parts[0].padLeft(2, '0');
+      final month = parts[1].padLeft(2, '0');
+      final year = parts[2].padLeft(4, '0');
+      return '$day-$month-$year';
+    }
+
     return raw;
   }
 
@@ -137,7 +168,7 @@ class VisualizeScreen extends StatefulWidget {
 class _VisualizeScreenState extends State<VisualizeScreen> {
   static const String _eventsPath = '/api/events/';
 
-  int _selectedTabIndex = 3;
+  int _selectedTabIndex = 0;
   late Future<List<EventItem>> _eventsFuture;
   String _query = '';
 
@@ -219,7 +250,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     setState(() {
       _selectedTabIndex = index;
     });
-
     // TODO: Connect each tab index to real route navigation.
   }
 
