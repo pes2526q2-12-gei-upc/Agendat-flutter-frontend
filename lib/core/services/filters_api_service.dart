@@ -105,7 +105,6 @@ class FiltersApiService {
 
   String _normalizeFilterKey(String key) {
     final normalized = key.toLowerCase().trim();
-    if (normalized == 'província') return 'provincia';
     return normalized;
   }
 
@@ -117,7 +116,7 @@ class FiltersApiService {
 
     switch (normalized) {
       case 'categoria':
-        final raw = event['categories'] ?? event['category'];
+        final raw = event['categories'];
         if (raw is List) {
           return raw
               .map((item) {
@@ -133,31 +132,20 @@ class FiltersApiService {
         return value.isEmpty ? const [] : <String>[value];
 
       case 'data':
-        final value = (event['start_date'] ?? event['startDate'] ?? '')
-            .toString()
-            .trim();
-        if (value.isEmpty) return const [];
-        return <String>[value.split('T').first];
-
-      case 'ciutat':
-        final value =
-            (event['ciutat'] ?? event['city'] ?? event['municipi'] ?? '')
-                .toString()
-                .trim();
-        return value.isEmpty ? const [] : <String>[value];
+        final valueStart = (event['start_date']).toString().trim();
+        if (valueStart.isEmpty) return const [];
+        return <String>[valueStart.split('T').first];
 
       case 'municipi':
-        final value = (event['municipi'] ?? '').toString().trim();
+        final value = (event['municipi']).toString().trim();
         return value.isEmpty ? const [] : <String>[value];
 
       case 'comarca':
-        final value = (event['comarca'] ?? '').toString().trim();
+        final value = (event['comarca']).toString().trim();
         return value.isEmpty ? const [] : <String>[value];
 
       case 'provincia':
-        final value = (event['provincia'] ?? event['província'] ?? '')
-            .toString()
-            .trim();
+        final value = (event['provincia']).toString().trim();
         return value.isEmpty ? const [] : <String>[value];
 
       default:

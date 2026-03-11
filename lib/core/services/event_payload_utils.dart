@@ -10,48 +10,25 @@ class EventPayloadUtils {
   static double? extractLatitude(Map<String, dynamic> json) {
     final location = json['location'];
     if (location is Map<String, dynamic>) {
-      return _toDouble(location['latitude'] ?? location['lat']);
+      return _toDouble(location['latitude']);
     }
-
-    final coordinates = json['coordinates'];
-    if (coordinates is List && coordinates.length >= 2) {
-      // GeoJSON habitualment es [lng, lat].
-      return _toDouble(coordinates[1]);
-    }
-
-    return _toDouble(json['latitude'] ?? json['lat']);
+    return _toDouble(json['latitude']);
   }
 
   static double? extractLongitude(Map<String, dynamic> json) {
     final location = json['location'];
     if (location is Map<String, dynamic>) {
-      return _toDouble(
-        location['longitude'] ??
-            location['lng'] ??
-            location['lon'] ??
-            location['long'],
-      );
+      return _toDouble(location['longitude']);
     }
-
-    final coordinates = json['coordinates'];
-    if (coordinates is List && coordinates.length >= 2) {
-      // GeoJSON habitualment es [lng, lat].
-      return _toDouble(coordinates[0]);
-    }
-
-    return _toDouble(
-      json['longitude'] ?? json['lng'] ?? json['lon'] ?? json['long'],
-    );
+    return _toDouble(json['longitude']);
   }
 
   static String extractId(Map<String, dynamic> json) {
-    return (json['code'] ?? json['id'] ?? '').toString().trim();
+    return (json['code']).toString().trim();
   }
 
   static String extractTitle(Map<String, dynamic> json) {
-    return (json['title'] ?? json['denomination'] ?? json['name'] ?? '')
-        .toString()
-        .trim();
+    return (json['title'] ?? json['denomination']).toString().trim();
   }
 
   static double? _toDouble(dynamic value) {
