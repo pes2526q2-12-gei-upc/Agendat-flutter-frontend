@@ -1,26 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/filters_api_service.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/filter_section.dart';
 
 class SelectedFiltersCard extends StatefulWidget {
   const SelectedFiltersCard({
     super.key,
     this.filterOptions = const {},
-    this.initialSelectedFilters,
-    this.onFiltersChanged,
-    this.onApplyFilters,
+    this.onApply,
     this.onCancel,
     this.showAllOptionWhenEmpty = true,
   });
 
   final Map<String, List<String>> filterOptions;
 
-  /// Seleccio inicial opcional (per exemple, estat guardat en navegacio).
-  final Map<String, List<String>>? initialSelectedFilters;
-
-  /// Callback amb els filtres seleccionats, preparats per enviar a l'API.
-  final ValueChanged<Map<String, List<String>>>? onFiltersChanged;
-  final ValueChanged<Map<String, List<String>>>? onApplyFilters;
+  final ValueChanged<Map<String, List<String>>>? onApply;
   final VoidCallback? onCancel;
   final bool showAllOptionWhenEmpty;
 
@@ -33,7 +27,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
   static const List<String> _categoryOrder = <String>[
     'Categoria',
     'Data',
-    'Ciutat',
     'Municipi',
     'Comarca',
     'Província',
@@ -49,6 +42,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
   void initState() {
     super.initState();
 
+    // Inicialitzem l'estat local abans de carregar les opcions dinàmiques.
     final baseOptions = _buildBaseOptions();
 
     _effectiveFilterOptions = {
@@ -56,15 +50,12 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
         entry.key: _withAllOption(entry.value),
     };
 
-    _selected = {
-      for (final entry in _effectiveFilterOptions.entries)
-        entry.key:
-            _resolveInitialSelection(entry.key, entry.value) ?? _allOption,
-    };
+    _selected = {for (final category in _categoryOrder) category: _allOption};
 
     _loadOptionsFromApi();
   }
 
+  // Demanem les opcions de cada categoria
   Future<void> _loadOptionsFromApi() async {
     final optionsFromApi = <String, List<String>>{};
 
@@ -96,13 +87,11 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
           ),
       };
 
+      // Si l'usuari ha tocat algun selector abans que acabés la càrrega,
+      // conservem la selecció només si encara existeix a la llista final.
       _selected = {
         for (final entry in _effectiveFilterOptions.entries)
-          entry.key:
-              _selected[entry.key] != null &&
-                  entry.value.contains(_selected[entry.key])
-              ? _selected[entry.key]!
-              : _allOption,
+          entry.key: _resolveSelectedValue(entry.key, entry.value),
       };
 
       _isLoadingOptions = false;
@@ -116,7 +105,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
     final normalizedInput = <String, List<String>>{
       for (final entry in widget.filterOptions.entries)
-        entry.key.trim(): entry.value,
+        (EventTextUtils.trimmedOrNull(entry.key) ?? entry.key): entry.value,
     };
 
     final ordered = <String, List<String>>{};
@@ -135,57 +124,44 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
   List<String> _withAllOption(List<String> options) {
     final cleaned = options
-        .map((option) => option.trim())
-        .where((option) => option.isNotEmpty)
+        .map(EventTextUtils.trimmedOrNull)
+        .whereType<String>()
         .toList();
 
     final hasAll = cleaned.any(
-      (option) => option.toLowerCase() == _allOption.toLowerCase(),
+      (option) => EventTextUtils.equalsIgnoringCase(option, _allOption),
     );
     if (hasAll) return cleaned;
     return <String>[_allOption, ...cleaned];
   }
 
   List<String> _normalizeOptionsFromApi(List<String> options) {
-    return options
-        .map(
-          (option) =>
-              EventTextUtils.capitalizeFirst(option.replaceAll('-', ' ')),
-        )
-        .toList();
+    return options.map(EventTextUtils.labelOrNull).whereType<String>().toList();
   }
 
-  String? _resolveInitialSelection(String section, List<String> options) {
-    final initial = widget.initialSelectedFilters?[section];
-    if (initial == null || initial.isEmpty) return null;
-
-    final selected = initial.first.trim();
-    if (selected.isEmpty) return null;
-
-    if (options.contains(selected)) return selected;
-    final match = options.where(
-      (option) => option.toLowerCase() == selected.toLowerCase(),
-    );
-    return match.isEmpty ? null : match.first;
+  String _resolveSelectedValue(String section, List<String> options) {
+    final currentValue = _selected[section] ?? _allOption;
+    return options.contains(currentValue) ? currentValue : _allOption;
   }
 
   void _onOptionTapped({required String section, required String option}) {
     setState(() {
       _selected[section] = option;
     });
-
-    widget.onFiltersChanged?.call(selectedFiltersForApi);
   }
 
+  // Converteix el formulari al format per l'API
   Map<String, List<String>> get selectedFiltersForApi {
     return {
       for (final entry in _selected.entries)
-        if (entry.value.trim().toLowerCase() != _allOption.toLowerCase())
+        if (!EventTextUtils.equalsIgnoringCase(entry.value, _allOption))
           entry.key: [entry.value],
     };
   }
 
   void _onCancelPressed() {
+    // El tancament del modal es delega al callback extern perquè així no depenem
+    // del context d'aquest State si el bottom sheet ja s'està desmuntant.
     if (widget.onCancel != null) {
       widget.onCancel!.call();
       return;
@@ -194,9 +170,15 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
   }
 
   void _onApplyPressed() {
+    // El formulari només construeix el resultat final. El tancament real del
+    // bottom sheet es fa des del callback extern amb el context del modal.
     final selected = selectedFiltersForApi;
-    widget.onApplyFilters?.call(selected);
-    widget.onFiltersChanged?.call(selected);
+
+    if (widget.onApply != null) {
+      widget.onApply!(selected);
+      return;
+    }
+
     Navigator.of(context).pop(selected);
   }
 
@@ -212,8 +194,8 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Filtres",
+            const Text(
+              'Filtres',
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -221,8 +203,9 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
               const Center(child: CircularProgressIndicator()),
               const SizedBox(height: 12),
             ],
+            // Cada secció és una categoria del formulari de filtres
             for (final entry in _effectiveFilterOptions.entries) ...[
-              _FilterSection(
+              FilterSection(
                 title: entry.key,
                 options: entry.value,
                 selectedOption: _selected[entry.key] ?? _allOption,
@@ -259,58 +242,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _FilterSection extends StatelessWidget {
-  const _FilterSection({
-    required this.title,
-    required this.options,
-    required this.selectedOption,
-    required this.onOptionTapped,
-  });
-
-  final String title;
-  final List<String> options;
-  final String selectedOption;
-  final void Function(String option) onOptionTapped;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          initialValue: selectedOption == 'Tots' && options.contains('Tots')
-              ? null
-              : (options.contains(selectedOption) ? selectedOption : null),
-          hint: const Text('Selecciona una opció'),
-          isExpanded: true,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            isDense: true,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          ),
-          items: options
-              .map(
-                (option) => DropdownMenuItem<String>(
-                  value: option,
-                  child: Text(option, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
-            onOptionTapped(value);
-          },
-        ),
-      ],
     );
   }
 }

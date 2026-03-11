@@ -346,10 +346,6 @@ class _MapScreenState extends State<MapScreen> {
                                 top: 12,
                                 right: 12,
                                 child: FilterButton(
-                                  label: 'Filtres',
-                                  radius: _radius,
-                                  buttonHeight: 48,
-                                  initialSelectedFilters: _selectedFilters,
                                   onApplyFilters: _onApplyFilters,
                                   onSheetVisibilityChanged: (isVisible) {
                                     if (!mounted) return;
