@@ -33,9 +33,7 @@ class EventItem {
   // factory JSON object to EventItem object
   factory EventItem.fromJson(Map<String, dynamic> json) {
     final code = (json['code']).toString().trim();
-    final title = (json['denomination'])
-        .toString()
-        .trim();
+    final title = (json['denomination']).toString().trim();
 
     return EventItem(
       code: code,
@@ -46,7 +44,9 @@ class EventItem {
       provincia: EventTextUtils.labelOrNull(json['provincia']),
       comarca: EventTextUtils.labelOrNull(json['comarca']),
       municipi: EventTextUtils.labelOrNull(json['municipi']),
-      categories: EventTextUtils.categoriesToCapitalizedString(json['categories']),
+      categories: EventTextUtils.categoriesToCapitalizedString(
+        json['categories'],
+      ),
       free: json['free'] ?? false,
     );
   }
@@ -60,7 +60,7 @@ class EventItem {
     if (parts.isEmpty) return 'Per determinar';
     return parts.join(', ');
   }
-  
+
   // Converts the API date format (DD/MM/YYYY)
   static String? _formatDisplayDate(String? input) {
     if (input == null) return null;

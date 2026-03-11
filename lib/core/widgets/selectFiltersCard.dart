@@ -148,7 +148,10 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
   List<String> _normalizeOptionsFromApi(List<String> options) {
     return options
-        .map((option) => EventTextUtils.capitalizeFirst(option.replaceAll('-', ' ')))
+        .map(
+          (option) =>
+              EventTextUtils.capitalizeFirst(option.replaceAll('-', ' ')),
+        )
         .toList();
   }
 

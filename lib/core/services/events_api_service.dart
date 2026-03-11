@@ -12,12 +12,12 @@ class EventsApiService {
     final targetDate = date ?? DateTime.now();
     final targetDateFrom = dateFrom ?? _subtractMonths(targetDate, 6);
 
-    final uri = Uri.parse(
-      '${getBaseUrl()}$_eventsPath',
-    ).replace(queryParameters: {
-      'date': _formatDate(targetDate),
-      'date_from': _formatDate(targetDateFrom),
-    });
+    final uri = Uri.parse('${getBaseUrl()}$_eventsPath').replace(
+      queryParameters: {
+        'date': _formatDate(targetDate),
+        'date_from': _formatDate(targetDateFrom),
+      },
+    );
 
     final response = await http
         .get(uri, headers: const {'Accept': 'application/json'})
@@ -40,8 +40,9 @@ class EventsApiService {
     final year = totalMonths ~/ 12;
     final month = (totalMonths % 12) + 1;
     final lastDayOfTargetMonth = DateTime(year, month + 1, 0).day;
-    final day =
-        date.day > lastDayOfTargetMonth ? lastDayOfTargetMonth : date.day;
+    final day = date.day > lastDayOfTargetMonth
+        ? lastDayOfTargetMonth
+        : date.day;
     return DateTime(year, month, day);
   }
 
