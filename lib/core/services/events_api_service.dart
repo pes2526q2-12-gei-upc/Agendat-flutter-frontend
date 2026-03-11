@@ -5,14 +5,19 @@ import 'package:http/http.dart' as http;
 class EventsApiService {
   static const String _eventsPath = '/api/events/';
 
-  Future<List<Map<String, dynamic>>> fetchEvents({DateTime? date}) async {
+  Future<List<Map<String, dynamic>>> fetchEvents({
+    DateTime? date,
+    DateTime? dateFrom,
+  }) async {
     final targetDate = date ?? DateTime.now();
-    final formattedDate =
-        '${targetDate.year.toString().padLeft(4, '0')}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}';
+    final targetDateFrom = dateFrom ?? _subtractMonths(targetDate, 6);
 
     final uri = Uri.parse(
       '${getBaseUrl()}$_eventsPath',
-    ).replace(queryParameters: {'date': formattedDate});
+    ).replace(queryParameters: {
+      'date': _formatDate(targetDate),
+      'date_from': _formatDate(targetDateFrom),
+    });
 
     final response = await http
         .get(uri, headers: const {'Accept': 'application/json'})
@@ -28,5 +33,22 @@ class EventsApiService {
     }
 
     return EventsResponseParser.parseEventsBody(response.body);
+  }
+
+  static DateTime _subtractMonths(DateTime date, int months) {
+    final totalMonths = date.year * 12 + (date.month - 1) - months;
+    final year = totalMonths ~/ 12;
+    final month = (totalMonths % 12) + 1;
+    final lastDayOfTargetMonth = DateTime(year, month + 1, 0).day;
+    final day =
+        date.day > lastDayOfTargetMonth ? lastDayOfTargetMonth : date.day;
+    return DateTime(year, month, day);
+  }
+
+  static String _formatDate(DateTime date) {
+    final yyyy = date.year.toString().padLeft(4, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    final dd = date.day.toString().padLeft(2, '0');
+    return '$yyyy-$mm-$dd';
   }
 }
