@@ -1,9 +1,8 @@
-import 'dart:convert';
-
-import 'package:agendat/core/widgets/navigationBar.dart';
-import 'package:flutter/foundation.dart';
+import 'package:agendat/core/services/events_api_service.dart';
+import 'package:agendat/core/widgets/app_navigation_bar.dart' as navBar;
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:agendat/core/widgets/filterButton.dart';
+import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 
 class EventItem {
   final String code;
@@ -66,7 +65,10 @@ class EventItem {
 
   // Cleans text by replacing dashes/underscores with spaces
   static String _normalizeLabel(String text) {
-    return text.replaceAll(RegExp(r'[-_]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    return text
+        .replaceAll(RegExp(r'[-_]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   // Converts a label to a clean formatted string or returns null
@@ -141,8 +143,7 @@ class VisualizeScreen extends StatefulWidget {
 }
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
-  static const String _eventsPath = '/api/events/';
-
+  final EventsApiService _eventsApiService = EventsApiService();
   int _selectedTabIndex = 0;
   late Future<List<EventItem>> _eventsFuture;
   String _query = '';
@@ -150,92 +151,21 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   void initState() {
     super.initState();
-    _eventsFuture = fetchEvents();
+    _eventsFuture = _loadEvents();
   }
 
-  // Calls the API and downloads the list of events
-  Future<List<EventItem>> fetchEvents() async {
-    final today = DateTime.now();
-    final todayDate = _formatDate(today);
-    final dateFrom = _formatDate(_subtractMonths(today, 6));
-    final uri = Uri.parse(
-      '${_baseUrl()}$_eventsPath',
-    ).replace(queryParameters: {
-      'date': todayDate,
-      'date_from': dateFrom,
-    });
-
-    final response = await http
-        .get(uri, headers: const {'Accept': 'application/json'})
-        .timeout(const Duration(seconds: 12));
-
-    if (response.statusCode != 200) {
-      final snippet = response.body.length > 200
-          ? '${response.body.substring(0, 200)}...'
-          : response.body;
-      throw Exception(
-        'Failed to load events (HTTP ${response.statusCode}) for $uri. Response: $snippet',
-      );
-    }
-
-    return _parseEventsBody(response.body);
-  }
-
-  // Subtracts a number of months from a given date
-  DateTime _subtractMonths(DateTime date, int months) {
-    final totalMonths = date.year * 12 + (date.month - 1) - months;
-    final year = totalMonths ~/ 12;
-    final month = (totalMonths % 12) + 1;
-    final lastDayOfTargetMonth = DateTime(year, month + 1, 0).day;
-    final day = date.day > lastDayOfTargetMonth ? lastDayOfTargetMonth : date.day;
-
-    return DateTime(year, month, day);
-  }
-
-  // Formats a DateTime object into YYYY-MM-DD
-  String _formatDate(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
-  }
-
-  // Converts the API response body into a list of EventItem objects
-  List<EventItem> _parseEventsBody(String body) {
-  final decoded = jsonDecode(body) as List;
-
-  return decoded
-      .map((event) => EventItem.fromJson(event))
-      .toList();
-}
-
-  // Returns the correct API base URL depending on the platform
-  String _baseUrl() {
-    const customBaseUrl = String.fromEnvironment('API_BASE_URL');
-    if (customBaseUrl.isNotEmpty) return customBaseUrl;
-
-    if (kIsWeb) return 'http://localhost:8000';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000';
-    }
-    return 'http://localhost:8000';
+  Future<List<EventItem>> _loadEvents() async {
+    final rawEvents = await _eventsApiService.fetchEvents();
+    return rawEvents.map(EventItem.fromJson).toList();
   }
 
   // Reloads the events list
   void _refresh() {
     setState(() {
-      _eventsFuture = fetchEvents();
+      _eventsFuture = _loadEvents();
     });
   }
 
-  void _onNavigationTap(int index) {
-    setState(() {
-      _selectedTabIndex = index;
-    });
-    // TODO: Connect each tab index to real route navigation.
-  }
-
-  // Filters events based on the text typed in the search bar
   List<EventItem> _applySearch(List<EventItem> events) {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return events;
@@ -252,15 +182,23 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: AgendatBottomNavigationBar(
+      bottomNavigationBar: navBar.AppNavigationBar(
         currentIndex: _selectedTabIndex,
-        onTap: _onNavigationTap,
       ),
       appBar: appBar(),
       body: Column(
         children: [
-          searchBar(),
-          filterButton(),
+          bar.AppSearchBar(
+            onChanged: (value) {
+              setState(() {
+                _query = value;
+              });
+            },
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Align(alignment: Alignment.topLeft, child: FilterButton()),
+          ),
           const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<EventItem>>(
@@ -412,58 +350,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  Align filterButton() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 20, top: 12),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromARGB(255, 190, 0, 47),
-            foregroundColor: Colors.white,
-          ),
-          onPressed: () {},
-          child: const Text(
-            'Filtres',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Container searchBar() {
-    return Container(
-      margin: const EdgeInsets.only(top: 40, left: 20, right: 20),
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xff1D1617).withValues(alpha: 0.11),
-            blurRadius: 40,
-            spreadRadius: 0.0,
-          ),
-        ],
-      ),
-      child: TextField(
-        onChanged: (value) {
-          setState(() {
-            _query = value;
-          });
-        },
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.all(15),
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
     );
   }
 
