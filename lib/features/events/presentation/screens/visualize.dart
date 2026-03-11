@@ -46,7 +46,7 @@ class EventItem {
       provincia: EventTextUtils.labelOrNull(json['provincia']),
       comarca: EventTextUtils.labelOrNull(json['comarca']),
       municipi: EventTextUtils.labelOrNull(json['municipi']),
-      categories: EventTextUtils.categoriesToString(json['categories']),
+      categories: EventTextUtils.categoriesToCapitalizedString(json['categories']),
       free: json['free'] ?? false,
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/filters_api_service.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 
 class SelectedFiltersCard extends StatefulWidget {
   const SelectedFiltersCard({
@@ -146,7 +147,9 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
   }
 
   List<String> _normalizeOptionsFromApi(List<String> options) {
-    return options.map((option) => option.replaceAll('-', ' ')).toList();
+    return options
+        .map((option) => EventTextUtils.capitalizeFirst(option.replaceAll('-', ' ')))
+        .toList();
   }
 
   String? _resolveInitialSelection(String section, List<String> options) {

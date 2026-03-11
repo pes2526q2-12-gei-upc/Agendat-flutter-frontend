@@ -29,19 +29,9 @@ class EventTextUtils {
     return normalized.isEmpty ? null : capitalizeFirst(normalized);
   }
 
-  // Converts a categories list into a readable comma-separated string
-  static String? categoriesToString(List<dynamic>? value) {
+  // Converts a categories list into a readable comma-separated string capitalized
+  static String? categoriesToCapitalizedString(List<dynamic>? value) {
     if (value == null || value.isEmpty) return null;
-
-    final categories = value
-        .map((item) {
-          final raw = item is Map<String, dynamic> ? item['name'] : item;
-          return stringOrNull(raw);
-        })
-        .whereType<String>()
-        .toList();
-
-    if (categories.isEmpty) return null;
-    return categories.join(', ');
+    return value.map((e) => capitalizeFirst(e['name'] as String)).join(', ');
   }
 }
