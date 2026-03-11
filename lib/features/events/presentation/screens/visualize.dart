@@ -93,6 +93,7 @@ class EventItem {
     if (parts.isEmpty) return 'Per determinar';
     return parts.join(', ');
   }
+  
   // Converts the API date format (DD/MM/YYYY)
   static String? _formatDisplayDate(String? input) {
     if (input == null) return null;
