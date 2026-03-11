@@ -8,6 +8,12 @@ class EventTextUtils {
     return text.isEmpty ? null : capitalizeFirst(text);
   }
 
+    static String? rawStringOrNull(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
   // Capitalizes the first letter of a string
   static String capitalizeFirst(String text) {
     if (text.isEmpty) return text;

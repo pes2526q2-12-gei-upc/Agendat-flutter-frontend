@@ -1,6 +1,9 @@
 import 'package:agendat/core/services/events_api_service.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/agendat_app_bar.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart' as navBar;
+import 'package:agendat/features/events/presentation/screens/event.dart'
+  as eventScreen;
 import 'package:flutter/material.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
@@ -150,7 +153,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       bottomNavigationBar: navBar.AppNavigationBar(
         currentIndex: _selectedTabIndex,
       ),
-      appBar: appBar(),
+      appBar: const AgendatAppBar(),
       body: Column(
         children: [
           bar.AppSearchBar(
@@ -222,36 +225,46 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Widget eventCard(EventItem event) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color.fromARGB(255, 190, 0, 47),
-          width: 2,
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => eventScreen.EventScreen(eventCode: event.code),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color.fromARGB(255, 190, 0, 47),
+            width: 2,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: eventTitle(event)),
-              const SizedBox(width: 10),
-              eventCategory(event),
-            ],
-          ),
-          const SizedBox(height: 4),
-          eventSubtitle(event),
-          const SizedBox(height: 10),
-          Row(
-            children: [eventDate(event), const Spacer(), eventPayment(event)],
-          ),
-          const SizedBox(height: 4),
-          eventPlace(event),
-        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: eventTitle(event)),
+                const SizedBox(width: 10),
+                eventCategory(event),
+              ],
+            ),
+            const SizedBox(height: 4),
+            eventSubtitle(event),
+            const SizedBox(height: 10),
+            Row(
+              children: [eventDate(event), const Spacer(), eventPayment(event)],
+            ),
+            const SizedBox(height: 4),
+            eventPlace(event),
+          ],
+        ),
       ),
     );
   }
@@ -318,15 +331,4 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  AppBar appBar() {
-    return AppBar(
-      title: const Text(
-        "Agenda't",
-        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-      ),
-      backgroundColor: Colors.white,
-      elevation: 0.0,
-      centerTitle: false,
-    );
-  }
 }
