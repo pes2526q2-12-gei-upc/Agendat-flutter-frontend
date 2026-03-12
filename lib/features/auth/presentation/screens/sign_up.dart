@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:agendat/features/auth/presentation/theme/utils.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -126,7 +126,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Container(color: kPrimaryRed),
+                Container(color: EventTextUtils.kPrimaryRed),
                 Opacity(
                   opacity: 0.35,
                   child: Image.asset(
@@ -315,7 +315,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   FilledButton(
                     onPressed: _isLoading ? null : _submitSignUp,
                     style: FilledButton.styleFrom(
-                      backgroundColor: kPrimaryRed,
+                      backgroundColor: EventTextUtils.kPrimaryRed,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -361,7 +361,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             text: 'Inicia sessió',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: kPrimaryRed,
+                              color: EventTextUtils.kPrimaryRed,
                             ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
@@ -453,7 +453,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: kPrimaryRed, width: 1.5),
+          borderSide: BorderSide(color: EventTextUtils.kPrimaryRed, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -489,7 +489,7 @@ class _CalendarIcon extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            calendarMonthNames[DateTime.now().month - 1],
+            EventTextUtils.calendarMonthNames[DateTime.now().month - 1],
             style: const TextStyle(
               color: Colors.white,
               fontSize: 10,

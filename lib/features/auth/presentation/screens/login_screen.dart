@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 //import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
-import 'package:agendat/features/auth/presentation/theme/utils.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Container(color: kPrimaryRed),
+                Container(color: EventTextUtils.kPrimaryRed),
                 Opacity(
                   opacity: 0.35,
                   child: Image.asset(
@@ -150,7 +150,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: kPrimaryRed, width: 1.5),
+                        borderSide: BorderSide(
+                          color: EventTextUtils.kPrimaryRed,
+                          width: 1.5,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -186,7 +189,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: kPrimaryRed, width: 1.5),
+                        borderSide: BorderSide(
+                          color: EventTextUtils.kPrimaryRed,
+                          width: 1.5,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -215,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: kPrimaryRed,
+                      backgroundColor: EventTextUtils.kPrimaryRed,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -296,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             text: 'Registra\'t',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: kPrimaryRed,
+                              color: EventTextUtils.kPrimaryRed,
                             ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () {
@@ -346,7 +352,7 @@ class _CalendarIcon extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            calendarMonthNames[DateTime.now().month - 1],
+            EventTextUtils.calendarMonthNames[DateTime.now().month - 1],
             style: TextStyle(
               color: Colors.white,
               fontSize: 10,
