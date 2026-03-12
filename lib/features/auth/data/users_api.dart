@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:agendat/core/network/api_config.dart';
+import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:http/http.dart' as http;
@@ -23,7 +23,7 @@ class CreateUserFailure extends CreateUserResult {
 
 /// Crida POST /api/users/ per registrar un usuari nou.
 Future<CreateUserResult> createUser(CreateUserRequest request) async {
-  final uri = Uri.parse('$kApiBaseUrl/api/users/');
+  final uri = Uri.parse('${getBaseUrl()}/api/users/');
   try {
     final response = await http.post(
       uri,
@@ -64,7 +64,7 @@ class LoginUserFailure extends LoginUserResult {
 
 /// Crida POST /api/auth/login/ per iniciar sessió.
 Future<LoginUserResult> loginUser(LoginUserRequest request) async {
-  final uri = Uri.parse('$kApiBaseUrl/api/auth/login/');
+  final uri = Uri.parse('${getBaseUrl()}/api/auth/login/');
   try {
     final response = await http.post(
       uri,
