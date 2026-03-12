@@ -3,6 +3,7 @@ import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
+import 'package:agendat/core/widgets/appBar.dart';
 
 class EventItem {
   final String code;
@@ -94,7 +95,7 @@ class EventItem {
   // Returns the subtitle or a default text
   String get displaySubtitle {
     final raw = subtitle?.trim();
-    if (raw == null || raw.isEmpty) return 'Sense descripció';
+    if (raw == null || raw.isEmpty) return ' ';
     return raw;
   }
 }
@@ -145,7 +146,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: appBar(),
+      appBar: const AgendatAppBar(),
       body: Column(
         children: [
           bar.AppSearchBar(
@@ -310,18 +311,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  AppBar appBar() {
-    return AppBar(
-      title: const Text(
-        "Agenda't",
-        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-      ),
-      backgroundColor: Colors.white,
-      elevation: 0.0,
-      centerTitle: false,
     );
   }
 }
