@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 //import 'package:agendat/features/auth/data/models/login_user_request.dart';
 //import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/map/presentation/screens/map.dart';
+import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 
@@ -217,7 +217,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const RootNavigationScreen(initialIndex: 1),
+                        ),
                       );
                     },
                     style: FilledButton.styleFrom(
@@ -274,7 +277,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const MapScreen()),
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const RootNavigationScreen(initialIndex: 1),
+                        ),
                       );
                     },
                     style: OutlinedButton.styleFrom(

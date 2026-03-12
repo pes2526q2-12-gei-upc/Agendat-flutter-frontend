@@ -1,6 +1,5 @@
 import 'package:agendat/core/services/events_api_service.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
-import 'package:agendat/core/widgets/app_navigation_bar.dart' as navBar;
 import 'package:flutter/material.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
@@ -109,7 +108,6 @@ class VisualizeScreen extends StatefulWidget {
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
   final EventsApiService _eventsApiService = EventsApiService();
-  int _selectedTabIndex = 0;
   late Future<List<EventItem>> _eventsFuture;
   String _query = '';
 
@@ -147,9 +145,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: navBar.AppNavigationBar(
-        currentIndex: _selectedTabIndex,
-      ),
       appBar: appBar(),
       body: Column(
         children: [
