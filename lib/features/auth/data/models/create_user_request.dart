@@ -5,7 +5,7 @@ class CreateUserRequest {
     required this.username,
     required this.email,
     required this.password,
-    this.firstName,
+    required this.firstName,
     this.lastName,
     this.phone,
     this.birthDate,
@@ -18,7 +18,7 @@ class CreateUserRequest {
   final String username;
   final String email;
   final String password;
-  final String? firstName;
+  final String firstName;
   final String? lastName;
   final String? phone;
   final String? birthDate; // ISO 8601, e.g. "2026-03-09"

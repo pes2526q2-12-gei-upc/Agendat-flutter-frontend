@@ -65,6 +65,7 @@ class LoginUserFailure extends LoginUserResult {
 /// Dades de l'usuari actualment autenticat (durant l'execució de l'app).
 Map<String, dynamic>? currentLoggedInUser;
 
+/// Desa l'usuari autenticat amb JSON, potser més endavant fer-ho amb SharedPreferences o flutter_secure_storage
 void setCurrentLoggedInUser(Map<String, dynamic>? userJson) {
   currentLoggedInUser = userJson;
 }

@@ -18,11 +18,25 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  late final TapGestureRecognizer _signUpTapRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _signUpTapRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SignUpScreen()),
+        );
+      };
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _signUpTapRecognizer.dispose();
     super.dispose();
   }
 
@@ -344,19 +358,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           const TextSpan(text: 'Encara no tens compte? '),
                           TextSpan(
                             text: 'Registra\'t',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: EventTextUtils.kPrimaryRed,
                             ),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const SignUpScreen(),
-                                  ),
-                                );
-                              },
+                            recognizer: _signUpTapRecognizer,
                           ),
                         ],
                       ),
