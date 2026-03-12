@@ -1,5 +1,4 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:agendat/features/map/presentation/screens/map.dart';
 import 'package:flutter/material.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
@@ -67,18 +66,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            // De moment tornem al mapa, quan ho tinguem tornarà a la pantalla de perfil.
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const MapScreen()),
-            );
-          },
-        ),
-        title: const Text('Eliminar compte'),
-      ),
+      appBar: AppBar(title: const Text('Eliminar compte')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

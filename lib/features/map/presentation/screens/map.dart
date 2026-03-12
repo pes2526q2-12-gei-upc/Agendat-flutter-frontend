@@ -6,7 +6,6 @@ import 'package:agendat/core/services/filters_api_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:agendat/core/widgets/app_navigation_bar.dart' as navBar;
 import 'package:agendat/features/map/presentation/widgets/map_widgets.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 
@@ -26,8 +25,6 @@ class _MapScreenState extends State<MapScreen> {
   final FiltersApiService _filtersApiService = FiltersApiService();
   final DeviceLocationService _deviceLocationService = DeviceLocationService();
   final MapNavigationService _mapNavigationService = MapNavigationService();
-
-  int _selectedTabIndex = 1;
 
   // Punt inicial (Barcelona) si no tenim ubi de l'usuari
   final LatLng _center = const LatLng(41.3851, 2.1734);
@@ -232,9 +229,6 @@ class _MapScreenState extends State<MapScreen> {
           "La cultura a prop teu",
           style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
         ),
-      ),
-      bottomNavigationBar: navBar.AppNavigationBar(
-        currentIndex: _selectedTabIndex,
       ),
       body: SafeArea(
         child: Column(
