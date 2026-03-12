@@ -1,8 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-//import 'package:agendat/features/auth/data/models/login_user_request.dart';
-//import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/features/auth/data/models/login_user_request.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -16,31 +16,73 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  /*Future<void> _login() async {
-    final email = _emailController.text;
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
     final password = _passwordController.text;
+
+    if (username.isEmpty) {
+      _showSnackBar('Introdueix el teu nom d\'usuari.');
+      return;
+    }
+    if (password.isEmpty) {
+      _showSnackBar('Introdueix la contrasenya.');
+      return;
+    }
+
     final result = await loginUser(
-      LoginUserRequest(username: email, password: password),
+      LoginUserRequest(username: username, password: password),
     );
     if (!mounted) return;
-    if (result is LoginUserSuccess) {
-      //_showSnackBar('Inici de sessió correcte', isError: false);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MapScreen()),
-      );
+    switch (result) {
+      case LoginUserSuccess():
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RootNavigationScreen(initialIndex: 1),
+          ),
+        );
+      case LoginUserFailure(:final statusCode, :final body):
+        String message = 'No s\'ha pogut iniciar sessió.';
+        if (statusCode == 404) {
+          message =
+              'El backend no ha trobat l\'endpoint de login (/api/users/login/).';
+        } else if (body != null) {
+          if (body['detail'] != null) {
+            message = body['detail'].toString();
+          } else if (body['non_field_errors'] != null) {
+            message = (body['non_field_errors'] is List)
+                ? (body['non_field_errors'] as List).join(' ')
+                : body['non_field_errors'].toString();
+          } else if (body['username'] != null) {
+            message = (body['username'] is List)
+                ? (body['username'] as List).join(' ')
+                : body['username'].toString();
+          }
+        } else if (statusCode == -1) {
+          message = 'Error de connexió. Comprova la xarxa.';
+        }
+        _showSnackBar(message);
     }
-  }*/
+  }
+
+  void _showSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? null : Colors.green.shade700,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 28),
                   Text(
-                    'Correu electrònic',
+                    'Nom d\'usuari',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -133,10 +175,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _usernameController,
+                    keyboardType: TextInputType.text,
                     decoration: InputDecoration(
-                      hintText: 'exemple@correu.cat',
+                      hintText: 'El teu nom d\'usuari',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
                       filled: true,
                       fillColor: Colors.white,
@@ -215,13 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 28),
                   FilledButton(
                     onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const RootNavigationScreen(initialIndex: 1),
-                        ),
-                      );
+                      _login();
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: EventTextUtils.kPrimaryRed,

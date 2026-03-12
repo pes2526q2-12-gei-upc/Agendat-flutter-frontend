@@ -1,4 +1,4 @@
-/// Dades per iniciar sessió (POST /api/auth/login/).
+/// Dades per iniciar sessió (POST /api/users/login/).
 /// Obligatoris: [username], [password].
 
 class LoginUserRequest {

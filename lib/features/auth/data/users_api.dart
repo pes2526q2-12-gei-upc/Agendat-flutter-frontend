@@ -62,9 +62,9 @@ class LoginUserFailure extends LoginUserResult {
   final Object? error;
 }
 
-/// Crida POST /api/auth/login/ per iniciar sessió.
+/// Crida POST /api/users/login/ per iniciar sessió.
 Future<LoginUserResult> loginUser(LoginUserRequest request) async {
-  final uri = Uri.parse('${getBaseUrl()}/api/auth/login/');
+  final uri = Uri.parse('${getBaseUrl()}/api/users/login/');
   try {
     final response = await http.post(
       uri,
