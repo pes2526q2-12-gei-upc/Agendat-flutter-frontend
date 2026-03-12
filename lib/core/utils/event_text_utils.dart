@@ -1,5 +1,26 @@
+import 'package:flutter/material.dart';
+
 class EventTextUtils {
   const EventTextUtils._();
+
+  // Deep red used for primary actions and header (matches design).
+  static const kPrimaryRed = Color(0xFFB71C1C);
+
+  // Catalan month abbreviations for the calendar icon (index 0 = January).
+  static const List<String> calendarMonthNames = [
+    'GEN',
+    'FEB',
+    'MAR',
+    'ABR',
+    'MAI',
+    'JUN',
+    'JUL',
+    'AGO',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DES',
+  ];
 
   // Returns a trimmed string or null if the value is null/empty.
   static String? trimmedOrNull(dynamic value) {

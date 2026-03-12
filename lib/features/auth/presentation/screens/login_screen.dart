@@ -1,25 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+import 'package:agendat/features/auth/data/models/login_user_request.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/main.dart';
-
-/// Deep red used for primary actions and header (matches design).
-const _kPrimaryRed = Color(0xFFB71C1C);
-
-/// Catalan month abbreviations for the calendar icon (index 0 = January).
-const _calendarMonthNames = [
-  'GEN',
-  'FEB',
-  'MAR',
-  'ABR',
-  'MAI',
-  'JUN',
-  'JUL',
-  'AGO',
-  'SEP',
-  'OCT',
-  'NOV',
-  'DES',
-];
+import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,14 +16,88 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  late final TapGestureRecognizer _signUpTapRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _signUpTapRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SignUpScreen()),
+        );
+      };
+  }
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
+    _signUpTapRecognizer.dispose();
     super.dispose();
+  }
+
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty) {
+      _showSnackBar('Introdueix el teu nom d\'usuari.');
+      return;
+    }
+    if (password.isEmpty) {
+      _showSnackBar('Introdueix la contrasenya.');
+      return;
+    }
+
+    final result = await loginUser(
+      LoginUserRequest(username: username, password: password),
+    );
+    if (!mounted) return;
+    switch (result) {
+      case LoginUserSuccess(:final body):
+        // Desa l'usuari autenticat perquè la sessió quedi establerta
+        setCurrentLoggedInUser(body);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RootNavigationScreen(initialIndex: 1),
+          ),
+        );
+      case LoginUserFailure(:final statusCode, :final body):
+        String message = 'No s\'ha pogut iniciar sessió.';
+        if (statusCode == 404) {
+          message =
+              'El backend no ha trobat l\'endpoint de login (/api/users/login/).';
+        } else if (body != null) {
+          if (body['detail'] != null) {
+            message = body['detail'].toString();
+          } else if (body['non_field_errors'] != null) {
+            message = (body['non_field_errors'] is List)
+                ? (body['non_field_errors'] as List).join(' ')
+                : body['non_field_errors'].toString();
+          } else if (body['username'] != null) {
+            message = (body['username'] is List)
+                ? (body['username'] as List).join(' ')
+                : body['username'].toString();
+          }
+        } else if (statusCode == -1) {
+          message = 'Error de connexió. Comprova la xarxa.';
+        }
+        _showSnackBar(message);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? null : Colors.green.shade700,
+      ),
+    );
   }
 
   @override
@@ -56,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Container(color: _kPrimaryRed),
+                Container(color: EventTextUtils.kPrimaryRed),
                 Opacity(
                   opacity: 0.35,
                   child: Image.asset(
@@ -122,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 28),
                   Text(
-                    'Correu electrònic',
+                    'Nom d\'usuari',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -131,10 +191,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _usernameController,
+                    keyboardType: TextInputType.text,
                     decoration: InputDecoration(
-                      hintText: 'exemple@correu.cat',
+                      hintText: 'El teu nom d\'usuari',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
                       filled: true,
                       fillColor: Colors.white,
@@ -148,7 +208,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _kPrimaryRed, width: 1.5),
+                        borderSide: BorderSide(
+                          color: EventTextUtils.kPrimaryRed,
+                          width: 1.5,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -184,7 +247,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _kPrimaryRed, width: 1.5),
+                        borderSide: BorderSide(
+                          color: EventTextUtils.kPrimaryRed,
+                          width: 1.5,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -207,16 +273,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 28),
                   FilledButton(
                     onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const RootNavigationScreen(initialIndex: 1),
-                        ),
-                      );
+                      _login();
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: _kPrimaryRed,
+                      backgroundColor: EventTextUtils.kPrimaryRed,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -298,11 +358,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           const TextSpan(text: 'Encara no tens compte? '),
                           TextSpan(
                             text: 'Registra\'t',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: _kPrimaryRed,
+                              color: EventTextUtils.kPrimaryRed,
                             ),
-                            recognizer: TapGestureRecognizer()..onTap = () {},
+                            recognizer: _signUpTapRecognizer,
                           ),
                         ],
                       ),
@@ -342,7 +402,7 @@ class _CalendarIcon extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            _calendarMonthNames[DateTime.now().month - 1],
+            EventTextUtils.calendarMonthNames[DateTime.now().month - 1],
             style: TextStyle(
               color: Colors.white,
               fontSize: 10,
