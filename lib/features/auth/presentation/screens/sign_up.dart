@@ -76,10 +76,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() => _isLoading = true);
     final request = CreateUserRequest(
-      username: username.trim(),
-      email: email.trim(),
-      firstName: fullName.trim(),
-      password: password.trim(),
+      username: username,
+      email: email,
+      first_name: fullName,
+      password: password,
     );
     final result = await createUser(request);
     if (!mounted) return;
