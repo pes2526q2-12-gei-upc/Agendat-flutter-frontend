@@ -1,6 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+//import 'package:agendat/features/auth/data/models/login_user_request.dart';
+//import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/features/auth/presentation/theme/utils.dart';
@@ -23,6 +25,22 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
+
+  /*Future<void> _login() async {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+    final result = await loginUser(
+      LoginUserRequest(username: email, password: password),
+    );
+    if (!mounted) return;
+    if (result is LoginUserSuccess) {
+      //_showSnackBar('Inici de sessió correcte', isError: false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MapScreen()),
+      );
+    }
+  }*/
 
   @override
   Widget build(BuildContext context) {
