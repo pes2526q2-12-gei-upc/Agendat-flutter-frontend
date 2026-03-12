@@ -44,7 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     switch (result) {
-      case LoginUserSuccess():
+      case LoginUserSuccess(:final body):
+        // Desa l'usuari autenticat perquè la sessió quedi establerta
+        setCurrentLoggedInUser(body);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

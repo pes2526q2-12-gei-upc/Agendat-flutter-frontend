@@ -19,10 +19,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  late final TapGestureRecognizer _loginTapRecognizer;
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loginTapRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      };
+  }
 
   @override
   void dispose() {
@@ -31,6 +45,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _loginTapRecognizer.dispose();
     super.dispose();
   }
 
@@ -49,6 +64,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showSnackBar('Introdueix el correu electrònic.');
       return;
     }
+    // Contrasenya de només 4 caràcters per agilitzar el desenvolupament
     if (password.length < 4) {
       _showSnackBar('La contrasenya ha de tenir almenys 4 caràcters.');
       return;
@@ -363,17 +379,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               fontWeight: FontWeight.bold,
                               color: EventTextUtils.kPrimaryRed,
                             ),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                // Tornem a la pantalla de login.
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const LoginScreen(),
-                                  ),
-                                  (route) => false,
-                                );
-                              },
+                            recognizer: _loginTapRecognizer,
                           ),
                         ],
                       ),

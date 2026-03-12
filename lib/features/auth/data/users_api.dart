@@ -62,6 +62,13 @@ class LoginUserFailure extends LoginUserResult {
   final Object? error;
 }
 
+/// Dades de l'usuari actualment autenticat (durant l'execució de l'app).
+Map<String, dynamic>? currentLoggedInUser;
+
+void setCurrentLoggedInUser(Map<String, dynamic>? userJson) {
+  currentLoggedInUser = userJson;
+}
+
 /// Crida POST /api/users/login/ per iniciar sessió.
 Future<LoginUserResult> loginUser(LoginUserRequest request) async {
   final uri = Uri.parse('${getBaseUrl()}/api/users/login/');

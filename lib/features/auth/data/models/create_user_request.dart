@@ -4,6 +4,7 @@ class CreateUserRequest {
   CreateUserRequest({
     required this.username,
     required this.email,
+    required this.password,
     this.firstName,
     this.lastName,
     this.phone,
@@ -12,11 +13,11 @@ class CreateUserRequest {
     this.locationAllowed,
     this.notificationsAllowed,
     this.description,
-    this.password,
   });
 
   final String username;
   final String email;
+  final String password;
   final String? firstName;
   final String? lastName;
   final String? phone;
@@ -25,11 +26,16 @@ class CreateUserRequest {
   final bool? locationAllowed;
   final bool? notificationsAllowed;
   final String? description;
-  final String? password;
 
   Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{'username': username, 'email': email};
-    if (firstName != null) map['first_name'] = firstName;
+    final map = <String, dynamic>{
+      'username': username,
+      'firstName': firstName,
+      'email': email,
+      'password': password,
+    };
+    /*
+    codi que de moment no fa falta per crear l'usuari:
     if (lastName != null) map['last_name'] = lastName;
     if (phone != null) map['phone'] = phone;
     if (birthDate != null) map['birth_date'] = birthDate;
@@ -38,8 +44,7 @@ class CreateUserRequest {
     if (notificationsAllowed != null) {
       map['notifications_allowed'] = notificationsAllowed;
     }
-    if (description != null) map['description'] = description;
-    if (password != null && password!.isNotEmpty) map['password'] = password;
+    if (description != null) map['description'] = description;*/
     return map;
   }
 }
