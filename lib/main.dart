@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/features/events/presentation/screens/visualize.dart';
 
 void main() {
   runApp(const MyApp());
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
           seedColor: const Color.fromARGB(255, 255, 105, 105),
         ),
       ),
-      home: const LoginScreen(),
+      home: const VisualizeScreen(),
     );
   }
 }

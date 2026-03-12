@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:agendat/core/services/event_payload_utils.dart';
 
 // PENDENT:
 // - Passar de dades fake a dades reals del backend.
@@ -16,6 +17,30 @@ class MapEventMarkerData {
   final String id;
   final String title;
   final LatLng point;
+}
+
+/// Converteix la resposta de l'API a marcadors del mapa.
+List<MapEventMarkerData> buildEventsFromApi(
+  List<Map<String, dynamic>> rawEvents,
+) {
+  return rawEvents.map(_eventFromApi).whereType<MapEventMarkerData>().toList();
+}
+
+MapEventMarkerData? _eventFromApi(Map<String, dynamic> json) {
+  final latitude = EventPayloadUtils.extractLatitude(json);
+  final longitude = EventPayloadUtils.extractLongitude(json);
+  if (latitude == null || longitude == null) return null;
+
+  final id = EventPayloadUtils.extractId(json);
+  final title = EventPayloadUtils.extractTitle(json);
+
+  if (id.isEmpty || title.isEmpty) return null;
+
+  return MapEventMarkerData(
+    id: id,
+    title: title,
+    point: LatLng(latitude, longitude),
+  );
 }
 
 /// Genera esdeveniments de prova per visualitzar al mapa.

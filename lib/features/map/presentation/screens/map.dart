@@ -1,11 +1,14 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/features/map/data/device_location_service.dart';
+import 'package:agendat/core/services/event_payload_utils.dart';
+import 'package:agendat/core/services/events_api_service.dart';
+import 'package:agendat/core/services/filters_api_service.dart';
+import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:agendat/core/widgets/navigationBar.dart';
+import 'package:agendat/core/widgets/app_navigation_bar.dart' as navBar;
 import 'package:agendat/features/map/presentation/widgets/map_widgets.dart';
+import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -19,6 +22,10 @@ class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   // Calcula distancia entre dos punts del mapa
   final Distance _distanceCalculator = const Distance();
+  final EventsApiService _eventsApiService = EventsApiService();
+  final FiltersApiService _filtersApiService = FiltersApiService();
+  final DeviceLocationService _deviceLocationService = DeviceLocationService();
+  final MapNavigationService _mapNavigationService = MapNavigationService();
 
   int _selectedTabIndex = 1;
 
@@ -26,51 +33,68 @@ class _MapScreenState extends State<MapScreen> {
   final LatLng _center = const LatLng(41.3851, 2.1734);
   LatLng? _currentUserLocation;
 
-  late final List<MapEventMarkerData> _events;
+  List<MapEventMarkerData> _events = <MapEventMarkerData>[];
   MapEventMarkerData? _selectedEvent;
   String _searchQuery = '';
+  bool _isLoadingEvents = false;
+  String? _eventsLoadError;
+  bool _isFiltersOpen = false;
+  Map<String, List<String>> _selectedFilters = <String, List<String>>{};
 
   final double _minZoom = 8.0;
   final double _maxZoom = 18.0;
-  final double _radius = 10.0;
+  final double _radius = 40.0;
 
   @override
   void initState() {
     super.initState();
-    // Carreguem events fake per provar el mapa
-    _events = buildDemoEvents(_center);
+    _loadEventsFromApi();
     // Intentem obtenir GPS per mostrar ubi i km reals
     _loadCurrentLocation();
   }
 
+  Future<void> _loadEventsFromApi() async {
+    setState(() {
+      _isLoadingEvents = true;
+      _eventsLoadError = null;
+    });
+
+    try {
+      final rawEvents = _selectedFilters.isEmpty
+          ? await _eventsApiService.fetchEvents()
+          : await _filtersApiService.fetchEventsByFilters(
+              selectedFilters: _selectedFilters,
+            );
+      final eventsWithCoordinates = rawEvents
+          .where(EventPayloadUtils.hasCoordinates)
+          .toList();
+      if (!mounted) return;
+
+      setState(() {
+        _events = buildEventsFromApi(eventsWithCoordinates);
+        _selectedEvent = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _eventsLoadError = e.toString();
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingEvents = false;
+      });
+    }
+  }
+
   Future<void> _loadCurrentLocation() async {
-    // 1) Mirem si el servei de localitzacio esta actiu.
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    // 2) Mirem permisos i els demanem si cal
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return;
-    }
-
-    // 3) Si tot esta be, guardem la ubi actual
-    final position = await Geolocator.getCurrentPosition();
+    final location = await _deviceLocationService.getCurrentLocation();
+    if (location == null) return;
     if (!mounted) return;
 
     setState(() {
-      _currentUserLocation = LatLng(position.latitude, position.longitude);
-    });
-  }
-
-  void _onNavigationTap(int index) {
-    setState(() {
-      _selectedTabIndex = index;
+      _currentUserLocation = location;
     });
   }
 
@@ -87,30 +111,14 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _openNavigationToEvent(MapEventMarkerData event) async {
-    // Si tenim GPS, sortim des d'alla. Si no des del centre
     final origin = _currentUserLocation ?? _center;
-    final destination = event.point;
-
-    // iOS -> Apple Maps, la resta -> Google Maps
-    final isIOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
-
-    final uri = isIOS
-        ? Uri.parse(
-            'https://maps.apple.com/?'
-            'saddr=${origin.latitude},${origin.longitude}'
-            '&daddr=${destination.latitude},${destination.longitude}'
-            '&dirflg=d',
-          )
-        : Uri.parse(
-            'https://www.google.com/maps/dir/?api=1'
-            '&origin=${origin.latitude},${origin.longitude}'
-            '&destination=${destination.latitude},${destination.longitude}'
-            '&travelmode=driving',
-          );
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final launched = await _mapNavigationService.openNavigation(
+      origin: origin,
+      destination: event.point,
+    );
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut obrir la navegacio.')),
+        const SnackBar(content: Text('No s\'ha pogut obrir la navegació.')),
       );
     }
   }
@@ -135,12 +143,21 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _searchQuery = value;
 
-      // Si l'esdeveniment seleccionat ja no surt al filtre, tanquem la targeta.
+      // Si l'esdeveniment seleccionat ja no surt al filtre, tanquem la targeta
       final selected = _selectedEvent;
       if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
         _selectedEvent = null;
       }
     });
+  }
+
+  Future<void> _onApplyFilters(Map<String, List<String>> selected) async {
+    setState(() {
+      _selectedFilters = selected;
+      _selectedEvent = null;
+    });
+
+    await _loadEventsFromApi();
   }
 
   @override
@@ -210,41 +227,71 @@ class _MapScreenState extends State<MapScreen> {
     ];
 
     return Scaffold(
-      bottomNavigationBar: AgendatBottomNavigationBar(
-        currentIndex: _selectedTabIndex,
-        onTap: _onNavigationTap,
+      appBar: AppBar(
+        title: const Text(
+          "La cultura a prop teu",
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        ),
       ),
-      // Evita que es tapi amb notch/barres del mobil
+      bottomNavigationBar: navBar.AppNavigationBar(
+        currentIndex: _selectedTabIndex,
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            // Buscador de dalt.
-            MapSearchBar(
+            // Buscador
+            bar.AppSearchBar(
               onChanged: _onSearchChanged,
               margin: EdgeInsets.fromLTRB(
                 horizontalPadding,
-                12,
+                6,
                 horizontalPadding,
-                0,
+                5,
               ),
             ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  if (_isLoadingEvents) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (_eventsLoadError != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Error carregant esdeveniments: $_eventsLoadError',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: _loadEventsFromApi,
+                              child: const Text('Reintentar'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
                   final maxMapWidth = constraints.maxWidth > 900
                       ? 900.0
                       : constraints.maxWidth;
+                  final mapInteractionFlags = _isFiltersOpen
+                      ? InteractiveFlag.none
+                      : (InteractiveFlag.drag |
+                            InteractiveFlag.pinchZoom |
+                            InteractiveFlag.doubleTapZoom |
+                            InteractiveFlag.flingAnimation);
 
                   return Center(
                     child: SizedBox(
                       width: maxMapWidth,
                       child: Container(
-                        margin: EdgeInsets.fromLTRB(
-                          horizontalPadding,
-                          10,
-                          horizontalPadding,
-                          10,
-                        ),
+                        margin: EdgeInsets.fromLTRB(6, 6, 6, 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(_radius),
                           boxShadow: [
@@ -266,26 +313,20 @@ class _MapScreenState extends State<MapScreen> {
                                 options: MapOptions(
                                   // Vista inicial.
                                   initialCenter: _center,
-                                  initialZoom: 13.0,
+                                  initialZoom: 12.0,
                                   minZoom: _minZoom,
                                   maxZoom: _maxZoom,
                                   // Per moure el mapa i fer zoom amb els dits
-                                  interactionOptions: const InteractionOptions(
-                                    flags:
-                                        InteractiveFlag.drag |
-                                        InteractiveFlag.pinchZoom |
-                                        InteractiveFlag.doubleTapZoom |
-                                        InteractiveFlag.flingAnimation,
+                                  interactionOptions: InteractionOptions(
+                                    flags: mapInteractionFlags,
                                   ),
                                 ),
                                 children: [
-                                  // Capa base d'OpenStreetMap.
+                                  // Capa base d'OpenStreetMap
                                   TileLayer(
                                     urlTemplate:
                                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                     userAgentPackageName: 'com.example.agendat',
-                                    maxNativeZoom: 19,
-                                    maxZoom: 19,
                                   ),
                                   MarkerLayer(markers: mapMarkers),
                                 ],
@@ -297,13 +338,22 @@ class _MapScreenState extends State<MapScreen> {
                                 child: MapZoomControls(
                                   onZoomIn: _zoomIn,
                                   onZoomOut: _zoomOut,
+                                  radius: _radius,
                                 ),
                               ),
-                              // Filtre (PENDENT: ara encara no fa res)
-                              const Positioned(
+                              // Filtre
+                              Positioned(
                                 top: 12,
                                 right: 12,
-                                child: MapFilterButton(),
+                                child: FilterButton(
+                                  onApplyFilters: _onApplyFilters,
+                                  onSheetVisibilityChanged: (isVisible) {
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _isFiltersOpen = isVisible;
+                                    });
+                                  },
+                                ),
                               ),
                               // Targeta de l'esdeveniment seleccionat
                               if (selectedEvent != null)
