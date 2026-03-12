@@ -7,21 +7,30 @@ on:
 
 jobs:
   test-and-sonar:
+    name: Test and SonarCloud Scan
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout codi
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Set up Flutter
+          fetch-depth: 0 # Necessari per a l'anàlisi de SonarCloud
+
+      - name: Configurar Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - name: Install dependencies
+
+      - name: Instal·lar dependències
         run: flutter pub get
-      - name: Run Tests
+
+      - name: Executar Tests amb Cobertura
+        # Genera el fitxer coverage/lcov.info que llegirà SonarCloud
         run: flutter test --coverage
+
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        # Hem actualitzat a la versió v5.0.0 per evitar el warning de 'deprecated'
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
