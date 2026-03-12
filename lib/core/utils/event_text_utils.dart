@@ -1,10 +1,26 @@
 class EventTextUtils {
   const EventTextUtils._();
 
-  // Converts value to string or returns null if empty
-  static String? stringOrNull(dynamic value) {
+  // Returns a trimmed string or null if the value is null/empty.
+  static String? trimmedOrNull(dynamic value) {
     if (value == null) return null;
     final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  // Normalizes text for comparisons that should ignore case and spaces.
+  static String normalizedForComparison(String text) {
+    return text.trim().toLowerCase();
+  }
+
+  static bool equalsIgnoringCase(String left, String right) {
+    return normalizedForComparison(left) == normalizedForComparison(right);
+  }
+
+  // Converts value to string or returns null if empty
+  static String? stringOrNull(dynamic value) {
+    final text = trimmedOrNull(value);
+    if (text == null) return null;
     return text.isEmpty ? null : capitalizeFirst(text);
   }
 
@@ -30,8 +46,9 @@ class EventTextUtils {
 
   // Converts a label to a clean formatted string or returns null
   static String? labelOrNull(dynamic value) {
-    if (value == null) return null;
-    final normalized = normalizeLabel(value.toString());
+    final text = trimmedOrNull(value);
+    if (text == null) return null;
+    final normalized = normalizeLabel(text);
     return normalized.isEmpty ? null : capitalizeFirst(normalized);
   }
 

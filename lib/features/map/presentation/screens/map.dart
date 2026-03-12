@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/services/device_location_service.dart';
+import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/core/services/event_payload_utils.dart';
 import 'package:agendat/core/services/events_api_service.dart';
 import 'package:agendat/core/services/filters_api_service.dart';
-import 'package:agendat/core/services/map_navigation_service.dart';
+import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart' as navBar;
@@ -346,10 +346,6 @@ class _MapScreenState extends State<MapScreen> {
                                 top: 12,
                                 right: 12,
                                 child: FilterButton(
-                                  label: 'Filtres',
-                                  radius: _radius,
-                                  buttonHeight: 48,
-                                  initialSelectedFilters: _selectedFilters,
                                   onApplyFilters: _onApplyFilters,
                                   onSheetVisibilityChanged: (isVisible) {
                                     if (!mounted) return;

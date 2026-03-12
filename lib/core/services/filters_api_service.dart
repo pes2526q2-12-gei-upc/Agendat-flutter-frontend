@@ -1,5 +1,6 @@
 import 'package:agendat/core/services/events_response_parser.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:http/http.dart' as http;
 
 class FiltersApiService {
@@ -22,7 +23,11 @@ class FiltersApiService {
     }
 
     final sorted = values.toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      ..sort(
+        (a, b) => EventTextUtils.normalizedForComparison(
+          a,
+        ).compareTo(EventTextUtils.normalizedForComparison(b)),
+      );
     return sorted;
   }
 
@@ -43,14 +48,26 @@ class FiltersApiService {
 
   Uri _buildEventsUri({
     required DateTime date,
+    DateTime? dateFrom,
     Map<String, String> extraQueryParams = const <String, String>{},
   }) {
+    final effectiveDateFrom = dateFrom ?? _subtractMonths(date, 6);
     return Uri.parse('${getBaseUrl()}$_eventsPath').replace(
       queryParameters: <String, String>{
         'date': _formatDate(date),
+        'date_from': _formatDate(effectiveDateFrom),
         ...extraQueryParams,
       },
     );
+  }
+
+  static DateTime _subtractMonths(DateTime date, int months) {
+    final totalMonths = date.year * 12 + (date.month - 1) - months;
+    final year = totalMonths ~/ 12;
+    final month = (totalMonths % 12) + 1;
+    final lastDay = DateTime(year, month + 1, 0).day;
+    final day = date.day > lastDay ? lastDay : date.day;
+    return DateTime(year, month, day);
   }
 
   Future<List<Map<String, dynamic>>> _fetchEventsForUri(
@@ -98,13 +115,14 @@ class FiltersApiService {
 
   List<String> _cleanFilterValues(List<String> values) {
     return values
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty && value.toLowerCase() != "Tots")
+        .map(EventTextUtils.trimmedOrNull)
+        .whereType<String>()
+        .where((value) => !EventTextUtils.equalsIgnoringCase(value, 'tots'))
         .toList();
   }
 
   String _normalizeFilterKey(String key) {
-    final normalized = key.toLowerCase().trim();
+    final normalized = EventTextUtils.normalizedForComparison(key);
     if (normalized == 'província') return 'provincia';
     return normalized;
   }
@@ -113,51 +131,41 @@ class FiltersApiService {
     Map<String, dynamic> event,
     String category,
   ) {
-    final normalized = category.toLowerCase().trim();
+    final normalized = _normalizeFilterKey(category);
 
     switch (normalized) {
       case 'categoria':
-        final raw = event['categories'] ?? event['category'];
+        final raw = event['categories'];
         if (raw is List) {
           return raw
               .map((item) {
                 if (item is Map<String, dynamic>) {
-                  return (item['name'] ?? '').toString().trim();
+                  return EventTextUtils.trimmedOrNull(item['name']) ?? '';
                 }
-                return item.toString().trim();
+                return EventTextUtils.trimmedOrNull(item) ?? '';
               })
               .where((value) => value.isNotEmpty)
               .toList();
         }
-        final value = raw?.toString().trim() ?? '';
+        final value = EventTextUtils.trimmedOrNull(raw) ?? '';
         return value.isEmpty ? const [] : <String>[value];
 
       case 'data':
-        final value = (event['start_date'] ?? event['startDate'] ?? '')
-            .toString()
-            .trim();
-        if (value.isEmpty) return const [];
-        return <String>[value.split('T').first];
-
-      case 'ciutat':
-        final value =
-            (event['ciutat'] ?? event['city'] ?? event['municipi'] ?? '')
-                .toString()
-                .trim();
-        return value.isEmpty ? const [] : <String>[value];
+        final valueStart =
+            EventTextUtils.trimmedOrNull(event['start_date']) ?? '';
+        if (valueStart.isEmpty) return const [];
+        return <String>[valueStart.split('T').first];
 
       case 'municipi':
-        final value = (event['municipi'] ?? '').toString().trim();
+        final value = EventTextUtils.trimmedOrNull(event['municipi']) ?? '';
         return value.isEmpty ? const [] : <String>[value];
 
       case 'comarca':
-        final value = (event['comarca'] ?? '').toString().trim();
+        final value = EventTextUtils.trimmedOrNull(event['comarca']) ?? '';
         return value.isEmpty ? const [] : <String>[value];
 
       case 'provincia':
-        final value = (event['provincia'] ?? event['província'] ?? '')
-            .toString()
-            .trim();
+        final value = EventTextUtils.trimmedOrNull(event['provincia']) ?? '';
         return value.isEmpty ? const [] : <String>[value];
 
       default:
