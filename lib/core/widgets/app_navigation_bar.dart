@@ -1,38 +1,14 @@
-import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
-import 'package:agendat/features/events/presentation/screens/visualize.dart';
-import 'package:agendat/features/map/presentation/screens/map.dart';
 import 'package:flutter/material.dart';
 
 class AppNavigationBar extends StatelessWidget {
-  const AppNavigationBar({super.key, required this.currentIndex});
+  const AppNavigationBar({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
   final int currentIndex;
-
-  void onTapShowScreen(BuildContext context, int index) {
-    if (index == currentIndex) return;
-
-    if (index == 0) {
-      Navigator.of(context).pushReplacement(
-        //substitueixo la pantalla (context) actual
-        MaterialPageRoute(
-          builder: (_) => const VisualizeScreen(),
-        ), // per aquesta
-      );
-    } else if (index == 1) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const MapScreen()));
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const DeleteAccountScreen(),
-        ), // temporal, haurem de posar la de perfil
-      );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('pendent')));
-    }
-  }
+  final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +16,7 @@ class AppNavigationBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(40.0),
       child: NavigationBar(
         selectedIndex: currentIndex,
-        onDestinationSelected: (index) => onTapShowScreen(context, index),
+        onDestinationSelected: onTap,
         backgroundColor: const Color.fromARGB(255, 152, 38, 30),
         indicatorColor: Colors.white24,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {

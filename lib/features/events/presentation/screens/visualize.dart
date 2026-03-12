@@ -112,7 +112,6 @@ class VisualizeScreen extends StatefulWidget {
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
   final EventsApiService _eventsApiService = EventsApiService();
-  int _selectedTabIndex = 0;
   late Future<List<EventItem>> _eventsFuture;
   String _query = '';
 
