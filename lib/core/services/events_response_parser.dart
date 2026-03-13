@@ -10,16 +10,6 @@ class EventsResponseParser {
       return decoded.whereType<Map<String, dynamic>>().toList();
     }
 
-    if (decoded is Map<String, dynamic> && decoded['events'] is List) {
-      final events = decoded['events'] as List<dynamic>;
-      return events.whereType<Map<String, dynamic>>().toList();
-    }
-
-    if (decoded is Map<String, dynamic> && decoded['results'] is List) {
-      final events = decoded['results'] as List<dynamic>;
-      return events.whereType<Map<String, dynamic>>().toList();
-    }
-
     throw const FormatException('Format de resposta inesperat per a /events');
   }
 }
