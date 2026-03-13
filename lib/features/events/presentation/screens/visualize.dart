@@ -5,101 +5,7 @@ import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/appBar.dart';
 import 'package:agendat/features/events/presentation/screens/event.dart';
-
-class EventItem {
-  final String code;
-  final String title;
-  final String? subtitle;
-  final String? startDate;
-  final String? endDate;
-  final String? provincia;
-  final String? comarca;
-  final String? municipi;
-  final String? categories;
-  final bool free;
-
-  const EventItem({
-    required this.code,
-    required this.title,
-    this.subtitle,
-    this.startDate,
-    this.endDate,
-    this.provincia,
-    this.comarca,
-    this.municipi,
-    this.categories,
-    this.free = false,
-  });
-
-  // factory JSON object to EventItem object
-  factory EventItem.fromJson(Map<String, dynamic> json) {
-    final code = (json['code']).toString().trim();
-    final title = (json['denomination']).toString().trim();
-
-    return EventItem(
-      code: code,
-      title: title,
-      subtitle: EventTextUtils.stringOrNull(json['subtitle']),
-      startDate: EventTextUtils.stringOrNull(json['start_date']),
-      endDate: EventTextUtils.stringOrNull(json['end_date']),
-      provincia: EventTextUtils.labelOrNull(json['provincia']),
-      comarca: EventTextUtils.labelOrNull(json['comarca']),
-      municipi: EventTextUtils.labelOrNull(json['municipi']),
-      categories: EventTextUtils.categoriesToCapitalizedString(
-        json['categories'],
-      ),
-      free: json['free'] ?? false,
-    );
-  }
-
-  // Returns the event location
-  String get location {
-    final parts = [
-      municipi,
-      provincia,
-    ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
-    if (parts.isEmpty) return 'Per determinar';
-    return parts.join(', ');
-  }
-
-  // Converts the API date format (DD/MM/YYYY)
-  static String? _formatDisplayDate(String? input) {
-    if (input == null) return null;
-
-    final date = DateTime.parse(input);
-
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year;
-
-    return '$day/$month/$year';
-  }
-
-  // Returns the event date range
-  String get displayDateRange {
-    final start = _formatDisplayDate(startDate);
-    final end = _formatDisplayDate(endDate);
-
-    if (start == null && end == null) return 'Per determinar';
-    if (start != null && end != null) return '$start - $end';
-    if (start != null) return '$start - Per determinar';
-    return 'Per determinar - $end';
-  }
-
-  // Returns the category or a default value
-  String get displayCategory {
-    final raw = categories?.trim();
-    if (raw == null || raw.isEmpty) return 'General';
-    return raw;
-  }
-
-  // Returns the subtitle or a default text
-  String get displaySubtitle {
-    final raw = subtitle?.trim();
-    if (raw == null || raw.isEmpty) return ' ';
-    return raw;
-  }
-}
+import 'package:agendat/features/events/data/event_item.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -220,23 +126,23 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Widget eventCard(EventItem event) {
     return Material(
-      color: Colors.white, // Moved the background color here
+      color: Colors.white, 
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14), // Keeps the ripple inside the rounded corners
+        borderRadius: BorderRadius.circular(14), 
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              // Passes ONLY the event code to the next screen
-              builder: (context) => EventScreen(eventCode: event.code),
+              builder: (context) => EventScreen(
+                eventCode: event.code
+                ),
             ),
           );
         },
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            // Removed color from here so the InkWell ripple is visible
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: const Color.fromARGB(255, 190, 0, 47),

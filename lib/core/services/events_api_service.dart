@@ -1,9 +1,15 @@
+import 'dart:convert';
+
 import 'package:agendat/core/services/events_response_parser.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:http/http.dart' as http;
 
 class EventsApiService {
   static const String _eventsPath = '/api/events/';
+  static const Duration _requestTimeout = Duration(seconds: 12);
+  static const Map<String, String> _jsonHeaders = {
+    'Accept': 'application/json',
+  };
 
   Future<List<Map<String, dynamic>>> fetchEvents({
     DateTime? date,
@@ -20,8 +26,8 @@ class EventsApiService {
     );
 
     final response = await http
-        .get(uri, headers: const {'Accept': 'application/json'})
-        .timeout(const Duration(seconds: 12));
+      .get(uri, headers: _jsonHeaders)
+      .timeout(_requestTimeout);
 
     if (response.statusCode != 200) {
       final snippet = response.body.length > 200
@@ -33,6 +39,34 @@ class EventsApiService {
     }
 
     return EventsResponseParser.parseEventsBody(response.body);
+  }
+
+  Future<Map<String, dynamic>> fetchEventDetails(String eventCode) async {
+    final cleanedCode = eventCode.trim();
+    if (cleanedCode.isEmpty) {
+      throw const FormatException('El codi de l\'esdeveniment no pot ser buit.');
+    }
+
+    final uri = Uri.parse('${getBaseUrl()}$_eventsPath').replace(
+      queryParameters: {'code': cleanedCode},
+    );
+
+    final response = await http
+        .get(uri, headers: _jsonHeaders)
+        .timeout(_requestTimeout);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'HTTP ${response.statusCode} for $uri. Response: ${responseSnippet(response.body)}',
+      );
+    }
+
+    return EventsResponseParser.parseSingleEventBody(response.body, cleanedCode); 
+  }
+
+  String responseSnippet(String body) {
+    if (body.length <= 200) return body;
+    return '${body.substring(0, 200)}...';
   }
 
   static DateTime _subtractMonths(DateTime date, int months) {
