@@ -1,10 +1,9 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/features/deleteAccount/data/deleteAccount_api.dart';
 import 'package:flutter/material.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
-  const DeleteAccountScreen({super.key, this.isAuthenticated = true});
-
-  final bool isAuthenticated;
+  const DeleteAccountScreen({super.key});
 
   @override
   State<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
@@ -24,11 +23,11 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => _errorDeletingAccount(), //provisional
+              onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Cancelar'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Eliminar'),
             ),
           ],
@@ -36,102 +35,43 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       },
     );
 
-    if (confirmed != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Acció cancelada. El compte no s\'ha eliminat.'),
-        ),
-      );
-      return;
-    }
+    if (confirmed != true) return;
 
-    // Bloquegem el botó mentre fem l'acció.
     setState(() => _isDeleting = true);
 
-    if (!context.mounted) return;
+    try {
+      final success = await deleteAccountApi();
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Compte eliminat correctament. Sessió tancada.'),
-      ),
-    );
-
-    // Després d'eliminar es posa la login screen
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
-  }
-
-  /*
-    @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Error al eliminar el compte'),
-      ),
-      body: const Center(
-        child: Text(
-          'S\'ha produït un error en eliminar el compte. Si us plau, torna-ho a intentar més tard.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
-  }
-  */
-
-  Future<void> _errorDeletingAccount() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Error en eliminar el compte'),
-          content: const Text(
-            'S\'ha produït un error en eliminar el compte. Si us plau, torna-ho a intentar més tard.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(false);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const DeleteAccountScreen(),
-                  ),
-                );
-              },
-              child: const Text('OK'),
-            ),
-          ],
+      if (success) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
         );
-      },
-    );
-
-    if (confirmed != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Acció cancelada. El compte no s\'ha eliminat.'),
-        ),
-      );
-      return;
+      } else {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Error en eliminar el compte'),
+              content: const Text(
+                'S\'ha produït un error. Si us plau, torna-ho a intentar més tard.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
     }
-
-    // Bloquegem el botó mentre fem l'acció.
-    setState(() => _isDeleting = true);
-
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Compte eliminat correctament. Sessió tancada.'),
-      ),
-    );
-
-    // Després d'eliminar es posa la login screen
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
   }
 
   @override
