@@ -16,7 +16,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   Future<void> _requestDeleteAccount() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Confirma'),
           content: const Text(
@@ -24,12 +24,83 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => _errorDeletingAccount(), //provisional
               child: const Text('Cancelar'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Acció cancelada. El compte no s\'ha eliminat.'),
+        ),
+      );
+      return;
+    }
+
+    // Bloquegem el botó mentre fem l'acció.
+    setState(() => _isDeleting = true);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Compte eliminat correctament. Sessió tancada.'),
+      ),
+    );
+
+    // Després d'eliminar es posa la login screen
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  /*
+    @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Error al eliminar el compte'),
+      ),
+      body: const Center(
+        child: Text(
+          'S\'ha produït un error en eliminar el compte. Si us plau, torna-ho a intentar més tard.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+  */
+
+  Future<void> _errorDeletingAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Error en eliminar el compte'),
+          content: const Text(
+            'S\'ha produït un error en eliminar el compte. Si us plau, torna-ho a intentar més tard.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DeleteAccountScreen(),
+                  ),
+                );
+              },
+              child: const Text('OK'),
             ),
           ],
         );
