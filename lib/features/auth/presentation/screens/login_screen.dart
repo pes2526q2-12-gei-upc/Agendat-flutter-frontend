@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => const RootNavigationScreen(initialIndex: 1),
+            builder: (_) => const RootNavigationScreen(initialIndex: 0),
           ),
         );
       case LoginUserFailure(:final statusCode, :final body):
@@ -331,7 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) =>
-                              const RootNavigationScreen(initialIndex: 1),
+                              const RootNavigationScreen(initialIndex: 0),
                         ),
                       );
                     },
