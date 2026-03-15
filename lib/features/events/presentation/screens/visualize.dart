@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event.dart';
+import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
@@ -15,6 +16,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   final EventsQuery _eventsQuery = EventsQuery();
   late Future<List<Event>> _eventsFuture;
   String _query = '';
+  EventFilters _activeFilters = const EventFilters();
 
   @override
   void initState() {
@@ -25,7 +27,19 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   void _refresh() {
     _eventsQuery.invalidate();
     setState(() {
-      _eventsFuture = _eventsQuery.getEvents();
+      _eventsFuture = _eventsQuery.getEvents(
+        filters: _activeFilters.isEmpty ? null : _activeFilters,
+      );
+    });
+  }
+
+  void _onApplyFilters(EventFilters filters) {
+    setState(() {
+      _activeFilters = filters;
+      _eventsQuery.invalidate();
+      _eventsFuture = _eventsQuery.getEvents(
+        filters: filters.isEmpty ? null : filters,
+      );
     });
   }
 
@@ -55,9 +69,15 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               });
             },
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Align(alignment: Alignment.topLeft, child: FilterButton()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: FilterButton(
+                currentFilters: _activeFilters,
+                onApplyFilters: _onApplyFilters,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Expanded(
