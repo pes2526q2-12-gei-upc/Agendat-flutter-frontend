@@ -29,10 +29,18 @@ migrate_working_dir/
 **/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins-dependencies
+.flutter-plugins-dependencies *
 .pub-cache/
 .pub/
 /build/
 /coverage/
+
+# Accidental duplicate lockfiles (e.g. "pubspec 2.lock", "pubspec 3.lock")
+pubspec *.lock
+
+# Accidental duplicate manifests/text files
+android/app/src/**/AndroidManifest *.xml
+import 'dartconvert'; *.txt
 
 # Symbolication related
 app.*.symbols
@@ -40,7 +48,3 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
