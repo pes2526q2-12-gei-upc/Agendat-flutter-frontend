@@ -120,7 +120,13 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
     _loadAllOptions();
   }
 
+  bool get _hasDateError =>
+      _filters.dateFrom != null &&
+      _filters.dateTo != null &&
+      _filters.dateFrom!.isAfter(_filters.dateTo!);
+
   void _onApplyPressed() {
+    if (_hasDateError) return;
     if (widget.onApply != null) {
       widget.onApply!(_filters);
       return;
@@ -176,32 +182,19 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             ),
             const SizedBox(height: 12),
 
-            Row(
-              children: [
-                Expanded(
-                  child: DateFilterSection(
-                    title: 'Data des de',
-                    selectedDate: _filters.dateFrom,
-                    onChanged: (date) {
-                      setState(() {
-                        _filters = _filters.copyWith(dateFrom: () => date);
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DateFilterSection(
-                    title: 'Data fins a',
-                    selectedDate: _filters.dateTo,
-                    onChanged: (date) {
-                      setState(() {
-                        _filters = _filters.copyWith(dateTo: () => date);
-                      });
-                    },
-                  ),
-                ),
-              ],
+            DateRangeFilterSection(
+              dateFrom: _filters.dateFrom,
+              dateTo: _filters.dateTo,
+              onDateFromChanged: (date) {
+                setState(() {
+                  _filters = _filters.copyWith(dateFrom: () => date);
+                });
+              },
+              onDateToChanged: (date) {
+                setState(() {
+                  _filters = _filters.copyWith(dateTo: () => date);
+                });
+              },
             ),
             const SizedBox(height: 12),
 
@@ -246,10 +239,12 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _onApplyPressed,
+                onPressed: _hasDateError ? null : _onApplyPressed,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7A1F1A),
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  disabledForegroundColor: Colors.grey.shade500,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: const Text('Aplicar filtres'),

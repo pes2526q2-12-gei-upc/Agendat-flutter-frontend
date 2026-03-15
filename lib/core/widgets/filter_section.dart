@@ -268,77 +268,181 @@ class _OptionSearchDialogState extends State<_OptionSearchDialog> {
   }
 }
 
-class DateFilterSection extends StatelessWidget {
-  const DateFilterSection({
+class DateRangeFilterSection extends StatelessWidget {
+  const DateRangeFilterSection({
     super.key,
-    required this.title,
-    this.selectedDate,
-    required this.onChanged,
+    this.dateFrom,
+    this.dateTo,
+    required this.onDateFromChanged,
+    required this.onDateToChanged,
   });
 
-  final String title;
-  final DateTime? selectedDate;
-  final ValueChanged<DateTime?> onChanged;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  final ValueChanged<DateTime?> onDateFromChanged;
+  final ValueChanged<DateTime?> onDateToChanged;
 
-  String _formatDisplay(DateTime date) {
+  bool get _hasError =>
+      dateFrom != null && dateTo != null && dateFrom!.isAfter(dateTo!);
+
+  String _format(DateTime date) {
     final dd = date.day.toString().padLeft(2, '0');
     final mm = date.month.toString().padLeft(2, '0');
     final yyyy = date.year.toString();
     return '$dd/$mm/$yyyy';
   }
 
-  Future<void> _pickDate(BuildContext context) async {
+  DateTime _clamp(DateTime date, DateTime first, DateTime last) {
+    if (date.isBefore(first)) return first;
+    if (date.isAfter(last)) return last;
+    return date;
+  }
+
+  Future<void> _pickFrom(BuildContext context) async {
+    final first = DateTime(2020);
+    final last = dateTo ?? DateTime(2030);
     final picked = await showDatePicker(
       context: context,
-      initialDate: selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      initialDate: _clamp(dateFrom ?? DateTime.now(), first, last),
+      firstDate: first,
+      lastDate: last,
       locale: const Locale('ca'),
     );
-    if (picked != null) onChanged(picked);
+    if (picked != null) onDateFromChanged(picked);
+  }
+
+  Future<void> _pickTo(BuildContext context) async {
+    final first = dateFrom ?? DateTime(2020);
+    final last = DateTime(2030);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _clamp(dateTo ?? DateTime.now(), first, last),
+      firstDate: first,
+      lastDate: last,
+      locale: const Locale('ca'),
+    );
+    if (picked != null) onDateToChanged(picked);
   }
 
   @override
   Widget build(BuildContext context) {
+    final errorColor = Theme.of(context).colorScheme.error;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        const Text(
+          'Dates',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        InkWell(
-          onTap: () => _pickDate(context),
-          borderRadius: BorderRadius.circular(4),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              suffixIcon: selectedDate != null
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 20),
-                      onPressed: () => onChanged(null),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    )
-                  : const Icon(Icons.calendar_today, size: 20),
-            ),
-            child: Text(
-              selectedDate != null
-                  ? _formatDisplay(selectedDate!)
-                  : 'Sense límit',
-              style: TextStyle(
-                color: selectedDate != null
-                    ? Theme.of(context).textTheme.bodyLarge?.color
-                    : Colors.grey,
+        Row(
+          children: [
+            Expanded(
+              child: _DateChip(
+                label: dateFrom != null ? _format(dateFrom!) : 'Inici',
+                hasValue: dateFrom != null,
+                hasError: _hasError,
+                onTap: () => _pickFrom(context),
+                onClear: dateFrom != null ? () => onDateFromChanged(null) : null,
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Icon(
+                Icons.arrow_forward,
+                size: 18,
+                color: _hasError ? errorColor : Colors.grey,
+              ),
+            ),
+            Expanded(
+              child: _DateChip(
+                label: dateTo != null ? _format(dateTo!) : 'Fi',
+                hasValue: dateTo != null,
+                hasError: _hasError,
+                onTap: () => _pickTo(context),
+                onClear: dateTo != null ? () => onDateToChanged(null) : null,
+              ),
+            ),
+          ],
+        ),
+        if (_hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'La data d\'inici ha de ser anterior a la data fi',
+              style: TextStyle(color: errorColor, fontSize: 12),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _DateChip extends StatelessWidget {
+  const _DateChip({
+    required this.label,
+    required this.hasValue,
+    required this.hasError,
+    required this.onTap,
+    this.onClear,
+  });
+
+  final String label;
+  final bool hasValue;
+  final bool hasError;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = hasError
+        ? Theme.of(context).colorScheme.error
+        : (hasValue ? Theme.of(context).colorScheme.primary : Colors.grey.shade400);
+
+    return Material(
+      color: hasValue
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 16,
+                color: hasValue ? Theme.of(context).colorScheme.primary : Colors.grey,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: hasValue
+                        ? Theme.of(context).textTheme.bodyLarge?.color
+                        : Colors.grey,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (onClear != null)
+                GestureDetector(
+                  onTap: onClear,
+                  child: Icon(Icons.close, size: 16, color: Colors.grey.shade600),
+                ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
