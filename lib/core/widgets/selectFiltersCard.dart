@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event_filters.dart';
-import 'package:agendat/core/services/categories_api_service.dart';
-import 'package:agendat/core/services/locations_api_service.dart';
+import 'package:agendat/core/query/categories_query.dart';
+import 'package:agendat/core/query/locations_query.dart';
 import 'package:agendat/core/widgets/filter_section.dart';
 
 class SelectedFiltersCard extends StatefulWidget {
@@ -21,8 +21,8 @@ class SelectedFiltersCard extends StatefulWidget {
 }
 
 class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
-  final CategoriesApiService _categoriesApi = CategoriesApiService();
-  final LocationsApiService _locationsApi = LocationsApiService();
+  final CategoriesQuery _categoriesQuery = CategoriesQuery();
+  final LocationsQuery _locationsQuery = LocationsQuery();
 
   late EventFilters _filters;
   bool _isLoading = true;
@@ -42,8 +42,8 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
   Future<void> _loadAllOptions() async {
     try {
       final results = await Future.wait([
-        _categoriesApi.fetchCategories(),
-        _locationsApi.fetchProvincies(),
+        _categoriesQuery.getCategories(),
+        _locationsQuery.getProvincies(),
         _loadComarques(_filters.provincia),
         _loadMunicipis(_filters.provincia, _filters.comarca),
       ]);
@@ -65,10 +65,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
   Future<List<String>> _loadComarques(String? provincia) async {
     try {
-      if (provincia != null) {
-        return await _locationsApi.fetchComarques(provincia: provincia);
-      }
-      return await _locationsApi.fetchComarques();
+      return await _locationsQuery.getComarques(provincia: provincia);
     } catch (_) {
       return [];
     }
@@ -79,7 +76,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
     String? comarca,
   ) async {
     try {
-      return await _locationsApi.fetchMunicipis(
+      return await _locationsQuery.getMunicipis(
         provincia: provincia,
         comarca: comarca,
       );
@@ -119,9 +116,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
   }
 
   void _onClearFilters() {
-    setState(() {
-      _filters = const EventFilters();
-    });
+    setState(() => _filters = const EventFilters());
     _loadAllOptions();
   }
 
@@ -167,7 +162,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
               const SizedBox(height: 12),
             ],
 
-            // Category
             FilterSection(
               title: 'Categoria',
               options: _categories,
@@ -182,7 +176,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             ),
             const SizedBox(height: 12),
 
-            // Date range
             Row(
               children: [
                 Expanded(
@@ -212,7 +205,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             ),
             const SizedBox(height: 12),
 
-            // Província
             FilterSection(
               title: 'Província',
               options: _provincies,
@@ -223,7 +215,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             ),
             const SizedBox(height: 12),
 
-            // Comarca
             FilterSection(
               title: 'Comarca',
               options: _comarques,
@@ -236,7 +227,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             ),
             const SizedBox(height: 12),
 
-            // Municipi
             FilterSection(
               title: 'Municipi',
               options: _municipis,
@@ -253,7 +243,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             ),
             const SizedBox(height: 16),
 
-            // Apply button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -268,7 +257,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             ),
             const SizedBox(height: 8),
 
-            // Clear filters button
             if (!_filters.isEmpty)
               SizedBox(
                 width: double.infinity,
@@ -283,7 +271,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
               ),
             if (!_filters.isEmpty) const SizedBox(height: 8),
 
-            // Cancel button
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(

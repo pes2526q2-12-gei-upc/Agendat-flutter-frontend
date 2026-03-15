@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event_filters.dart';
-import 'package:agendat/core/services/event_payload_utils.dart';
-import 'package:agendat/core/services/events_api_service.dart';
+import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -19,7 +18,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   final Distance _distanceCalculator = const Distance();
-  final EventsApiService _eventsApiService = EventsApiService();
+  final EventsQuery _eventsQuery = EventsQuery();
   final DeviceLocationService _deviceLocationService = DeviceLocationService();
   final MapNavigationService _mapNavigationService = MapNavigationService();
 
@@ -43,52 +42,42 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    _loadEventsFromApi();
+    _loadEvents();
     _loadCurrentLocation();
   }
 
-  Future<void> _loadEventsFromApi() async {
+  Future<void> _loadEvents({bool forceRefresh = false}) async {
     setState(() {
       _isLoadingEvents = true;
       _eventsLoadError = null;
     });
 
     try {
-      final rawEvents = _activeFilters.isEmpty
-          ? await _eventsApiService.fetchEvents()
-          : await _eventsApiService.fetchFilteredEvents(_activeFilters);
+      if (forceRefresh) _eventsQuery.invalidate();
 
-      final eventsWithCoordinates = rawEvents
-          .where(EventPayloadUtils.hasCoordinates)
-          .toList();
+      final events = await _eventsQuery.getEvents(
+        filters: _activeFilters.isEmpty ? null : _activeFilters,
+      );
 
       if (!mounted) return;
 
       setState(() {
-        _events = buildEventsFromApi(eventsWithCoordinates);
+        _events = buildMarkersFromEvents(events);
         _selectedEvent = null;
       });
     } catch (e) {
       if (!mounted) return;
-
-      setState(() {
-        _eventsLoadError = e.toString();
-      });
+      setState(() => _eventsLoadError = e.toString());
     } finally {
       if (!mounted) return;
-      setState(() {
-        _isLoadingEvents = false;
-      });
+      setState(() => _isLoadingEvents = false);
     }
   }
 
   Future<void> _loadCurrentLocation() async {
     final location = await _deviceLocationService.getCurrentLocation();
     if (location == null || !mounted) return;
-
-    setState(() {
-      _currentUserLocation = location;
-    });
+    setState(() => _currentUserLocation = location);
   }
 
   Future<void> _zoomIn() async {
@@ -121,9 +110,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _closeSelectedEventCard() {
-    setState(() {
-      _selectedEvent = null;
-    });
+    setState(() => _selectedEvent = null);
   }
 
   bool _eventMatchesSearch(MapEventMarkerData event, String query) {
@@ -135,7 +122,6 @@ class _MapScreenState extends State<MapScreen> {
   void _onSearchChanged(String value) {
     setState(() {
       _searchQuery = value;
-
       final selected = _selectedEvent;
       if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
         _selectedEvent = null;
@@ -145,13 +131,11 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _onApplyFilters(EventFilters filters) async {
     if (!mounted) return;
-
     setState(() {
       _activeFilters = filters;
       _selectedEvent = null;
     });
-
-    await _loadEventsFromApi();
+    await _loadEvents();
   }
 
   @override
@@ -163,8 +147,8 @@ class _MapScreenState extends State<MapScreen> {
     final horizontalPadding = isCompactWidth
         ? 12.0
         : screenWidth < 720
-        ? 20.0
-        : 28.0;
+            ? 20.0
+            : 28.0;
     final selectedCardHeight = (screenHeight * 0.33).clamp(220.0, 340.0);
 
     final filteredEvents = _events
@@ -173,11 +157,7 @@ class _MapScreenState extends State<MapScreen> {
 
     final eventMarkers = buildEventMarkers(
       events: filteredEvents,
-      onMarkerTap: (event) {
-        setState(() {
-          _selectedEvent = event;
-        });
-      },
+      onMarkerTap: (event) => setState(() => _selectedEvent = event),
     );
 
     final selectedEvent = _selectedEvent;
@@ -230,10 +210,7 @@ class _MapScreenState extends State<MapScreen> {
             bar.AppSearchBar(
               onChanged: _onSearchChanged,
               margin: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                6,
-                horizontalPadding,
-                5,
+                horizontalPadding, 6, horizontalPadding, 5,
               ),
             ),
             Expanded(
@@ -255,7 +232,7 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                             const SizedBox(height: 10),
                             ElevatedButton(
-                              onPressed: _loadEventsFromApi,
+                              onPressed: () => _loadEvents(forceRefresh: true),
                               child: const Text('Retry'),
                             ),
                           ],
@@ -272,7 +249,7 @@ class _MapScreenState extends State<MapScreen> {
                     child: SizedBox(
                       width: maxMapWidth,
                       child: Container(
-                        margin: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+                        margin: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(_radius),
                           boxShadow: [
@@ -298,7 +275,8 @@ class _MapScreenState extends State<MapScreen> {
                                     initialZoom: 12.0,
                                     minZoom: _minZoom,
                                     maxZoom: _maxZoom,
-                                    interactionOptions: const InteractionOptions(
+                                    interactionOptions:
+                                        const InteractionOptions(
                                       flags: InteractiveFlag.drag |
                                           InteractiveFlag.pinchZoom |
                                           InteractiveFlag.doubleTapZoom |
@@ -309,7 +287,8 @@ class _MapScreenState extends State<MapScreen> {
                                     TileLayer(
                                       urlTemplate:
                                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                      userAgentPackageName: 'com.example.agendat',
+                                      userAgentPackageName:
+                                          'com.example.agendat',
                                     ),
                                     MarkerLayer(markers: mapMarkers),
                                   ],
@@ -332,9 +311,9 @@ class _MapScreenState extends State<MapScreen> {
                                   onApplyFilters: _onApplyFilters,
                                   onSheetVisibilityChanged: (isVisible) {
                                     if (mounted) {
-                                      setState(() {
-                                        _isFiltersOpen = isVisible;
-                                      });
+                                      setState(
+                                        () => _isFiltersOpen = isVisible,
+                                      );
                                     }
                                   },
                                 ),

@@ -1,103 +1,8 @@
-import 'package:agendat/core/services/events_api_service.dart';
-import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/core/models/event.dart';
+import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
-
-class EventItem {
-  final String code;
-  final String title;
-  final String? subtitle;
-  final String? startDate;
-  final String? endDate;
-  final String? provincia;
-  final String? comarca;
-  final String? municipi;
-  final String? categories;
-  final bool free;
-
-  const EventItem({
-    required this.code,
-    required this.title,
-    this.subtitle,
-    this.startDate,
-    this.endDate,
-    this.provincia,
-    this.comarca,
-    this.municipi,
-    this.categories,
-    this.free = false,
-  });
-
-  // factory JSON object to EventItem object
-  factory EventItem.fromJson(Map<String, dynamic> json) {
-    final code = (json['code']).toString().trim();
-    final title = (json['denomination']).toString().trim();
-
-    return EventItem(
-      code: code,
-      title: title,
-      subtitle: EventTextUtils.stringOrNull(json['subtitle']),
-      startDate: EventTextUtils.stringOrNull(json['start_date']),
-      endDate: EventTextUtils.stringOrNull(json['end_date']),
-      provincia: EventTextUtils.labelOrNull(json['provincia']),
-      comarca: EventTextUtils.labelOrNull(json['comarca']),
-      municipi: EventTextUtils.labelOrNull(json['municipi']),
-      categories: EventTextUtils.categoriesToCapitalizedString(
-        json['categories'],
-      ),
-      free: json['free'] ?? false,
-    );
-  }
-
-  // Returns the event location
-  String get location {
-    final parts = [
-      municipi,
-      provincia,
-    ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
-    if (parts.isEmpty) return 'Per determinar';
-    return parts.join(', ');
-  }
-
-  // Converts the API date format (DD/MM/YYYY)
-  static String? _formatDisplayDate(String? input) {
-    if (input == null) return null;
-
-    final date = DateTime.parse(input);
-
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year;
-
-    return '$day/$month/$year';
-  }
-
-  // Returns the event date range
-  String get displayDateRange {
-    final start = _formatDisplayDate(startDate);
-    final end = _formatDisplayDate(endDate);
-
-    if (start == null && end == null) return 'Per determinar';
-    if (start != null && end != null) return '$start - $end';
-    if (start != null) return '$start - Per determinar';
-    return 'Per determinar - $end';
-  }
-
-  // Returns the category or a default value
-  String get displayCategory {
-    final raw = categories?.trim();
-    if (raw == null || raw.isEmpty) return 'General';
-    return raw;
-  }
-
-  // Returns the subtitle or a default text
-  String get displaySubtitle {
-    final raw = subtitle?.trim();
-    if (raw == null || raw.isEmpty) return 'Sense descripció';
-    return raw;
-  }
-}
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -107,29 +12,24 @@ class VisualizeScreen extends StatefulWidget {
 }
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
-  final EventsApiService _eventsApiService = EventsApiService();
-  late Future<List<EventItem>> _eventsFuture;
+  final EventsQuery _eventsQuery = EventsQuery();
+  late Future<List<Event>> _eventsFuture;
   String _query = '';
 
   @override
   void initState() {
     super.initState();
-    _eventsFuture = _loadEvents();
+    _eventsFuture = _eventsQuery.getEvents();
   }
 
-  Future<List<EventItem>> _loadEvents() async {
-    final rawEvents = await _eventsApiService.fetchEvents();
-    return rawEvents.map(EventItem.fromJson).toList();
-  }
-
-  // Reloads the events list
   void _refresh() {
+    _eventsQuery.invalidate();
     setState(() {
-      _eventsFuture = _loadEvents();
+      _eventsFuture = _eventsQuery.getEvents();
     });
   }
 
-  List<EventItem> _applySearch(List<EventItem> events) {
+  List<Event> _applySearch(List<Event> events) {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return events;
 
@@ -161,7 +61,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: FutureBuilder<List<EventItem>>(
+            child: FutureBuilder<List<Event>>(
               future: _eventsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -204,7 +104,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Widget eventsList(List<EventItem> events) {
+  Widget eventsList(List<Event> events) {
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: ListView.separated(
@@ -216,7 +116,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Widget eventCard(EventItem event) {
+  Widget eventCard(Event event) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -251,14 +151,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Text eventPlace(EventItem event) {
+  Text eventPlace(Event event) {
     return Text(
-      '${event.location}',
+      event.location,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
     );
   }
 
-  Text eventPayment(EventItem event) {
+  Text eventPayment(Event event) {
     return Text(
       event.free ? 'Gratuït' : 'De pagament',
       style: const TextStyle(
@@ -269,14 +169,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Text eventDate(EventItem event) {
+  Text eventDate(Event event) {
     return Text(
       event.displayDateRange,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
     );
   }
 
-  Text eventSubtitle(EventItem event) {
+  Text eventSubtitle(Event event) {
     return Text(
       event.displaySubtitle,
       style: const TextStyle(
@@ -286,7 +186,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Container eventCategory(EventItem event) {
+  Container eventCategory(Event event) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -304,7 +204,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Text eventTitle(EventItem event) {
+  Text eventTitle(Event event) {
     return Text(
       event.title,
       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
