@@ -95,3 +95,29 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
     return LoginUserFailure(statusCode: -1, error: e);
   }
 }
+
+/// Crida POST /api/users/login-with-google/ per iniciar sessió amb Google.
+Future<LoginUserResult> loginWithGoogle(String idToken) async {
+  final uri = Uri.parse('${getBaseUrl()}/api/users/login-with-google/');
+  try {
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(<String, dynamic>{'id_token': idToken}),
+    );
+
+    final decoded = response.body.isNotEmpty
+        ? jsonDecode(response.body) as Map<String, dynamic>?
+        : null;
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
+    }
+    return LoginUserFailure(statusCode: response.statusCode, body: decoded);
+  } catch (e) {
+    return LoginUserFailure(statusCode: -1, error: e);
+  }
+}

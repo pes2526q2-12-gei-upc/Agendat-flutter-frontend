@@ -6,6 +6,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   late final TapGestureRecognizer _signUpTapRecognizer;
+
+  static const String _googleServerClientId =
+      '482718948827-mbcnthq46p3g8lalmehdsmmcdbtt991h.apps.googleusercontent.com';
 
   @override
   void initState() {
@@ -88,6 +92,46 @@ class _LoginScreenState extends State<LoginScreen> {
           message = 'Error de connexió. Comprova la xarxa.';
         }
         _showSnackBar(message);
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    try {
+      final googleSignIn = GoogleSignIn.instance;
+
+      await googleSignIn.initialize(serverClientId: _googleServerClientId);
+
+      final account = await googleSignIn.authenticate(
+        scopeHint: <String>['email', 'profile'],
+      );
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null) {
+        _showSnackBar(
+          'No s\'ha pogut obtenir el token d\'identitat de Google.',
+        );
+        return;
+      }
+
+      final result = await loginWithGoogle(idToken);
+      if (!mounted) return;
+
+      switch (result) {
+        case LoginUserSuccess(:final body):
+          setCurrentLoggedInUser(body);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const RootNavigationScreen(initialIndex: 0),
+            ),
+          );
+        case LoginUserFailure():
+          _showSnackBar('No s\'ha pogut iniciar sessió amb Google.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('Error inesperat iniciant sessió amb Google.');
     }
   }
 
@@ -326,15 +370,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const RootNavigationScreen(initialIndex: 0),
-                        ),
-                      );
-                    },
+                    onPressed: _loginWithGoogle,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black87,
                       side: BorderSide(color: Colors.grey.shade300),
