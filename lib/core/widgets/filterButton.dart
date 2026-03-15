@@ -26,7 +26,7 @@ class FilterButton extends StatelessWidget {
 
     final selectedFilters =
         await showModalBottomSheet<Map<String, List<String>>>(
-          // Faig servir modal perquè es 'sobreposa' a la screen
+          // Using modal because it overlays on top of the screen
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
@@ -49,9 +49,10 @@ class FilterButton extends StatelessWidget {
           },
         );
 
+    // Notify that the sheet has been closed
     onSheetVisibilityChanged?.call(false);
 
-    // El callback del pare s'executa només quan el bottom sheet ja s'ha tancat
+    // Apply filters if any
     if (selectedFilters != null) {
       onApplyFilters?.call(selectedFilters);
     }

@@ -17,16 +17,19 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  // Controller del mapa (per zoom i moviments manuals)
+  // Map controller for zoom and manual movements
   final MapController _mapController = MapController();
-  // Calcula distancia entre dos punts del mapa
+  // Calculate distance between two points on the map
   final Distance _distanceCalculator = const Distance();
   final EventsApiService _eventsApiService = EventsApiService();
   final FiltersApiService _filtersApiService = FiltersApiService();
   final DeviceLocationService _deviceLocationService = DeviceLocationService();
   final MapNavigationService _mapNavigationService = MapNavigationService();
+  
+  // Key for FlutterMap widget to avoid unnecessary rebuilds
+  final GlobalKey _flutterMapKey = GlobalKey();
 
-  // Punt inicial (Barcelona) si no tenim ubi de l'usuari
+  // Initial point (Barcelona) if we don't have user location
   final LatLng _center = const LatLng(41.3851, 2.1734);
   LatLng? _currentUserLocation;
 
@@ -46,7 +49,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _loadEventsFromApi();
-    // Intentem obtenir GPS per mostrar ubi i km reals
+    // Try to get GPS to show real location and distances
     _loadCurrentLocation();
   }
 
@@ -96,15 +99,15 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _zoomIn() async {
-    final zoomAra = _mapController.camera.zoom;
-    final zoomNou = (zoomAra + 1).clamp(_minZoom, _maxZoom).toDouble();
-    _mapController.move(_mapController.camera.center, zoomNou);
+    final currentZoom = _mapController.camera.zoom;
+    final newZoom = (currentZoom + 1).clamp(_minZoom, _maxZoom).toDouble();
+    _mapController.move(_mapController.camera.center, newZoom);
   }
 
   Future<void> _zoomOut() async {
-    final zoomAra = _mapController.camera.zoom;
-    final zoomNou = (zoomAra - 1).clamp(_minZoom, _maxZoom).toDouble();
-    _mapController.move(_mapController.camera.center, zoomNou);
+    final currentZoom = _mapController.camera.zoom;
+    final newZoom = (currentZoom - 1).clamp(_minZoom, _maxZoom).toDouble();
+    _mapController.move(_mapController.camera.center, newZoom);
   }
 
   Future<void> _openNavigationToEvent(MapEventMarkerData event) async {
@@ -115,13 +118,13 @@ class _MapScreenState extends State<MapScreen> {
     );
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut obrir la navegació.')),
+        const SnackBar(content: Text('Could not open navigation.')),
       );
     }
   }
 
   void _openEventDetails(MapEventMarkerData event) {
-    // PENDENT: Navegar a la pantalla de detall quan estigui feta
+    // TODO: Navigate to detail screen when implemented
   }
 
   void _closeSelectedEventCard() {
@@ -140,7 +143,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _searchQuery = value;
 
-      // Si l'esdeveniment seleccionat ja no surt al filtre, tanquem la targeta
+      // If the selected event no longer matches the filter, close the card
       final selected = _selectedEvent;
       if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
         _selectedEvent = null;
@@ -149,6 +152,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _onApplyFilters(Map<String, List<String>> selected) async {
+    if (!mounted) return;
+    
     setState(() {
       _selectedFilters = selected;
       _selectedEvent = null;
@@ -159,7 +164,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Mides de pantalla per adaptar layout.
+    // Screen dimensions to adapt layout
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
@@ -186,7 +191,7 @@ class _MapScreenState extends State<MapScreen> {
 
     final selectedEvent = _selectedEvent;
     final hasCurrentLocation = _currentUserLocation != null;
-    // Distancia en km des del GPS real fins a l'esdeveniment seleccionat
+    // Distance in km from real GPS to selected event
     double distanceKm = 0.0;
     if (selectedEvent != null && _currentUserLocation != null) {
       distanceKm = _distanceCalculator.as(
@@ -203,7 +208,7 @@ class _MapScreenState extends State<MapScreen> {
           point: _currentUserLocation!,
           width: 24,
           height: 24,
-          // Punt blau petit per ubi actual
+          // Small blue dot for current location
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -233,7 +238,7 @@ class _MapScreenState extends State<MapScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Buscador
+            // Search bar
             bar.AppSearchBar(
               onChanged: _onSearchChanged,
               margin: EdgeInsets.fromLTRB(
@@ -257,13 +262,13 @@ class _MapScreenState extends State<MapScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Error carregant esdeveniments: $_eventsLoadError',
+                              'Error loading events: $_eventsLoadError',
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 10),
                             ElevatedButton(
                               onPressed: _loadEventsFromApi,
-                              child: const Text('Reintentar'),
+                              child: const Text('Retry'),
                             ),
                           ],
                         ),
@@ -274,12 +279,6 @@ class _MapScreenState extends State<MapScreen> {
                   final maxMapWidth = constraints.maxWidth > 900
                       ? 900.0
                       : constraints.maxWidth;
-                  final mapInteractionFlags = _isFiltersOpen
-                      ? InteractiveFlag.none
-                      : (InteractiveFlag.drag |
-                            InteractiveFlag.pinchZoom |
-                            InteractiveFlag.doubleTapZoom |
-                            InteractiveFlag.flingAnimation);
 
                   return Center(
                     child: SizedBox(
@@ -301,31 +300,38 @@ class _MapScreenState extends State<MapScreen> {
                           borderRadius: BorderRadius.circular(_radius),
                           child: Stack(
                             children: [
-                              // FlutterMap per mostrar el mapa que ens dona flutter
-                              FlutterMap(
-                                mapController: _mapController,
-                                options: MapOptions(
-                                  // Vista inicial.
-                                  initialCenter: _center,
-                                  initialZoom: 12.0,
-                                  minZoom: _minZoom,
-                                  maxZoom: _maxZoom,
-                                  // Per moure el mapa i fer zoom amb els dits
-                                  interactionOptions: InteractionOptions(
-                                    flags: mapInteractionFlags,
+                              // AbsorbPointer to disable interaction when filters are open
+                              AbsorbPointer(
+                                absorbing: _isFiltersOpen,
+                                child: FlutterMap(
+                                  key: _flutterMapKey,
+                                  mapController: _mapController,
+                                  options: MapOptions(
+                                    // Initial view
+                                    initialCenter: _center,
+                                    initialZoom: 12.0,
+                                    minZoom: _minZoom,
+                                    maxZoom: _maxZoom,
+                                    // To move the map and zoom with fingers
+                                    interactionOptions: const InteractionOptions(
+                                      flags: InteractiveFlag.drag |
+                                          InteractiveFlag.pinchZoom |
+                                          InteractiveFlag.doubleTapZoom |
+                                          InteractiveFlag.flingAnimation,
+                                    ),
                                   ),
+                                  children: [
+                                    // OpenStreetMap base layer
+                                    TileLayer(
+                                      urlTemplate:
+                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName: 'com.example.agendat',
+                                    ),
+                                    MarkerLayer(markers: mapMarkers),
+                                  ],
                                 ),
-                                children: [
-                                  // Capa base d'OpenStreetMap
-                                  TileLayer(
-                                    urlTemplate:
-                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    userAgentPackageName: 'com.example.agendat',
-                                  ),
-                                  MarkerLayer(markers: mapMarkers),
-                                ],
                               ),
-                              // Botons de zoom
+                              // Zoom buttons
                               Positioned(
                                 top: 12,
                                 left: 12,
@@ -335,21 +341,22 @@ class _MapScreenState extends State<MapScreen> {
                                   radius: _radius,
                                 ),
                               ),
-                              // Filtre
+                              // Filter button
                               Positioned(
                                 top: 12,
                                 right: 12,
                                 child: FilterButton(
                                   onApplyFilters: _onApplyFilters,
                                   onSheetVisibilityChanged: (isVisible) {
-                                    if (!mounted) return;
-                                    setState(() {
-                                      _isFiltersOpen = isVisible;
-                                    });
+                                    if (mounted) {
+                                      setState(() {
+                                        _isFiltersOpen = isVisible;
+                                      });
+                                    }
                                   },
                                 ),
                               ),
-                              // Targeta de l'esdeveniment seleccionat
+                              // Selected event card
                               if (selectedEvent != null)
                                 Positioned(
                                   left: 12,
