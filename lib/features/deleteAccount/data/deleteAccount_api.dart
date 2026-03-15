@@ -13,8 +13,12 @@ Future<bool> deleteAccountApi() async {
 
     try {
       final response = await http.delete(uri, headers: headers);
-      setCurrentLoggedInUser(null);
-      return response.statusCode == 204 || response.statusCode == 200;
+      final isSuccess =
+          response.statusCode == 204 || response.statusCode == 200;
+      if (isSuccess) {
+        setCurrentLoggedInUser(null);
+      }
+      return isSuccess;
     } catch (_) {
       return false;
     }
