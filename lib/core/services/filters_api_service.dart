@@ -124,6 +124,8 @@ class FiltersApiService {
   String _normalizeFilterKey(String key) {
     final normalized = EventTextUtils.normalizedForComparison(key);
     if (normalized == 'província') return 'provincia';
+    if (normalized == 'categoria') return 'category';
+    if (normalized == 'data') return 'date';
     return normalized;
   }
 

@@ -1,189 +1,152 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/services/filters_api_service.dart';
-import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/models/event_filters.dart';
+import 'package:agendat/core/services/categories_api_service.dart';
+import 'package:agendat/core/services/locations_api_service.dart';
 import 'package:agendat/core/widgets/filter_section.dart';
 
 class SelectedFiltersCard extends StatefulWidget {
   const SelectedFiltersCard({
     super.key,
-    this.filterOptions = const {},
+    this.initialFilters = const EventFilters(),
     this.onApply,
     this.onCancel,
-    this.showAllOptionWhenEmpty = true,
   });
 
-  final Map<String, List<String>> filterOptions;
-
-  final ValueChanged<Map<String, List<String>>>? onApply;
+  final EventFilters initialFilters;
+  final ValueChanged<EventFilters>? onApply;
   final VoidCallback? onCancel;
-  final bool showAllOptionWhenEmpty;
 
   @override
   State<SelectedFiltersCard> createState() => _SelectedFiltersCardState();
 }
 
 class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
-  static const String _allOption = 'Tots';
-  static const List<String> _categoryOrder = <String>[
-    'Categoria',
-    'Data',
-    'Municipi',
-    'Comarca',
-    'Província',
-  ];
+  final CategoriesApiService _categoriesApi = CategoriesApiService();
+  final LocationsApiService _locationsApi = LocationsApiService();
 
-  final FiltersApiService _filtersApiService = FiltersApiService();
+  late EventFilters _filters;
+  bool _isLoading = true;
 
-  late Map<String, List<String>> _effectiveFilterOptions;
-  late Map<String, String> _selected;
-  bool _isLoadingOptions = true;
+  List<String> _categories = [];
+  List<String> _provincies = [];
+  List<String> _comarques = [];
+  List<String> _municipis = [];
 
   @override
   void initState() {
     super.initState();
-
-    // Inicialitzem l'estat local abans de carregar les opcions dinàmiques.
-    final baseOptions = _buildBaseOptions();
-
-    _effectiveFilterOptions = {
-      for (final entry in baseOptions.entries)
-        entry.key: _withAllOption(entry.value),
-    };
-
-    _selected = {for (final category in _categoryOrder) category: _allOption};
-
-    _loadOptionsFromApi();
+    _filters = widget.initialFilters;
+    _loadAllOptions();
   }
 
-  // Demanem les opcions de cada categoria
-  Future<void> _loadOptionsFromApi() async {
-    final optionsFromApi = <String, List<String>>{};
+  Future<void> _loadAllOptions() async {
+    try {
+      final results = await Future.wait([
+        _categoriesApi.fetchCategories(),
+        _locationsApi.fetchProvincies(),
+        _loadComarques(_filters.provincia),
+        _loadMunicipis(_filters.provincia, _filters.comarca),
+      ]);
 
-    for (final category in _categoryOrder) {
-      if (category == 'Data') {
-        optionsFromApi[category] =
-            _effectiveFilterOptions[category] ?? const <String>[];
-        continue;
-      }
+      if (!mounted) return;
 
-      try {
-        final options = await _filtersApiService.fetchOptionsForCategory(
-          category,
-        );
-        optionsFromApi[category] = _normalizeOptionsFromApi(options);
-      } catch (_) {
-        optionsFromApi[category] =
-            _effectiveFilterOptions[category] ?? const <String>[];
-      }
+      setState(() {
+        _categories = results[0];
+        _provincies = results[1];
+        _comarques = results[2];
+        _municipis = results[3];
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
+  }
 
+  Future<List<String>> _loadComarques(String? provincia) async {
+    try {
+      if (provincia != null) {
+        return await _locationsApi.fetchComarques(provincia: provincia);
+      }
+      return await _locationsApi.fetchComarques();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<String>> _loadMunicipis(
+    String? provincia,
+    String? comarca,
+  ) async {
+    try {
+      return await _locationsApi.fetchMunicipis(
+        provincia: provincia,
+        comarca: comarca,
+      );
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _onProvinciaChanged(String? value) async {
+    setState(() {
+      _filters = _filters.copyWith(
+        provincia: () => value,
+        comarca: () => null,
+        municipi: () => null,
+      );
+      _comarques = [];
+      _municipis = [];
+    });
+
+    final comarques = await _loadComarques(value);
     if (!mounted) return;
+    setState(() => _comarques = comarques);
+  }
 
+  Future<void> _onComarcaChanged(String? value) async {
     setState(() {
-      _effectiveFilterOptions = {
-        for (final category in _categoryOrder)
-          category: _withAllOption(
-            optionsFromApi[category] ?? const <String>[],
-          ),
-      };
-
-      // Si l'usuari ha tocat algun selector abans que acabés la càrrega,
-      // conservem la selecció només si encara existeix a la llista final.
-      _selected = {
-        for (final entry in _effectiveFilterOptions.entries)
-          entry.key: _resolveSelectedValue(entry.key, entry.value),
-      };
-
-      _isLoadingOptions = false;
+      _filters = _filters.copyWith(
+        comarca: () => value,
+        municipi: () => null,
+      );
+      _municipis = [];
     });
+
+    final municipis = await _loadMunicipis(_filters.provincia, value);
+    if (!mounted) return;
+    setState(() => _municipis = municipis);
   }
 
-  Map<String, List<String>> _buildBaseOptions() {
-    if (!widget.showAllOptionWhenEmpty && widget.filterOptions.isEmpty) {
-      return const <String, List<String>>{};
-    }
-
-    final normalizedInput = <String, List<String>>{
-      for (final entry in widget.filterOptions.entries)
-        (EventTextUtils.trimmedOrNull(entry.key) ?? entry.key): entry.value,
-    };
-
-    final ordered = <String, List<String>>{};
-    for (final category in _categoryOrder) {
-      ordered[category] = normalizedInput[category] ?? <String>[];
-    }
-
-    for (final entry in normalizedInput.entries) {
-      if (!ordered.containsKey(entry.key)) {
-        ordered[entry.key] = entry.value;
-      }
-    }
-
-    return ordered;
-  }
-
-  List<String> _withAllOption(List<String> options) {
-    final cleaned = options
-        .map(EventTextUtils.trimmedOrNull)
-        .whereType<String>()
-        .toList();
-
-    final hasAll = cleaned.any(
-      (option) => EventTextUtils.equalsIgnoringCase(option, _allOption),
-    );
-    if (hasAll) return cleaned;
-    return <String>[_allOption, ...cleaned];
-  }
-
-  List<String> _normalizeOptionsFromApi(List<String> options) {
-    return options.map(EventTextUtils.labelOrNull).whereType<String>().toList();
-  }
-
-  String _resolveSelectedValue(String section, List<String> options) {
-    final currentValue = _selected[section] ?? _allOption;
-    return options.contains(currentValue) ? currentValue : _allOption;
-  }
-
-  void _onOptionTapped({required String section, required String option}) {
+  void _onClearFilters() {
     setState(() {
-      _selected[section] = option;
+      _filters = const EventFilters();
     });
+    _loadAllOptions();
   }
 
-  // Converteix el formulari al format per l'API
-  Map<String, List<String>> get selectedFiltersForApi {
-    return {
-      for (final entry in _selected.entries)
-        if (!EventTextUtils.equalsIgnoringCase(entry.value, _allOption))
-          entry.key: [entry.value],
-    };
+  void _onApplyPressed() {
+    if (widget.onApply != null) {
+      widget.onApply!(_filters);
+      return;
+    }
+    Navigator.of(context).pop(_filters);
   }
 
   void _onCancelPressed() {
-    // El tancament del modal es delega al callback extern perquè així no depenem
-    // del context d'aquest State si el bottom sheet ja s'està desmuntant.
     if (widget.onCancel != null) {
-      widget.onCancel!.call();
+      widget.onCancel!();
       return;
     }
     Navigator.of(context).pop();
   }
 
-  void _onApplyPressed() {
-    // El formulari només construeix el resultat final. El tancament real del
-    // bottom sheet es fa des del callback extern amb el context del modal.
-    final selected = selectedFiltersForApi;
-
-    if (widget.onApply != null) {
-      widget.onApply!(selected);
-      return;
-    }
-
-    Navigator.of(context).pop(selected);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final hasComarcaAccess = _filters.provincia != null;
+    final hasMunicipiAccess =
+        _filters.provincia != null && _filters.comarca != null;
+
     return Card(
       color: Colors.white,
       elevation: 2,
@@ -199,23 +162,98 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            if (_isLoadingOptions) ...[
+            if (_isLoading) ...[
               const Center(child: CircularProgressIndicator()),
               const SizedBox(height: 12),
             ],
-            // Cada secció és una categoria del formulari de filtres
-            for (final entry in _effectiveFilterOptions.entries) ...[
-              FilterSection(
-                title: entry.key,
-                options: entry.value,
-                selectedOption: _selected[entry.key] ?? _allOption,
-                onOptionTapped: (option) {
-                  _onOptionTapped(section: entry.key, option: option);
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-            const SizedBox(height: 8),
+
+            // Category
+            FilterSection(
+              title: 'Categoria',
+              options: _categories,
+              selectedValue: _filters.category,
+              searchable: true,
+              allLabel: 'Totes',
+              onChanged: (value) {
+                setState(() {
+                  _filters = _filters.copyWith(category: () => value);
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Date range
+            Row(
+              children: [
+                Expanded(
+                  child: DateFilterSection(
+                    title: 'Data des de',
+                    selectedDate: _filters.dateFrom,
+                    onChanged: (date) {
+                      setState(() {
+                        _filters = _filters.copyWith(dateFrom: () => date);
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DateFilterSection(
+                    title: 'Data fins a',
+                    selectedDate: _filters.dateTo,
+                    onChanged: (date) {
+                      setState(() {
+                        _filters = _filters.copyWith(dateTo: () => date);
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Província
+            FilterSection(
+              title: 'Província',
+              options: _provincies,
+              selectedValue: _filters.provincia,
+              searchable: true,
+              allLabel: 'Totes',
+              onChanged: _onProvinciaChanged,
+            ),
+            const SizedBox(height: 12),
+
+            // Comarca
+            FilterSection(
+              title: 'Comarca',
+              options: _comarques,
+              selectedValue: _filters.comarca,
+              searchable: true,
+              allLabel: 'Totes',
+              enabled: hasComarcaAccess,
+              disabledHint: 'Selecciona una província',
+              onChanged: _onComarcaChanged,
+            ),
+            const SizedBox(height: 12),
+
+            // Municipi
+            FilterSection(
+              title: 'Municipi',
+              options: _municipis,
+              selectedValue: _filters.municipi,
+              searchable: true,
+              allLabel: 'Tots',
+              enabled: hasMunicipiAccess,
+              disabledHint: 'Selecciona una comarca',
+              onChanged: (value) {
+                setState(() {
+                  _filters = _filters.copyWith(municipi: () => value);
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Apply button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -229,6 +267,23 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
               ),
             ),
             const SizedBox(height: 8),
+
+            // Clear filters button
+            if (!_filters.isEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _onClearFilters,
+                  icon: const Icon(Icons.clear_all, size: 20),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  label: const Text('Netejar filtres'),
+                ),
+              ),
+            if (!_filters.isEmpty) const SizedBox(height: 8),
+
+            // Cancel button
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(

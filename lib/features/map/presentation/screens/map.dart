@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/features/map/data/device_location_service.dart';
+import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/services/event_payload_utils.dart';
 import 'package:agendat/core/services/events_api_service.dart';
-import 'package:agendat/core/services/filters_api_service.dart';
+import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -17,19 +17,14 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  // Map controller for zoom and manual movements
   final MapController _mapController = MapController();
-  // Calculate distance between two points on the map
   final Distance _distanceCalculator = const Distance();
   final EventsApiService _eventsApiService = EventsApiService();
-  final FiltersApiService _filtersApiService = FiltersApiService();
   final DeviceLocationService _deviceLocationService = DeviceLocationService();
   final MapNavigationService _mapNavigationService = MapNavigationService();
-  
-  // Key for FlutterMap widget to avoid unnecessary rebuilds
+
   final GlobalKey _flutterMapKey = GlobalKey();
 
-  // Initial point (Barcelona) if we don't have user location
   final LatLng _center = const LatLng(41.3851, 2.1734);
   LatLng? _currentUserLocation;
 
@@ -39,7 +34,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _isLoadingEvents = false;
   String? _eventsLoadError;
   bool _isFiltersOpen = false;
-  Map<String, List<String>> _selectedFilters = <String, List<String>>{};
+  EventFilters _activeFilters = const EventFilters();
 
   final double _minZoom = 8.0;
   final double _maxZoom = 18.0;
@@ -49,7 +44,6 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _loadEventsFromApi();
-    // Try to get GPS to show real location and distances
     _loadCurrentLocation();
   }
 
@@ -60,14 +54,14 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     try {
-      final rawEvents = _selectedFilters.isEmpty
+      final rawEvents = _activeFilters.isEmpty
           ? await _eventsApiService.fetchEvents()
-          : await _filtersApiService.fetchEventsByFilters(
-              selectedFilters: _selectedFilters,
-            );
+          : await _eventsApiService.fetchFilteredEvents(_activeFilters);
+
       final eventsWithCoordinates = rawEvents
           .where(EventPayloadUtils.hasCoordinates)
           .toList();
+
       if (!mounted) return;
 
       setState(() {
@@ -90,8 +84,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _loadCurrentLocation() async {
     final location = await _deviceLocationService.getCurrentLocation();
-    if (location == null) return;
-    if (!mounted) return;
+    if (location == null || !mounted) return;
 
     setState(() {
       _currentUserLocation = location;
@@ -143,7 +136,6 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _searchQuery = value;
 
-      // If the selected event no longer matches the filter, close the card
       final selected = _selectedEvent;
       if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
         _selectedEvent = null;
@@ -151,11 +143,11 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  Future<void> _onApplyFilters(Map<String, List<String>> selected) async {
+  Future<void> _onApplyFilters(EventFilters filters) async {
     if (!mounted) return;
-    
+
     setState(() {
-      _selectedFilters = selected;
+      _activeFilters = filters;
       _selectedEvent = null;
     });
 
@@ -164,7 +156,6 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Screen dimensions to adapt layout
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
@@ -191,7 +182,6 @@ class _MapScreenState extends State<MapScreen> {
 
     final selectedEvent = _selectedEvent;
     final hasCurrentLocation = _currentUserLocation != null;
-    // Distance in km from real GPS to selected event
     double distanceKm = 0.0;
     if (selectedEvent != null && _currentUserLocation != null) {
       distanceKm = _distanceCalculator.as(
@@ -208,7 +198,6 @@ class _MapScreenState extends State<MapScreen> {
           point: _currentUserLocation!,
           width: 24,
           height: 24,
-          // Small blue dot for current location
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -238,7 +227,6 @@ class _MapScreenState extends State<MapScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search bar
             bar.AppSearchBar(
               onChanged: _onSearchChanged,
               margin: EdgeInsets.fromLTRB(
@@ -284,7 +272,7 @@ class _MapScreenState extends State<MapScreen> {
                     child: SizedBox(
                       width: maxMapWidth,
                       child: Container(
-                        margin: EdgeInsets.fromLTRB(6, 6, 6, 6),
+                        margin: const EdgeInsets.fromLTRB(6, 6, 6, 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(_radius),
                           boxShadow: [
@@ -300,19 +288,16 @@ class _MapScreenState extends State<MapScreen> {
                           borderRadius: BorderRadius.circular(_radius),
                           child: Stack(
                             children: [
-                              // AbsorbPointer to disable interaction when filters are open
                               AbsorbPointer(
                                 absorbing: _isFiltersOpen,
                                 child: FlutterMap(
                                   key: _flutterMapKey,
                                   mapController: _mapController,
                                   options: MapOptions(
-                                    // Initial view
                                     initialCenter: _center,
                                     initialZoom: 12.0,
                                     minZoom: _minZoom,
                                     maxZoom: _maxZoom,
-                                    // To move the map and zoom with fingers
                                     interactionOptions: const InteractionOptions(
                                       flags: InteractiveFlag.drag |
                                           InteractiveFlag.pinchZoom |
@@ -321,7 +306,6 @@ class _MapScreenState extends State<MapScreen> {
                                     ),
                                   ),
                                   children: [
-                                    // OpenStreetMap base layer
                                     TileLayer(
                                       urlTemplate:
                                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -331,7 +315,6 @@ class _MapScreenState extends State<MapScreen> {
                                   ],
                                 ),
                               ),
-                              // Zoom buttons
                               Positioned(
                                 top: 12,
                                 left: 12,
@@ -341,11 +324,11 @@ class _MapScreenState extends State<MapScreen> {
                                   radius: _radius,
                                 ),
                               ),
-                              // Filter button
                               Positioned(
                                 top: 12,
                                 right: 12,
                                 child: FilterButton(
+                                  currentFilters: _activeFilters,
                                   onApplyFilters: _onApplyFilters,
                                   onSheetVisibilityChanged: (isVisible) {
                                     if (mounted) {
@@ -356,7 +339,6 @@ class _MapScreenState extends State<MapScreen> {
                                   },
                                 ),
                               ),
-                              // Selected event card
                               if (selectedEvent != null)
                                 Positioned(
                                   left: 12,
