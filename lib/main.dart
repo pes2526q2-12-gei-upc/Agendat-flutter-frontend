@@ -1,5 +1,6 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
@@ -17,6 +18,17 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Agenda\'t',
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ca'),
+        Locale('es'),
+        Locale('en'),
+      ],
+      locale: const Locale('ca'),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color.fromARGB(255, 255, 105, 105),
