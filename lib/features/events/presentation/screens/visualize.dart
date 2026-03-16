@@ -1,11 +1,9 @@
-import 'package:agendat/core/services/events_api_service.dart';
-import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/core/models/event.dart';
+import 'package:agendat/core/models/event_filters.dart';
+import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
-import 'package:agendat/core/widgets/appBar.dart';
-import 'package:agendat/features/events/presentation/screens/event.dart';
-import 'package:agendat/features/events/data/event_item.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -15,29 +13,37 @@ class VisualizeScreen extends StatefulWidget {
 }
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
-  final EventsApiService _eventsApiService = EventsApiService();
-  late Future<List<EventItem>> _eventsFuture;
+  final EventsQuery _eventsQuery = EventsQuery();
+  late Future<List<Event>> _eventsFuture;
   String _query = '';
+  EventFilters _activeFilters = const EventFilters();
 
   @override
   void initState() {
     super.initState();
-    _eventsFuture = _loadEvents();
+    _eventsFuture = _eventsQuery.getEvents();
   }
 
-  Future<List<EventItem>> _loadEvents() async {
-    final rawEvents = await _eventsApiService.fetchEvents();
-    return rawEvents.map(EventItem.fromJson).toList();
-  }
-
-  // Reloads the events list
   void _refresh() {
+    _eventsQuery.invalidate();
     setState(() {
-      _eventsFuture = _loadEvents();
+      _eventsFuture = _eventsQuery.getEvents(
+        filters: _activeFilters.isEmpty ? null : _activeFilters,
+      );
     });
   }
 
-  List<EventItem> _applySearch(List<EventItem> events) {
+  void _onApplyFilters(EventFilters filters) {
+    setState(() {
+      _activeFilters = filters;
+      _eventsQuery.invalidate();
+      _eventsFuture = _eventsQuery.getEvents(
+        filters: filters.isEmpty ? null : filters,
+      );
+    });
+  }
+
+  List<Event> _applySearch(List<Event> events) {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return events;
 
@@ -63,13 +69,19 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               });
             },
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Align(alignment: Alignment.topLeft, child: FilterButton()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: FilterButton(
+                currentFilters: _activeFilters,
+                onApplyFilters: _onApplyFilters,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: FutureBuilder<List<EventItem>>(
+            child: FutureBuilder<List<Event>>(
               future: _eventsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -112,7 +124,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Widget eventsList(List<EventItem> events) {
+  Widget eventsList(List<Event> events) {
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: ListView.separated(
@@ -124,65 +136,49 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Widget eventCard(EventItem event) {
-    return Material(
-      color: Colors.white, 
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14), 
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EventScreen(
-                eventCode: event.code
-                ),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: const Color.fromARGB(255, 190, 0, 47),
-              width: 2,
-            ),
-          ),
-          child: Column(
+  Widget eventCard(Event event) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color.fromARGB(255, 190, 0, 47),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: eventTitle(event)),
-                  const SizedBox(width: 10),
-                  eventCategory(event),
-                ],
-              ),
-              const SizedBox(height: 4),
-              eventSubtitle(event),
-              const SizedBox(height: 10),
-              Row(
-                children: [eventDate(event), const Spacer(), eventPayment(event)],
-              ),
-              const SizedBox(height: 4),
-              eventPlace(event),
+              Expanded(child: eventTitle(event)),
+              const SizedBox(width: 10),
+              eventCategory(event),
             ],
           ),
-        ),
+          const SizedBox(height: 4),
+          eventSubtitle(event),
+          const SizedBox(height: 10),
+          Row(
+            children: [eventDate(event), const Spacer(), eventPayment(event)],
+          ),
+          const SizedBox(height: 4),
+          eventPlace(event),
+        ],
       ),
     );
   }
 
-  Text eventPlace(EventItem event) {
+  Text eventPlace(Event event) {
     return Text(
-      '${event.location}',
+      event.location,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
     );
   }
 
-  Text eventPayment(EventItem event) {
+  Text eventPayment(Event event) {
     return Text(
       event.free ? 'Gratuït' : 'De pagament',
       style: const TextStyle(
@@ -193,14 +189,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Text eventDate(EventItem event) {
+  Text eventDate(Event event) {
     return Text(
       event.displayDateRange,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
     );
   }
 
-  Text eventSubtitle(EventItem event) {
+  Text eventSubtitle(Event event) {
     return Text(
       event.displaySubtitle,
       style: const TextStyle(
@@ -210,7 +206,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Container eventCategory(EventItem event) {
+  Container eventCategory(Event event) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -228,7 +224,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Text eventTitle(EventItem event) {
+  Text eventTitle(Event event) {
     return Text(
       event.title,
       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),

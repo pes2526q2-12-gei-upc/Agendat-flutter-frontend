@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/widgets/selectFiltersCard.dart';
 
 class FilterButton extends StatelessWidget {
@@ -11,6 +12,7 @@ class FilterButton extends StatelessWidget {
     this.label = 'Filtres',
     this.onSheetVisibilityChanged,
     this.onApplyFilters,
+    this.currentFilters = const EventFilters(),
   });
 
   final bool compact;
@@ -19,39 +21,38 @@ class FilterButton extends StatelessWidget {
   final double? buttonHeight;
   final String label;
   final ValueChanged<bool>? onSheetVisibilityChanged;
-  final ValueChanged<Map<String, List<String>>>? onApplyFilters;
+  final ValueChanged<EventFilters>? onApplyFilters;
+  final EventFilters currentFilters;
 
   Future<void> _openFilters(BuildContext context) async {
     onSheetVisibilityChanged?.call(true);
 
-    final selectedFilters =
-        await showModalBottomSheet<Map<String, List<String>>>(
-          // Faig servir modal perquè es 'sobreposa' a la screen
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (sheetContext) {
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-                child: SingleChildScrollView(
-                  child: SelectedFiltersCard(
-                    onApply: (selectedFilters) {
-                      Navigator.of(sheetContext).pop(selectedFilters);
-                    },
-                    onCancel: () {
-                      Navigator.of(sheetContext).pop();
-                    },
-                  ),
-                ),
+    final selectedFilters = await showModalBottomSheet<EventFilters>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+            child: SingleChildScrollView(
+              child: SelectedFiltersCard(
+                initialFilters: currentFilters,
+                onApply: (filters) {
+                  Navigator.of(sheetContext).pop(filters);
+                },
+                onCancel: () {
+                  Navigator.of(sheetContext).pop();
+                },
               ),
-            );
-          },
+            ),
+          ),
         );
+      },
+    );
 
     onSheetVisibilityChanged?.call(false);
 
-    // El callback del pare s'executa només quan el bottom sheet ja s'ha tancat
     if (selectedFilters != null) {
       onApplyFilters?.call(selectedFilters);
     }
@@ -59,14 +60,20 @@ class FilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasActiveFilters = !currentFilters.isEmpty;
+
     if (compact) {
       return SizedBox(
         width: buttonSize,
         height: buttonSize,
         child: FloatingActionButton(
           heroTag: 'filterButton',
-          backgroundColor: Colors.white,
-          foregroundColor: const Color.fromARGB(255, 149, 31, 22),
+          backgroundColor: hasActiveFilters
+              ? const Color.fromARGB(255, 149, 31, 22)
+              : Colors.white,
+          foregroundColor: hasActiveFilters
+              ? Colors.white
+              : const Color.fromARGB(255, 149, 31, 22),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
@@ -79,8 +86,12 @@ class FilterButton extends StatelessWidget {
     return ElevatedButton.icon(
       onPressed: () => _openFilters(context),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color.fromARGB(255, 149, 31, 22),
+        backgroundColor: hasActiveFilters
+            ? const Color.fromARGB(255, 149, 31, 22)
+            : Colors.white,
+        foregroundColor: hasActiveFilters
+            ? Colors.white
+            : const Color.fromARGB(255, 149, 31, 22),
         minimumSize: buttonHeight == null ? null : Size(0, buttonHeight!),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
