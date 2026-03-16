@@ -4,6 +4,7 @@ import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
+import 'package:agendat/core/widgets/AppBar.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
