@@ -4,7 +4,7 @@ import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
-import 'package:agendat/core/widgets/AppBar.dart';
+import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 
 class VisualizeScreen extends StatefulWidget {
@@ -61,7 +61,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AgendatAppBar(),
+      appBar: const MainAppBar(title: 'Cercar',),
       body: Column(
         children: [
           bar.AppSearchBar(

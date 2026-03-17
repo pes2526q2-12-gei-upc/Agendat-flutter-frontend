@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/api/events_api.dart';
-import 'package:agendat/core/widgets/appBar.dart';
+import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/models/event.dart';
 
 class EventScreen extends StatefulWidget {
@@ -38,7 +38,7 @@ class _EventScreenState extends State<EventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AgendatAppBar(),
+      appBar: const MainAppBar(title: 'Detalls de l\'événement'),
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
