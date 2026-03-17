@@ -27,6 +27,7 @@ class Event {
     this.longitude,
   });
 
+
   bool get hasCoordinates => latitude != null && longitude != null;
 
   // ── Display helpers ──────────────────────────────────────────────
@@ -70,3 +71,49 @@ class Event {
   static String _capitalize(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 }
+
+class EventExtended extends Event {
+  final String? description;
+  final String? url_activity;
+  final String? url_ticket;
+  final String? schedule;
+  final String? modality;
+  final String? urls;
+  final String? images;
+  final String? videos;
+  final String? documents;
+  final String? address;
+  final String? email;
+  final String? locality;
+  final String? url_locality;
+
+  const EventExtended({
+    required super.code,
+    required super.title,
+    super.subtitle,
+    super.free = false,
+    super.categories = const [],
+    super.provincia,
+    super.comarca,
+    super.municipi,
+    super.startDate,
+    super.endDate,
+    super.latitude,
+    super.longitude,
+    this.description,
+    this.url_activity,
+    this.url_ticket,
+    this.schedule,
+    this.modality,
+    this.urls,
+    this.images,
+    this.videos,
+    this.documents,
+    this.address,
+    this.email,
+    this.locality,
+    this.url_locality,
+  });
+}
+
+typedef EventExpanded = EventExtended;
