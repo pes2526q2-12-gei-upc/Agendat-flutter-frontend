@@ -15,9 +15,7 @@ class CategoriesApiService {
         .timeout(_requestTimeout);
 
     if (response.statusCode != 200) {
-      throw Exception(
-        'Error fetching categories: HTTP ${response.statusCode}',
-      );
+      throw Exception('Error fetching categories: HTTP ${response.statusCode}');
     }
 
     final List<dynamic> data = json.decode(response.body);

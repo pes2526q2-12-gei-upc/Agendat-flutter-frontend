@@ -23,11 +23,7 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('ca'),
-        Locale('es'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('ca'), Locale('es'), Locale('en')],
       locale: const Locale('ca'),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

@@ -27,9 +27,9 @@ class LocationsApiService {
 
   Future<List<String>> fetchComarques({String? provincia}) async {
     final uri = provincia != null
-        ? Uri.parse('${getBaseUrl()}/api/comarques/').replace(
-            queryParameters: {'provincia': provincia},
-          )
+        ? Uri.parse(
+            '${getBaseUrl()}/api/comarques/',
+          ).replace(queryParameters: {'provincia': provincia})
         : Uri.parse('${getBaseUrl()}/api/comarques/');
 
     final response = await http
@@ -55,9 +55,9 @@ class LocationsApiService {
     if (comarca != null) queryParams['comarca'] = comarca;
     if (provincia != null) queryParams['provincia'] = provincia;
 
-    final uri = Uri.parse('${getBaseUrl()}/api/municipis/').replace(
-      queryParameters: queryParams.isEmpty ? null : queryParams,
-    );
+    final uri = Uri.parse(
+      '${getBaseUrl()}/api/municipis/',
+    ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
     final response = await http
         .get(uri, headers: _jsonHeaders)
