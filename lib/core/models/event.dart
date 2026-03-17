@@ -33,10 +33,10 @@ class Event {
   // ── Display helpers ──────────────────────────────────────────────
 
   String get location {
-    final parts = [municipi, provincia]
-        .whereType<String>()
-        .where((p) => p.trim().isNotEmpty)
-        .toList();
+    final parts = [
+      municipi,
+      provincia,
+    ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
     return parts.isEmpty ? 'Per determinar' : parts.join(', ');
   }
 

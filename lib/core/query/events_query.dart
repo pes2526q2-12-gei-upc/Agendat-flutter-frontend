@@ -27,10 +27,13 @@ class EventsQuery {
 
   String _buildKey(EventFilters? filters) {
     if (filters == null || filters.isEmpty) return _prefix;
-    final params = filters.toQueryParams().entries
-        .map((e) => '${e.key}=${e.value}')
-        .toList()
-      ..sort();
+    final params =
+        filters
+            .toQueryParams()
+            .entries
+            .map((e) => '${e.key}=${e.value}')
+            .toList()
+          ..sort();
     return '$_prefix:${params.join('&')}';
   }
 }

@@ -37,9 +37,9 @@ class EventsApiService {
       ...filters.toQueryParams(),
     };
 
-    final uri = Uri.parse('${getBaseUrl()}$_eventsPath').replace(
-      queryParameters: queryParams,
-    );
+    final uri = Uri.parse(
+      '${getBaseUrl()}$_eventsPath',
+    ).replace(queryParameters: queryParams);
 
     return _fetchAndParse(uri);
   }
