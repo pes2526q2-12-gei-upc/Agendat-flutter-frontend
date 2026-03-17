@@ -48,6 +48,7 @@ extension EventDtoMapper on EventDto {
       email: email,
       locality: locality,
       url_locality: url_locality,
+      telephone_locality: telephone_locality,
     );
   }
 

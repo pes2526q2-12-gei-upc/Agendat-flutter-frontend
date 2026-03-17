@@ -86,6 +86,7 @@ class EventExtended extends Event {
   final String? email;
   final String? locality;
   final String? url_locality;
+  final String? telephone_locality;
 
   const EventExtended({
     required super.code,
@@ -113,6 +114,7 @@ class EventExtended extends Event {
     this.email,
     this.locality,
     this.url_locality,
+    this.telephone_locality,
   });
 }
 

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/dto/event_list_dto.dart';
-import 'package:agendat/core/mappers/event_mapper.dart';
-import 'package:agendat/core/services/events_api_service.dart';
+import 'package:agendat/core/api/events_api.dart';
 import 'package:agendat/core/widgets/appBar.dart';
-import 'package:agendat/core/models/event.dart'; 
+import 'package:agendat/core/models/event.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({
@@ -18,7 +16,7 @@ class EventScreen extends StatefulWidget {
 }
 
 class _EventScreenState extends State<EventScreen> {
-  final EventsApiService _eventApiService = EventsApiService();
+  final EventsApi _eventsApi = EventsApi();
   late Future<EventExtended> _eventFuture;
 
   @override
@@ -28,9 +26,7 @@ class _EventScreenState extends State<EventScreen> {
   }
 
   Future<EventExtended> _loadEvent() async {
-    final rawEvent = await _eventApiService.fetchEventDetails(widget.eventCode);
-    final dto = EventDto.fromJson(rawEvent);
-    return dto.toExtendedDomain();
+    return _eventsApi.fetchEventByCode(widget.eventCode);
   }
 
   void _retryLoad() {

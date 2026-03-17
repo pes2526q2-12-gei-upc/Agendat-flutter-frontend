@@ -112,6 +112,7 @@ class EventDto {
   final String? email;
   final String? locality;
   final String? url_locality;
+  final String? telephone_locality;
 
   const EventDto({
     required this.code,
@@ -139,6 +140,7 @@ class EventDto {
     this.email,
     this.locality,
     this.url_locality,
+    this.telephone_locality,
   });
 
   factory EventDto.fromJson(Map<String, dynamic> json) {
@@ -168,6 +170,7 @@ class EventDto {
       email: EventListDto._trimOrNull(json['email']),
       locality: EventListDto._trimOrNull(json['locality']),
       url_locality: EventListDto._trimOrNull(json['url_locality']),
+      telephone_locality: EventListDto._trimOrNull(json['telephone_locality']),
     );
   }
 
@@ -200,6 +203,7 @@ class EventDto {
       'email': email,
       'locality': locality,
       'url_locality': url_locality,
+      'telephone_locality': telephone_locality,
     };
   }
 }
