@@ -1,9 +1,8 @@
 import 'dart:convert';
 
-import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
-import 'package:http/http.dart' as http;
 
 /// Resultat de la creació d'usuari.
 sealed class CreateUserResult {}
@@ -23,25 +22,18 @@ class CreateUserFailure extends CreateUserResult {
 
 /// Crida POST /api/users/ per registrar un usuari nou.
 Future<CreateUserResult> createUser(CreateUserRequest request) async {
-  final uri = Uri.parse('${getBaseUrl()}/api/users/');
   try {
-    final response = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(request.toJson()),
+    final response = await ApiClient.postJson(
+      '/api/users/',
+      body: request.toJson(),
+      expectedStatusCode: 201,
     );
-
     final decoded = response.body.isNotEmpty
         ? jsonDecode(response.body) as Map<String, dynamic>?
         : null;
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return CreateUserSuccess(statusCode: response.statusCode, body: decoded);
-    }
-    return CreateUserFailure(statusCode: response.statusCode, body: decoded);
+    return CreateUserSuccess(statusCode: response.statusCode, body: decoded);
+  } on ApiException catch (e) {
+    return CreateUserFailure(statusCode: e.statusCode, error: e);
   } catch (e) {
     return CreateUserFailure(statusCode: -1, error: e);
   }
@@ -64,33 +56,48 @@ class LoginUserFailure extends LoginUserResult {
 
 /// Dades de l'usuari actualment autenticat (durant l'execució de l'app).
 Map<String, dynamic>? currentLoggedInUser;
+String? currentAuthToken;
 
-/// Desa l'usuari autenticat amb JSON, potser més endavant fer-ho amb SharedPreferences o flutter_secure_storage
+/// Desa l'usuari autenticat amb JSON, potser més endavant fer-ho amb
 void setCurrentLoggedInUser(Map<String, dynamic>? userJson) {
   currentLoggedInUser = userJson;
 }
 
+void setCurrentAuthToken(String? token) {
+  currentAuthToken = token;
+  ApiClient.setAuthToken(token);
+}
+
+/// Implementada tot i que no s'utilitza actualment. Feta pel futur.
+void logout() {
+  setCurrentLoggedInUser(null);
+  setCurrentAuthToken(null);
+}
+
 /// Crida POST /api/users/login/ per iniciar sessió.
 Future<LoginUserResult> loginUser(LoginUserRequest request) async {
-  final uri = Uri.parse('${getBaseUrl()}/api/users/login/');
   try {
-    final response = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(request.toJson()),
+    final response = await ApiClient.postJson(
+      '/api/users/login/',
+      body: request.toJson(),
+      expectedStatusCode: 200,
     );
-
+    // Backend returns: { "token": "...",
+    //                    "user": { ... } }
     final decoded = response.body.isNotEmpty
         ? jsonDecode(response.body) as Map<String, dynamic>?
         : null;
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
+    final token = decoded?['token']?.toString();
+    final user = decoded?['user'];
+    if (user is Map<String, dynamic>) {
+      setCurrentLoggedInUser(user);
+    } else {
+      setCurrentLoggedInUser(null);
     }
-    return LoginUserFailure(statusCode: response.statusCode, body: decoded);
+    setCurrentAuthToken(token);
+    return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
+  } on ApiException catch (e) {
+    return LoginUserFailure(statusCode: e.statusCode, error: e);
   } catch (e) {
     return LoginUserFailure(statusCode: -1, error: e);
   }
