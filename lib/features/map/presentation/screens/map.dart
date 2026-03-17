@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:agendat/features/map/presentation/widgets/map_widgets.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
+import 'package:agendat/core/widgets/mainAppBar.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -147,8 +148,8 @@ class _MapScreenState extends State<MapScreen> {
     final horizontalPadding = isCompactWidth
         ? 12.0
         : screenWidth < 720
-            ? 20.0
-            : 28.0;
+        ? 20.0
+        : 28.0;
     final selectedCardHeight = (screenHeight * 0.33).clamp(220.0, 340.0);
 
     final filteredEvents = _events
@@ -198,19 +199,17 @@ class _MapScreenState extends State<MapScreen> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "La cultura a prop teu",
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-        ),
-      ),
+      appBar: const MainAppBar(title: 'La cultura a prop teu'),
       body: SafeArea(
         child: Column(
           children: [
             bar.AppSearchBar(
               onChanged: _onSearchChanged,
               margin: EdgeInsets.fromLTRB(
-                horizontalPadding, 6, horizontalPadding, 5,
+                horizontalPadding,
+                6,
+                horizontalPadding,
+                5,
               ),
             ),
             Expanded(
@@ -277,11 +276,12 @@ class _MapScreenState extends State<MapScreen> {
                                     maxZoom: _maxZoom,
                                     interactionOptions:
                                         const InteractionOptions(
-                                      flags: InteractiveFlag.drag |
-                                          InteractiveFlag.pinchZoom |
-                                          InteractiveFlag.doubleTapZoom |
-                                          InteractiveFlag.flingAnimation,
-                                    ),
+                                          flags:
+                                              InteractiveFlag.drag |
+                                              InteractiveFlag.pinchZoom |
+                                              InteractiveFlag.doubleTapZoom |
+                                              InteractiveFlag.flingAnimation,
+                                        ),
                                   ),
                                   children: [
                                     TileLayer(

@@ -5,9 +5,7 @@ import 'package:http/http.dart' as http;
 class ApiClient {
   static const Duration timeout = Duration(seconds: 12);
 
-  static const Map<String, String> jsonHeaders = {
-    'Accept': 'application/json',
-  };
+  static const Map<String, String> jsonHeaders = {'Accept': 'application/json'};
 
   static String get baseUrl {
     const customBaseUrl = String.fromEnvironment('API_BASE_URL');
@@ -24,13 +22,12 @@ class ApiClient {
     Map<String, String>? queryParams,
   }) async {
     final uri = Uri.parse('$baseUrl$path').replace(
-      queryParameters:
-          queryParams != null && queryParams.isNotEmpty ? queryParams : null,
+      queryParameters: queryParams != null && queryParams.isNotEmpty
+          ? queryParams
+          : null,
     );
 
-    final response = await http
-        .get(uri, headers: jsonHeaders)
-        .timeout(timeout);
+    final response = await http.get(uri, headers: jsonHeaders).timeout(timeout);
 
     if (response.statusCode != 200) {
       final snippet = response.body.length > 200
@@ -70,6 +67,5 @@ class ApiException implements Exception {
   const ApiException(this.statusCode, this.body, this.uri);
 
   @override
-  String toString() =>
-      'ApiException(HTTP $statusCode) for $uri — $body';
+  String toString() => 'ApiException(HTTP $statusCode) for $uri — $body';
 }

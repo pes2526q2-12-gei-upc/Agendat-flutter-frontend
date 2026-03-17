@@ -73,7 +73,9 @@ class _DropdownField extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayValue = selectedValue ?? allLabel;
     final allOptions = [allLabel, ...options];
-    final resolved = allOptions.contains(displayValue) ? displayValue : allLabel;
+    final resolved = allOptions.contains(displayValue)
+        ? displayValue
+        : allLabel;
 
     return DropdownButtonFormField<String>(
       initialValue: resolved,
@@ -144,8 +146,10 @@ class _SearchableField extends StatelessWidget {
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
           isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
           suffixIcon: Icon(
             Icons.arrow_drop_down,
             color: enabled ? null : Theme.of(context).disabledColor,
@@ -183,9 +187,7 @@ class _OptionSearchDialogState extends State<_OptionSearchDialog> {
   List<String> get _filtered {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return widget.options;
-    return widget.options
-        .where((o) => o.toLowerCase().contains(q))
-        .toList();
+    return widget.options.where((o) => o.toLowerCase().contains(q)).toList();
   }
 
   @override
@@ -344,7 +346,9 @@ class DateRangeFilterSection extends StatelessWidget {
                 hasValue: dateFrom != null,
                 hasError: _hasError,
                 onTap: () => _pickFrom(context),
-                onClear: dateFrom != null ? () => onDateFromChanged(null) : null,
+                onClear: dateFrom != null
+                    ? () => onDateFromChanged(null)
+                    : null,
               ),
             ),
             Padding(
@@ -398,7 +402,9 @@ class _DateChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor = hasError
         ? Theme.of(context).colorScheme.error
-        : (hasValue ? Theme.of(context).colorScheme.primary : Colors.grey.shade400);
+        : (hasValue
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey.shade400);
 
     return Material(
       color: hasValue
@@ -419,7 +425,9 @@ class _DateChip extends StatelessWidget {
               Icon(
                 Icons.calendar_today,
                 size: 16,
-                color: hasValue ? Theme.of(context).colorScheme.primary : Colors.grey,
+                color: hasValue
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -437,7 +445,11 @@ class _DateChip extends StatelessWidget {
               if (onClear != null)
                 GestureDetector(
                   onTap: onClear,
-                  child: Icon(Icons.close, size: 16, color: Colors.grey.shade600),
+                  child: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
             ],
           ),
