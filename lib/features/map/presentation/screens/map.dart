@@ -148,8 +148,8 @@ class _MapScreenState extends State<MapScreen> {
     final horizontalPadding = isCompactWidth
         ? 12.0
         : screenWidth < 720
-            ? 20.0
-            : 28.0;
+        ? 20.0
+        : 28.0;
     final selectedCardHeight = (screenHeight * 0.33).clamp(220.0, 340.0);
 
     final filteredEvents = _events

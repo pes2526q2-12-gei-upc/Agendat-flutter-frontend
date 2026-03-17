@@ -2,7 +2,7 @@ import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
-import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
+import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
 
@@ -50,7 +50,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
     MapScreen(),
     _PendingTabScreen(),
     _PendingTabScreen(),
-    DeleteAccountScreen(),
+    ProfileScreen(),
   ];
 
   late int _selectedIndex;
