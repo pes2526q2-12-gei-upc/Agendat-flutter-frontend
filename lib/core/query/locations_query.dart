@@ -42,10 +42,7 @@ class LocationsQuery {
     );
   }
 
-  Future<List<String>> getMunicipis({
-    String? provincia,
-    String? comarca,
-  }) {
+  Future<List<String>> getMunicipis({String? provincia, String? comarca}) {
     final key = '$_prefix:municipis:${provincia ?? ''}:${comarca ?? ''}';
 
     return _client.query<List<String>>(

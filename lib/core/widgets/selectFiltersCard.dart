@@ -103,10 +103,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
   Future<void> _onComarcaChanged(String? value) async {
     setState(() {
-      _filters = _filters.copyWith(
-        comarca: () => value,
-        municipi: () => null,
-      );
+      _filters = _filters.copyWith(comarca: () => value, municipi: () => null);
       _municipis = [];
     });
 
