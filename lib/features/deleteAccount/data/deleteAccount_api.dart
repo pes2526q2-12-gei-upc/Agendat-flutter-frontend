@@ -24,8 +24,7 @@ Future<DeleteAccountResult> deleteAccountApi() async {
   try {
     // El backend retorna 204 en eliminar un usuari.
     await ApiClient.delete('/api/users/$userId/', expectedStatusCode: 204);
-    setCurrentAuthToken(null);
-    setCurrentLoggedInUser(null);
+    await logout();
     return DeleteAccountSuccess();
   } on ApiException catch (e) {
     if (e.statusCode == 401 || e.statusCode == 403) {

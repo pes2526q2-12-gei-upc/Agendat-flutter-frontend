@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/services/token_storage.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 
@@ -58,20 +59,43 @@ class LoginUserFailure extends LoginUserResult {
 Map<String, dynamic>? currentLoggedInUser;
 String? currentAuthToken;
 
-/// Desa l'usuari autenticat amb JSON, potser més endavant fer-ho amb
-void setCurrentLoggedInUser(Map<String, dynamic>? userJson) {
+Future<void> setCurrentLoggedInUser(Map<String, dynamic>? userJson) async {
   currentLoggedInUser = userJson;
+  // Persist user data to secure storage
+  await TokenStorage.writeUser(userJson);
 }
 
-void setCurrentAuthToken(String? token) {
+Future<void> setCurrentAuthToken(String? token) async {
   currentAuthToken = token;
   ApiClient.setAuthToken(token);
+  await TokenStorage.write(token);
 }
 
-/// Implementada tot i que no s'utilitza actualment. Feta pel futur.
-void logout() {
-  setCurrentLoggedInUser(null);
-  setCurrentAuthToken(null);
+/// Tanca la sessió local: esborra l'usuari i el token d'autenticació.
+Future<void> logout() async {
+  currentLoggedInUser = null;
+  currentAuthToken = null;
+  ApiClient.setAuthToken(null);
+  await TokenStorage.clear();
+}
+
+/// Restaura la sessió des del disc en arrencar l'app.
+/// Retorna `true` si hi havia un token desat (l'usuari pot saltar el login).
+Future<bool> restoreSession() async {
+  final token = await TokenStorage.read();
+  if (token == null) {
+    return false;
+  }
+
+  final userJson = await TokenStorage.readUser();
+  if (userJson != null) {
+    currentLoggedInUser = userJson;
+  }
+
+  currentAuthToken = token;
+  ApiClient.setAuthToken(token);
+
+  return true;
 }
 
 /// Crida POST /api/users/login/ per iniciar sessió.
@@ -90,11 +114,11 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
     final token = decoded?['token']?.toString();
     final user = decoded?['user'];
     if (user is Map<String, dynamic>) {
-      setCurrentLoggedInUser(user);
+      await setCurrentLoggedInUser(user);
     } else {
-      setCurrentLoggedInUser(null);
+      await setCurrentLoggedInUser(null);
     }
-    setCurrentAuthToken(token);
+    await setCurrentAuthToken(token);
     return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
   } on ApiException catch (e) {
     return LoginUserFailure(statusCode: e.statusCode, error: e);
