@@ -98,6 +98,47 @@ Future<bool> restoreSession() async {
   return true;
 }
 
+/// Crida POST /api/users/login-with-google/ per iniciar sessió amb Google.
+Future<LoginUserResult> loginWithGoogle({
+  String? idToken,
+  String? accessToken,
+}) async {
+  try {
+    final body = <String, dynamic>{};
+    if (idToken != null) body['id_token'] = idToken;
+    if (accessToken != null) body['access_token'] = accessToken;
+
+    final response = await ApiClient.postJson(
+      '/api/users/login-with-google/',
+      body: body,
+      expectedStatusCode: 200,
+    );
+    // Backend returns: { "token": "...", "user": { ... } }
+    final decoded = response.body.isNotEmpty
+        ? jsonDecode(response.body) as Map<String, dynamic>?
+        : null;
+    final token = decoded?['token']?.toString();
+    final user = decoded?['user'];
+    if (user is Map<String, dynamic>) {
+      await setCurrentLoggedInUser(user);
+    } else {
+      await setCurrentLoggedInUser(null);
+    }
+    await setCurrentAuthToken(token);
+    return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
+  } on ApiException catch (e) {
+    Map<String, dynamic>? body;
+    if (e.body.isNotEmpty) {
+      try {
+        body = jsonDecode(e.body) as Map<String, dynamic>?;
+      } catch (_) {}
+    }
+    return LoginUserFailure(statusCode: e.statusCode, body: body, error: e);
+  } catch (e) {
+    return LoginUserFailure(statusCode: -1, error: e);
+  }
+}
+
 /// Crida POST /api/users/login/ per iniciar sessió.
 Future<LoginUserResult> loginUser(LoginUserRequest request) async {
   try {
