@@ -5,6 +5,8 @@ import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
+import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
+import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
 
 void main() {
   runApp(const MyApp());
@@ -48,8 +50,8 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   static const List<Widget> _screens = [
     VisualizeScreen(),
     MapScreen(),
-    _PendingTabScreen(),
-    _PendingTabScreen(),
+    DeleteAccountScreen(),
+    LogOutScreen(),
     ProfileScreen(),
   ];
 
@@ -82,20 +84,6 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
       bottomNavigationBar: AppNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onDestinationSelected,
-      ),
-    );
-  }
-}
-
-class _PendingTabScreen extends StatelessWidget {
-  const _PendingTabScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Aquesta pantalla encara no esta disponible.',
-        textAlign: TextAlign.center,
       ),
     );
   }
