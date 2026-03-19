@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/api/events_api.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/models/event.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({
@@ -35,10 +36,19 @@ class _EventScreenState extends State<EventScreen> {
     });
   }
 
+  Future<void> _openLink(Uri uri) async {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted || opened) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No s\'ha pogut obrir l\'enllaç')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MainAppBar(title: 'Detalls de l\'événement'),
+      appBar: const MainAppBar(title: 'Detalls de l\'esdemeniment'),
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
@@ -61,10 +71,11 @@ class _EventScreenState extends State<EventScreen> {
               ),
             );
           }
-
           final event = snapshot.data!;
+          final linkUri = event.displayUrlUri;
+
           // Added SingleChildScrollView so long text doesn't overflow the screen!
-          return SingleChildScrollView( 
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,11 +87,31 @@ class _EventScreenState extends State<EventScreen> {
                 Text('Descripció: ${event.description ?? '-'}'),
                 Text('URL activitat: ${event.url_activity ?? '-'}'),
                 Text('URL tiquet: ${event.url_ticket ?? '-'}'),
+                if (linkUri != null)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('URL: '),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _openLink(linkUri),
+                          child: Text(
+                            event.displayUrl,
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Text('URL: ${event.displayUrl}'),
                 Text('Horari: ${event.schedule ?? '-'}'),
                 Text('Gratuït: ${event.free ? 'Sí' : 'No'}'),
                 Text('Modalitat: ${event.modality ?? '-'}'),
                 Text('Adreça: ${event.address ?? '-'}'),
-                Text('Localitat: ${event.locality ?? '-'}'),
                 Text('Data inici: ${event.startDate ?? '-'}'),
                 Text('Data fi: ${event.endDate ?? '-'}'),
                 Text('Categoria: ${event.categories.isEmpty ? '-' : event.categories.join(', ')}'),

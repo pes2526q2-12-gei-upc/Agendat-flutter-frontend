@@ -1,3 +1,5 @@
+import 'package:agendat/core/utils/event_text_utils.dart';
+
 class Event {
   final String code;
   final String title;
@@ -34,15 +36,15 @@ class Event {
 
   String get location {
     final parts = [
-      municipi,
-      provincia,
+      EventTextUtils.stringOrNull(municipi),
+      EventTextUtils.stringOrNull(provincia),
     ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
     return parts.isEmpty ? 'Per determinar' : parts.join(', ');
   }
 
   String get displayDateRange {
-    final start = _formatDisplayDate(startDate);
-    final end = _formatDisplayDate(endDate);
+    final start = EventTextUtils.formatDisplayDate(startDate);
+    final end = EventTextUtils.formatDisplayDate(endDate);
     if (start == null && end == null) return 'Per determinar';
     if (start != null && end != null) return '$start - $end';
     if (start != null) return '$start - Per determinar';
@@ -50,8 +52,7 @@ class Event {
   }
 
   String get displayCategory {
-    if (categories.isEmpty) return 'General';
-    return categories.map(_capitalize).join(', ');
+    return EventTextUtils.categoriesToCapitalizedString(categories) ?? 'General';
   }
 
   String get displaySubtitle {
@@ -59,17 +60,6 @@ class Event {
     return (raw == null || raw.isEmpty) ? 'Sense descripció' : raw;
   }
 
-  // ── Private helpers ──────────────────────────────────────────────
-
-  static String? _formatDisplayDate(DateTime? date) {
-    if (date == null) return null;
-    final dd = date.day.toString().padLeft(2, '0');
-    final mm = date.month.toString().padLeft(2, '0');
-    return '$dd/$mm/${date.year}';
-  }
-
-  static String _capitalize(String s) =>
-      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 }
 
 class EventExtended extends Event {
@@ -116,6 +106,26 @@ class EventExtended extends Event {
     this.url_locality,
     this.telephone_locality,
   });
+
+  String get displayUrl => displayUrlUri?.toString() ?? '-';
+
+  bool get hasDisplayUrl => displayUrlUri != null;
+
+  Uri? get displayUrlUri {
+    final raw = EventTextUtils.rawStringOrNull(url_locality) ??
+        EventTextUtils.rawStringOrNull(url_activity) ??
+        EventTextUtils.rawStringOrNull(url_ticket) ??
+        EventTextUtils.rawStringOrNull(urls);
+
+    if (raw == null) return null;
+
+    final hasScheme = raw.startsWith('http://') || raw.startsWith('https://');
+    final normalized = hasScheme ? raw : 'https://$raw';
+    final uri = Uri.tryParse(normalized);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+    return uri;
+  }
+
 }
 
 typedef EventExpanded = EventExtended;
