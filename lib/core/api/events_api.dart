@@ -1,9 +1,25 @@
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/dto/event_list_dto.dart';
+import 'package:agendat/core/mappers/event_mapper.dart';
+import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
+import 'package:agendat/core/services/events_response_parser.dart';
 
 class EventsApi {
   static const String _path = '/api/events/';
+
+  Future<EventExtended> fetchEventByCode(String eventCode) async {
+    final code = eventCode.trim();
+    if (code.isEmpty) {
+      throw const FormatException('El codi de l\'esdeveniment no pot ser buit.');
+    }
+    final response = await ApiClient.get('$_path$code/');
+    final decoded = ApiClient.decodeBody(response);
+    final Map<String, dynamic> json = decoded is Map<String, dynamic>
+        ? decoded
+        : EventsResponseParser.parseSingleEventBody(response.body, code);
+    return EventDto.fromJson(json).toExtendedDomain();
+  }
 
   Future<List<EventListDto>> fetchEvents({EventFilters? filters}) async {
     final params = _buildQueryParams(filters);
