@@ -66,12 +66,6 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   void _onDestinationSelected(int index) {
     if (index == _selectedIndex) return;
 
-    if (index == 2 || index == 3) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('pendent')));
-    }
-
     setState(() {
       _selectedIndex = index;
     });
