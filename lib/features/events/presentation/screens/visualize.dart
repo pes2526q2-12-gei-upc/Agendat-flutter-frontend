@@ -61,7 +61,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MainAppBar(title: 'Cercar',),
+      appBar: const MainAppBar(title: 'Cercar'),
       body: Column(
         children: [
           bar.AppSearchBar(
@@ -177,7 +177,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               eventSubtitle(event),
               const SizedBox(height: 10),
               Row(
-                children: [eventDate(event), const Spacer(), eventPayment(event)],
+                children: [
+                  eventDate(event),
+                  const Spacer(),
+                  eventPayment(event),
+                ],
               ),
               const SizedBox(height: 4),
               eventPlace(event),

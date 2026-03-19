@@ -4,10 +4,7 @@ import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/models/event.dart';
 
 class EventScreen extends StatefulWidget {
-  const EventScreen({
-    super.key,
-    required this.eventCode,
-  });
+  const EventScreen({super.key, required this.eventCode});
 
   final String eventCode;
 
@@ -64,12 +61,18 @@ class _EventScreenState extends State<EventScreen> {
 
           final event = snapshot.data!;
           // Added SingleChildScrollView so long text doesn't overflow the screen!
-          return SingleChildScrollView( 
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(event.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                Text(
+                  event.title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Text('Codi: ${event.code}'),
                 Text('Subtítol: ${event.subtitle ?? '-'}'),
@@ -83,7 +86,9 @@ class _EventScreenState extends State<EventScreen> {
                 Text('Localitat: ${event.locality ?? '-'}'),
                 Text('Data inici: ${event.startDate ?? '-'}'),
                 Text('Data fi: ${event.endDate ?? '-'}'),
-                Text('Categoria: ${event.categories.isEmpty ? '-' : event.categories.join(', ')}'),
+                Text(
+                  'Categoria: ${event.categories.isEmpty ? '-' : event.categories.join(', ')}',
+                ),
                 Text('Provincia: ${event.provincia ?? '-'}'),
                 Text('Comarca: ${event.comarca ?? '-'}'),
                 Text('Municipi: ${event.municipi ?? '-'}'),
