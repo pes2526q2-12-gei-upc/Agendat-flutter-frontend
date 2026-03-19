@@ -4,6 +4,8 @@ import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
+import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/features/events/presentation/screens/eventView.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -59,7 +61,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: appBar(),
+      appBar: const MainAppBar(title: 'Cercar',),
       body: Column(
         children: [
           bar.AppSearchBar(
@@ -137,36 +139,51 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Widget eventCard(Event event) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color.fromARGB(255, 190, 0, 47),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EventScreen(eventCode: event.code),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color.fromARGB(255, 190, 0, 47),
+              width: 2,
+            ),
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: eventTitle(event)),
-              const SizedBox(width: 10),
-              eventCategory(event),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: eventTitle(event)),
+                  const SizedBox(width: 10),
+                  eventCategory(event),
+                ],
+              ),
+              const SizedBox(height: 4),
+              eventSubtitle(event),
+              const SizedBox(height: 10),
+              Row(
+                children: [eventDate(event), const Spacer(), eventPayment(event)],
+              ),
+              const SizedBox(height: 4),
+              eventPlace(event),
             ],
           ),
-          const SizedBox(height: 4),
-          eventSubtitle(event),
-          const SizedBox(height: 10),
-          Row(
-            children: [eventDate(event), const Spacer(), eventPayment(event)],
-          ),
-          const SizedBox(height: 4),
-          eventPlace(event),
-        ],
+        ),
       ),
     );
   }
@@ -230,18 +247,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  AppBar appBar() {
-    return AppBar(
-      title: const Text(
-        "Agenda't",
-        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-      ),
-      backgroundColor: Colors.white,
-      elevation: 0.0,
-      centerTitle: false,
     );
   }
 }

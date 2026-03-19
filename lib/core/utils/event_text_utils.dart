@@ -38,6 +38,13 @@ class EventTextUtils {
     return normalizedForComparison(left) == normalizedForComparison(right);
   }
 
+    // Converts value to string or returns null if empty
+  static String? rawStringOrNull(dynamic value) {
+    final text = trimmedOrNull(value);
+    if (text == null) return null;
+    return text.isEmpty ? null : text;
+  }
+
   // Converts value to string or returns null if empty
   static String? stringOrNull(dynamic value) {
     final text = trimmedOrNull(value);
