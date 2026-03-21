@@ -21,9 +21,8 @@ class _EventScreenState extends State<EventScreen> {
   final EventsApi _eventsApi = EventsApi();
   late Future<EventExtended> _eventFuture;
 
-  bool _hasText(String? value) {
-    return value != null && value.trim().isNotEmpty;
-  }
+  // --- Logic ---
+  bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
   Uri? _parseUrl(String? urlString) {
     if (!_hasText(urlString)) return null;
@@ -37,16 +36,12 @@ class _EventScreenState extends State<EventScreen> {
   @override
   void initState() {
     super.initState();
-    _eventFuture = _loadEvent();
-  }
-
-  Future<EventExtended> _loadEvent() async {
-    return _eventsApi.fetchEventByCode(widget.eventCode);
+    _eventFuture = _eventsApi.fetchEventByCode(widget.eventCode);
   }
 
   void _retryLoad() {
     setState(() {
-      _eventFuture = _loadEvent();
+      _eventFuture = _eventsApi.fetchEventByCode(widget.eventCode);
     });
   }
 
@@ -62,7 +57,8 @@ class _EventScreenState extends State<EventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MainAppBar(title: 'Detalls de l\'esdeveniment'),
+      backgroundColor: Colors.grey[50],
+      appBar: const MainAppBar(title: 'Detalls'),
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
@@ -72,154 +68,212 @@ class _EventScreenState extends State<EventScreen> {
 
           if (snapshot.hasError) {
             return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Error: ${snapshot.error}', textAlign: TextAlign.center),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: _retryLoad,
-                    child: const Text('Reintentar'),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Error: ${snapshot.error}', textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _retryLoad,
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
               ),
             );
           }
+
           final event = snapshot.data!;
-          final startDate = EventTextUtils.formatDisplayDate(event.startDate);
-          final endDate = EventTextUtils.formatDisplayDate(event.endDate);
-          final urlLocalityUri = _parseUrl(event.url_locality);
-          final urlActivityUri = _parseUrl(event.url_activity);
-          final urlTicketUri = _parseUrl(event.url_ticket);
+          
+          // Fix: Ensure these are non-nullable Strings for the UI logic
+          final String startDate = EventTextUtils.formatDisplayDate(event.startDate) ?? '';
+          final String endDate = EventTextUtils.formatDisplayDate(event.endDate) ?? '';
 
-          const detailStyle = TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color.fromARGB(255, 0, 0, 0),
-          );
-
-          // Added SingleChildScrollView so long text doesn't overflow the screen!
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_hasText(event.title))
-                  Text(
-                    event.title, 
-                    style: const TextStyle(
-                    fontSize: 22,
+                // Title and Subtitle
+                Text(
+                  event.title,
+                  style: const TextStyle(
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 0, 0, 0),
-                    ),
+                    color: Colors.black87,
                   ),
-                const SizedBox(height: 8),
-                if (_hasText(event.subtitle))
-                  Text(
-                    '${event.subtitle!.trim()}', 
-                      style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 44, 44, 44),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                if (_hasText(event.description))
-                  Text('${event.description!.trim()}',
-                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 75, 75, 75),
-                    ),
-                   ),
+                ),
+                if (_hasText(event.subtitle)) ...[
                   const SizedBox(height: 6),
-                if (urlActivityUri != null)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('URL ativitat: ', style: detailStyle),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _openLink(urlActivityUri),
-                          child: Text(
-                            event.url_activity!.trim(),
-                            style: detailStyle.copyWith(
-                              color: Colors.blue,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                if (urlLocalityUri != null)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('URL localitat: ', style: detailStyle),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _openLink(urlLocalityUri),
-                          child: Text(
-                            event.url_locality!.trim(),
-                            style: detailStyle.copyWith(
-                              color: Colors.blue,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                if (urlTicketUri != null)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('URL entrades: ', style: detailStyle),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _openLink(urlTicketUri),
-                          child: Text(
-                            event.url_ticket!.trim(),
-                            style: detailStyle.copyWith(
-                              color: const Color.fromARGB(255, 18, 107, 180),
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                if (_hasText(event.schedule))
-                  Text('Horari: ${event.schedule!.trim()}', style: detailStyle),
-                Text('Gratuït: ${event.free ? 'Sí' : 'No'}', style: detailStyle),
-                if (_hasText(event.modality))
-                  Text('Modalitat: ${event.modality!.trim()}', style: detailStyle),
-                if (_hasText(event.address))
-                  Text('Adreça: ${event.address!.trim()}', style: detailStyle),
-                if (startDate == endDate && _hasText(startDate))
-                  Text('Data: $startDate', style: detailStyle),
-                if (startDate != endDate) ...[
-                  if (_hasText(startDate))
-                    Text('Data inici: $startDate', style: detailStyle),
-                  if (_hasText(endDate))
-                    Text('Data fi: $endDate', style: detailStyle),
-                ],
-                if (event.categories
-                    .map((category) => category.trim())
-                    .where((category) => category.isNotEmpty)
-                    .isNotEmpty)
                   Text(
-                    'Categoria: ${event.categories.map((category) => category.trim()).where((category) => category.isNotEmpty).join(', ')}',
-                    style: detailStyle,
+                    event.subtitle!.trim(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                if (_hasText(event.location) && event.location != 'Per determinar')
-                  Text('Ubicació: ${event.location}', style: detailStyle),
+                ],
+                const Divider(height: 32, thickness: 1),
+
+                // Description
+                if (_hasText(event.description))
+                  _buildSectionCard(
+                    title: 'Descripció',
+                    content: Text(
+                      event.description!.trim(),
+                      style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+                    ),
+                  ),
+
+                // Main Details Card
+                _buildSectionCard(
+                  title: 'Informació de l\'esdeveniment',
+                  content: Column(
+                    children: [
+                      // Date Logic Fix
+                      _buildInfoRow(
+                        Icons.calendar_today_rounded,
+                        'Data',
+                        (startDate == endDate) ? startDate : '$startDate - $endDate',
+                      ),
+                      if (_hasText(event.schedule))
+                        _buildInfoRow(Icons.access_time_rounded, 'Horari', event.schedule!.trim()),
+                      
+                      _buildInfoRow(Icons.euro_rounded, 'Preu', event.free ? 'Gratuït' : 'De pagament'),
+                      
+                      if (_hasText(event.modality))
+                        _buildInfoRow(Icons.info_outline_rounded, 'Modalitat', event.modality!.trim()),
+                      
+                      if (_hasText(event.address))
+                        _buildInfoRow(Icons.location_on_rounded, 'Adreça', event.address!.trim()),
+                      
+                      if (_hasText(event.location) && event.location != 'Per determinar')
+                        _buildInfoRow(Icons.map_rounded, 'Ubicació', event.location!),
+                    ],
+                  ),
+                ),
+
+                // Links Card
+                if (_parseUrl(event.url_activity) != null || 
+                    _parseUrl(event.url_locality) != null || 
+                    _parseUrl(event.url_ticket) != null)
+                  _buildSectionCard(
+                    title: 'Enllaços d\'interès',
+                    content: Column(
+                      children: [
+                        if (_parseUrl(event.url_activity) != null)
+                          _buildLinkTile('Web de l\'activitat', _parseUrl(event.url_activity)!),
+                        if (_parseUrl(event.url_locality) != null)
+                          _buildLinkTile('Web de la localitat', _parseUrl(event.url_locality)!),
+                        if (_parseUrl(event.url_ticket) != null)
+                          _buildLinkTile('Compra d\'entrades', _parseUrl(event.url_ticket)!, isPrimary: true),
+                      ],
+                    ),
+                  ),
+
+                // Categories
+                if (event.categories.any((c) => c.trim().isNotEmpty))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 0,
+                      children: event.categories
+                          .where((c) => c.trim().isNotEmpty)
+                          .map((c) => Chip(
+                                label: Text(c.trim(), style: const TextStyle(fontSize: 12, color: Colors.blueAccent)),
+                                backgroundColor: Colors.blue[50],
+                                side: BorderSide.none,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ))
+                          .toList(),
+                    ),
+                  ),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  // UI Building Helpers
+  Widget _buildSectionCard({required String title, required Widget content}) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.1),
+          ),
+          const SizedBox(height: 12),
+          content,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.blue[400]),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                children: [
+                  TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: value),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinkTile(String label, Uri uri, {bool isPrimary = false}) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(Icons.open_in_new_rounded, color: isPrimary ? Colors.blue : Colors.blueGrey, size: 20),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: isPrimary ? Colors.blue : Colors.black87,
+          fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
+          fontSize: 14,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+      onTap: () => _openLink(uri),
+      dense: true,
+      visualDensity: VisualDensity.compact,
     );
   }
 }
