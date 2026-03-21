@@ -36,8 +36,8 @@ class Event {
 
   String get location {
     final parts = [
-      EventTextUtils.stringOrNull(municipi),
-      EventTextUtils.stringOrNull(provincia),
+      EventTextUtils.labelOrNull(municipi),
+      EventTextUtils.labelOrNull(provincia),
     ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
     return parts.isEmpty ? 'Per determinar' : parts.join(', ');
   }
