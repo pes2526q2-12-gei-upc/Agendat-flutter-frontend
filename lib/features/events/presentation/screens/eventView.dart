@@ -18,10 +18,11 @@ class EventScreen extends StatefulWidget {
 }
 
 class _EventScreenState extends State<EventScreen> {
+
   final EventsApi _eventsApi = EventsApi();
   late Future<EventExtended> _eventFuture;
+  bool _isDescriptionExpanded = false;
 
-  // --- Logic ---
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
   Uri? _parseUrl(String? urlString) {
@@ -45,6 +46,7 @@ class _EventScreenState extends State<EventScreen> {
     });
   }
 
+  // Opens external links using the system browser/app.
   Future<void> _openLink(Uri uri) async {
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted || opened) return;
@@ -62,6 +64,7 @@ class _EventScreenState extends State<EventScreen> {
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -88,17 +91,19 @@ class _EventScreenState extends State<EventScreen> {
           }
 
           final event = snapshot.data!;
-          
-          // Fix: Ensure these are non-nullable Strings for the UI logic
           final String startDate = EventTextUtils.formatDisplayDate(event.startDate) ?? '';
           final String endDate = EventTextUtils.formatDisplayDate(event.endDate) ?? '';
+            final List<String> formattedCategories = event.categories
+              .map(EventTextUtils.labelOrNull)
+              .whereType<String>()
+              .toList();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title and Subtitle
+                // Header section with title and optional subtitle.
                 Text(
                   event.title,
                   style: const TextStyle(
@@ -120,22 +125,45 @@ class _EventScreenState extends State<EventScreen> {
                 ],
                 const Divider(height: 32, thickness: 1),
 
-                // Description
+                // Expandable description section.
                 if (_hasText(event.description))
                   _buildSectionCard(
                     title: 'Descripció',
-                    content: Text(
-                      event.description!.trim(),
-                      style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+                    trailing: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        setState(() {
+                          _isDescriptionExpanded = !_isDescriptionExpanded;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(
+                          _isDescriptionExpanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          size: 28,
+                          color: const Color.fromARGB(255, 202, 3, 3),
+                        ),
+                      ),
+                    ),
+                    content: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.description!.trim(),
+                          maxLines: _isDescriptionExpanded ? null : 2,
+                          overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+                        ),
+                      ],
                     ),
                   ),
 
-                // Main Details Card
                 _buildSectionCard(
                   title: 'Informació de l\'esdeveniment',
                   content: Column(
                     children: [
-                      // Date Logic Fix
                       _buildInfoRow(
                         Icons.calendar_today_rounded,
                         'Data',
@@ -158,7 +186,6 @@ class _EventScreenState extends State<EventScreen> {
                   ),
                 ),
 
-                // Links Card
                 if (_parseUrl(event.url_activity) != null || 
                     _parseUrl(event.url_locality) != null || 
                     _parseUrl(event.url_ticket) != null)
@@ -176,18 +203,16 @@ class _EventScreenState extends State<EventScreen> {
                     ),
                   ),
 
-                // Categories
-                if (event.categories.any((c) => c.trim().isNotEmpty))
+                if (formattedCategories.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 0,
-                      children: event.categories
-                          .where((c) => c.trim().isNotEmpty)
+                      children: formattedCategories
                           .map((c) => Chip(
-                                label: Text(c.trim(), style: const TextStyle(fontSize: 12, color: Colors.blueAccent)),
-                                backgroundColor: Colors.blue[50],
+                              label: Text(c, style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 202, 3, 3))),
+                                backgroundColor: const Color.fromARGB(255, 255, 219, 219),
                                 side: BorderSide.none,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ))
@@ -202,8 +227,7 @@ class _EventScreenState extends State<EventScreen> {
     );
   }
 
-  // UI Building Helpers
-  Widget _buildSectionCard({required String title, required Widget content}) {
+  Widget _buildSectionCard({required String title, required Widget content, Widget? trailing}) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 20),
@@ -222,9 +246,17 @@ class _EventScreenState extends State<EventScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.1),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 202, 3, 3), letterSpacing: 1.1),
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
           ),
           const SizedBox(height: 12),
           content,
@@ -233,6 +265,7 @@ class _EventScreenState extends State<EventScreen> {
     );
   }
 
+  // Shared row renderer for icon + label/value metadata lines.
   Widget _buildInfoRow(IconData icon, String label, String value) {
     if (value.isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -240,7 +273,7 @@ class _EventScreenState extends State<EventScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.blue[400]),
+          Icon(icon, size: 20, color: const Color.fromARGB(255, 202, 3, 3)),
           const SizedBox(width: 12),
           Expanded(
             child: RichText(
@@ -258,14 +291,16 @@ class _EventScreenState extends State<EventScreen> {
     );
   }
 
+  // Standardized tile for opening external resources.
+  // isPrimary highlights more important calls to action (e.g., ticket link).
   Widget _buildLinkTile(String label, Uri uri, {bool isPrimary = false}) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(Icons.open_in_new_rounded, color: isPrimary ? Colors.blue : Colors.blueGrey, size: 20),
+      leading: Icon(Icons.open_in_new_rounded, color: isPrimary ? const Color.fromARGB(255, 202, 3, 3) : Colors.blueGrey, size: 20),
       title: Text(
         label,
         style: TextStyle(
-          color: isPrimary ? Colors.blue : Colors.black87,
+          color: isPrimary ? const Color.fromARGB(255, 202, 3, 3) : Colors.black87,
           fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
           fontSize: 14,
           decoration: TextDecoration.underline,
