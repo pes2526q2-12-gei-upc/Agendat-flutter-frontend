@@ -1,5 +1,6 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 //PENDENT: esborrar el token d'autenticació
 
@@ -12,6 +13,11 @@ class LogOutScreen extends StatefulWidget {
 
 class _LogOutScreenState extends State<LogOutScreen> {
   bool _isLoggingOut = false;
+
+  Future<void> _clearAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+  }
 
   Future<void> _requestLogOut() async {
     final confirmed = await showDialog<bool>(
@@ -38,21 +44,23 @@ class _LogOutScreenState extends State<LogOutScreen> {
 
     setState(() => _isLoggingOut = true);
 
-    // Esborra el token d'autenticació: PENDENT
-    //final prefs = await SharedPreferences.getInstance();
-    //await prefs.remove('token');
+    try {
+      await _clearAuthToken();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No s\'ha pogut tancar la sessio.')),
+        );
+        setState(() => _isLoggingOut = false);
+      }
+      return;
+    }
 
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
-
-    if (mounted) {
-      setState(() => _isLoggingOut = false);
-    }
-
-    setState(() => _isLoggingOut = true);
   }
 
   @override
