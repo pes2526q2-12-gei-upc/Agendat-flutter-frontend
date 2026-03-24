@@ -48,6 +48,11 @@ class Event {
     return 'Per determinar - $end';
   }
 
+  String get displayStartDate =>
+      _formatDisplayDate(startDate) ?? 'Per determinar';
+
+  String get displayEndDate => _formatDisplayDate(endDate) ?? 'Per determinar';
+
   String get displayCategory {
     if (categories.isEmpty) return 'General';
     return categories.map(_capitalize).join(', ');
