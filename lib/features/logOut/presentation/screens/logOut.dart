@@ -2,8 +2,6 @@ import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-//PENDENT: esborrar el token d'autenticació
-
 class LogOutScreen extends StatefulWidget {
   const LogOutScreen({super.key});
 
@@ -15,8 +13,12 @@ class _LogOutScreenState extends State<LogOutScreen> {
   bool _isLoggingOut = false;
 
   Future<void> _clearAuthToken() async {
+    //final tokenBeforeRemove = await TokenStorage.read();
+    //debugPrint('Logout: token abans de remove = $tokenBeforeRemove');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
+    //final tokenAfterRemove = await TokenStorage.read();
+    //debugPrint('Logout: token despres de remove = $tokenAfterRemove');
   }
 
   Future<void> _requestLogOut() async {
