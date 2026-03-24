@@ -64,9 +64,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showSnackBar('Introdueix el correu electrònic.');
       return;
     }
-    // Contrasenya de només 4 caràcters per agilitzar el desenvolupament
-    if (password.length < 4) {
-      _showSnackBar('La contrasenya ha de tenir almenys 4 caràcters.');
+    if (password.length < 8) {
+      _showSnackBar('La contrasenya ha de tenir almenys 8 caràcters.');
       return;
     }
     if (password != confirmPassword) {
@@ -288,7 +287,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _passwordController,
-                    hintText: 'Mínim 4 caràcters',
+                    hintText: 'Mínim 8 caràcters',
                     obscureText: _obscurePassword,
                     suffixIcon: IconButton(
                       icon: Icon(

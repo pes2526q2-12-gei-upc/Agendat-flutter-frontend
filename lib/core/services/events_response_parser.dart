@@ -13,7 +13,10 @@ class EventsResponseParser {
     throw const FormatException('Format de resposta inesperat per a /events');
   }
 
-  static Map<String, dynamic> parseSingleEventBody(String body, String eventCode) {
+  static Map<String, dynamic> parseSingleEventBody(
+    String body,
+    String eventCode,
+  ) {
     final decoded = jsonDecode(body);
 
     if (decoded is Map<String, dynamic>) {
@@ -39,13 +42,20 @@ class EventsResponseParser {
       return pickEventByCode(decoded, eventCode);
     }
 
-    throw const FormatException('Format de resposta inesperat per al detall d\'esdeveniment.');
+    throw const FormatException(
+      'Format de resposta inesperat per al detall d\'esdeveniment.',
+    );
   }
 
-  static Map<String, dynamic> pickEventByCode(List<dynamic> events, String eventCode) {
+  static Map<String, dynamic> pickEventByCode(
+    List<dynamic> events,
+    String eventCode,
+  ) {
     final entries = events.whereType<Map<String, dynamic>>().toList();
     if (entries.isEmpty) {
-      throw const FormatException('La resposta de detall no conté esdeveniments.');
+      throw const FormatException(
+        'La resposta de detall no conté esdeveniments.',
+      );
     }
 
     for (final event in entries) {
@@ -57,5 +67,4 @@ class EventsResponseParser {
 
     return entries.first;
   }
-  
 }

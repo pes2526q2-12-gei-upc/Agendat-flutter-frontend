@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
+import 'package:agendat/features/auth/data/models/forgot_password_request.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
+import 'package:agendat/features/auth/data/models/reset_password_request.dart';
 import 'package:http/http.dart' as http;
 
 /// Resultat de la creació d'usuari.
@@ -93,5 +95,103 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
     return LoginUserFailure(statusCode: response.statusCode, body: decoded);
   } catch (e) {
     return LoginUserFailure(statusCode: -1, error: e);
+  }
+}
+
+// --- Forgot / reset password ---
+
+sealed class ForgotPasswordResult {}
+
+class ForgotPasswordSuccess extends ForgotPasswordResult {
+  ForgotPasswordSuccess({this.message, this.statusCode = 200});
+  final int statusCode;
+  final String? message;
+}
+
+class ForgotPasswordFailure extends ForgotPasswordResult {
+  ForgotPasswordFailure({required this.statusCode, this.body, this.error});
+  final int statusCode;
+  final Map<String, dynamic>? body;
+  final Object? error;
+}
+
+/// POST /api/users/password-reset/ — envia un codi de 6 dígits al correu.
+Future<ForgotPasswordResult> forgotPassword(
+  ForgotPasswordRequest request,
+) async {
+  final uri = Uri.parse('${getBaseUrl()}/api/users/password-reset/');
+  try {
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(request.toJson()),
+    );
+
+    final dynamic decoded = response.body.isNotEmpty
+        ? jsonDecode(response.body)
+        : null;
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return ForgotPasswordSuccess(
+        statusCode: response.statusCode,
+        message: decoded?.toString(),
+      );
+    }
+    return ForgotPasswordFailure(
+      statusCode: response.statusCode,
+      body: decoded is Map<String, dynamic> ? decoded : null,
+    );
+  } catch (e) {
+    return ForgotPasswordFailure(statusCode: -1, error: e);
+  }
+}
+
+sealed class ResetPasswordResult {}
+
+class ResetPasswordSuccess extends ResetPasswordResult {
+  ResetPasswordSuccess({this.statusCode = 200, this.detail});
+  final int statusCode;
+  final String? detail;
+}
+
+class ResetPasswordFailure extends ResetPasswordResult {
+  ResetPasswordFailure({required this.statusCode, this.body, this.error});
+  final int statusCode;
+  final Map<String, dynamic>? body;
+  final Object? error;
+}
+
+/// POST /api/users/password-reset/confirm/ — valida el codi i desa la nova contrasenya.
+Future<ResetPasswordResult> resetPassword(ResetPasswordRequest request) async {
+  final uri = Uri.parse('${getBaseUrl()}/api/users/password-reset/confirm/');
+  try {
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(request.toJson()),
+    );
+
+    final dynamic decoded = response.body.isNotEmpty
+        ? jsonDecode(response.body)
+        : null;
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return ResetPasswordSuccess(
+        statusCode: response.statusCode,
+        detail: decoded?.toString(),
+      );
+    }
+    return ResetPasswordFailure(
+      statusCode: response.statusCode,
+      body: decoded is Map<String, dynamic> ? decoded : null,
+    );
+  } catch (e) {
+    return ResetPasswordFailure(statusCode: -1, error: e);
   }
 }
