@@ -65,12 +65,14 @@ class EventsApiService {
   Future<Map<String, dynamic>> fetchEventDetails(String eventCode) async {
     final cleanedCode = eventCode.trim();
     if (cleanedCode.isEmpty) {
-      throw const FormatException('El codi de l\'esdeveniment no pot ser buit.');
+      throw const FormatException(
+        'El codi de l\'esdeveniment no pot ser buit.',
+      );
     }
 
-    final uri = Uri.parse('${getBaseUrl()}$_eventsPath').replace(
-      queryParameters: {'code': cleanedCode},
-    );
+    final uri = Uri.parse(
+      '${getBaseUrl()}$_eventsPath',
+    ).replace(queryParameters: {'code': cleanedCode});
 
     final response = await http
         .get(uri, headers: _jsonHeaders)
@@ -82,7 +84,10 @@ class EventsApiService {
       );
     }
 
-    return EventsResponseParser.parseSingleEventBody(response.body, cleanedCode); 
+    return EventsResponseParser.parseSingleEventBody(
+      response.body,
+      cleanedCode,
+    );
   }
 
   String responseSnippet(String body) {

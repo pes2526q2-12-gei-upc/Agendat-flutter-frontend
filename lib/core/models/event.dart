@@ -27,7 +27,6 @@ class Event {
     this.longitude,
   });
 
-
   bool get hasCoordinates => latitude != null && longitude != null;
 
   // ── Display helpers ──────────────────────────────────────────────

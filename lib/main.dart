@@ -1,3 +1,4 @@
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,12 +9,22 @@ import 'package:agendat/features/map/presentation/screens/map.dart';
 import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
 import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final hasSession = await restoreSession();
+  runApp(
+    MyApp(
+      initialHome: hasSession
+          ? const RootNavigationScreen()
+          : const LoginScreen(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.initialHome});
+
+  final Widget initialHome;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +43,7 @@ class MyApp extends StatelessWidget {
           seedColor: const Color.fromARGB(255, 255, 105, 105),
         ),
       ),
-      home: const LoginScreen(),
+      home: initialHome,
     );
   }
 }
@@ -65,12 +76,6 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
 
   void _onDestinationSelected(int index) {
     if (index == _selectedIndex) return;
-
-    if (index == 2 || index == 3) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('pendent')));
-    }
 
     setState(() {
       _selectedIndex = index;
