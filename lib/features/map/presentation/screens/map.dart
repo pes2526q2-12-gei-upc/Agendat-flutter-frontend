@@ -153,7 +153,7 @@ class _MapScreenState extends State<MapScreen> {
         : screenWidth < 720
         ? 20.0
         : 28.0;
-    final selectedCardHeight = (screenHeight * 0.33).clamp(220.0, 340.0);
+    final selectedCardHeight = (screenHeight * 0.2).clamp(185.0, 280.0);
 
     final filteredEvents = _events
         .where((event) => _eventMatchesSearch(event, _searchQuery))

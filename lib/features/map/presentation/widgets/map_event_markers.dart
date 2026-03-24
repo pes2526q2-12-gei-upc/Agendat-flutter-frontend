@@ -7,11 +7,15 @@ class MapEventMarkerData {
   const MapEventMarkerData({
     required this.id,
     required this.title,
+    required this.startDateLabel,
+    required this.endDateLabel,
     required this.point,
   });
 
   final String id;
   final String title;
+  final String startDateLabel;
+  final String endDateLabel;
   final LatLng point;
 }
 
@@ -23,6 +27,8 @@ List<MapEventMarkerData> buildMarkersFromEvents(List<Event> events) {
         (e) => MapEventMarkerData(
           id: e.code,
           title: e.title,
+          startDateLabel: e.displayStartDate,
+          endDateLabel: e.displayEndDate,
           point: LatLng(e.latitude!, e.longitude!),
         ),
       )

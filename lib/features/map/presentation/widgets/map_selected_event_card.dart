@@ -42,42 +42,19 @@ class MapSelectedEventCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Fons de la imatge (PENDENT: quan tinguem fotos reals ho canviem)
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.grey.shade200,
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: 36,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Imatge pendent d\'implementar',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 event.title,
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
+                ),
+              ),
+              Text(
+                '${event.startDateLabel} - ${event.endDateLabel}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
                 ),
               ),
               if (hasCurrentLocation) ...[
@@ -88,7 +65,7 @@ class MapSelectedEventCard extends StatelessWidget {
                   style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

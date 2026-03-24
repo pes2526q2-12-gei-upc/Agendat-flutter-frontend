@@ -61,7 +61,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MainAppBar(title: 'Cercar'),
+      appBar: const MainAppBar(title: "Agenda't"),
       body: Column(
         children: [
           bar.AppSearchBar(
