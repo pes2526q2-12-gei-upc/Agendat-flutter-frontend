@@ -11,7 +11,9 @@ class EventsApi {
   Future<EventExtended> fetchEventByCode(String eventCode) async {
     final code = eventCode.trim();
     if (code.isEmpty) {
-      throw const FormatException('El codi de l\'esdeveniment no pot ser buit.');
+      throw const FormatException(
+        'El codi de l\'esdeveniment no pot ser buit.',
+      );
     }
     final response = await ApiClient.get('$_path$code/');
     final decoded = ApiClient.decodeBody(response);

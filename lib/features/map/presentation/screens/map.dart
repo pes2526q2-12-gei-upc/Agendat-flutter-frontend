@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:agendat/features/map/presentation/widgets/map_widgets.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/features/events/presentation/screens/eventView.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -107,7 +108,9 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _openEventDetails(MapEventMarkerData event) {
-    // TODO: Navigate to detail screen when implemented
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => EventScreen(eventCode: event.id)));
   }
 
   void _closeSelectedEventCard() {
@@ -148,8 +151,8 @@ class _MapScreenState extends State<MapScreen> {
     final horizontalPadding = isCompactWidth
         ? 12.0
         : screenWidth < 720
-            ? 20.0
-            : 28.0;
+        ? 20.0
+        : 28.0;
     final selectedCardHeight = (screenHeight * 0.33).clamp(220.0, 340.0);
 
     final filteredEvents = _events

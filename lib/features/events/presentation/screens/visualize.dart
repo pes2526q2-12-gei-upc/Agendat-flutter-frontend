@@ -177,7 +177,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               eventSubtitle(event),
               const SizedBox(height: 10),
               Row(
-                children: [eventDate(event), const Spacer(), eventPayment(event)],
+                children: [
+                  eventDate(event),
+                  const Spacer(),
+                  eventPayment(event),
+                ],
               ),
               const SizedBox(height: 4),
               eventPlace(event),

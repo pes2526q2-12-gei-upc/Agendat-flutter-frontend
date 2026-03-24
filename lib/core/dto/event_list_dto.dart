@@ -146,7 +146,9 @@ class EventDto {
   factory EventDto.fromJson(Map<String, dynamic> json) {
     return EventDto(
       code: (json['code'] ?? '').toString().trim(),
-      denomination: EventListDto._trimOrNull(json['denomination'] ?? json['title']),
+      denomination: EventListDto._trimOrNull(
+        json['denomination'] ?? json['title'],
+      ),
       subtitle: EventListDto._trimOrNull(json['subtitle']),
       free: EventListDto._parseBool(json['free']),
       categories: EventListDto._parseCategories(json['categories']),
@@ -207,4 +209,3 @@ class EventDto {
     };
   }
 }
-

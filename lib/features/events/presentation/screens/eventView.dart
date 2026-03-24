@@ -6,10 +6,7 @@ import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EventScreen extends StatefulWidget {
-  const EventScreen({
-    super.key,
-    required this.eventCode,
-  });
+  const EventScreen({super.key, required this.eventCode});
 
   final String eventCode;
 
