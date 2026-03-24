@@ -51,19 +51,20 @@ class Event {
   }
 
   String get displayStartDate =>
-      _formatDisplayDate(startDate) ?? 'Per determinar';
+      EventTextUtils.formatDisplayDate(startDate) ?? 'Per determinar';
 
-  String get displayEndDate => _formatDisplayDate(endDate) ?? 'Per determinar';
+  String get displayEndDate =>
+      EventTextUtils.formatDisplayDate(endDate) ?? 'Per determinar';
 
   String get displayCategory {
-    return EventTextUtils.categoriesToCapitalizedString(categories) ?? 'General';
+    return EventTextUtils.categoriesToCapitalizedString(categories) ??
+        'General';
   }
 
   String get displaySubtitle {
     final raw = subtitle?.trim();
     return (raw == null || raw.isEmpty) ? 'Sense descripció' : raw;
   }
-
 }
 
 class EventExtended extends Event {
@@ -116,7 +117,8 @@ class EventExtended extends Event {
   bool get hasDisplayUrl => displayUrlUri != null;
 
   Uri? get displayUrlUri {
-    final raw = EventTextUtils.rawStringOrNull(url_locality) ??
+    final raw =
+        EventTextUtils.rawStringOrNull(url_locality) ??
         EventTextUtils.rawStringOrNull(url_activity) ??
         EventTextUtils.rawStringOrNull(url_ticket) ??
         EventTextUtils.rawStringOrNull(urls);
@@ -129,7 +131,6 @@ class EventExtended extends Event {
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
     return uri;
   }
-
 }
 
 typedef EventExpanded = EventExtended;

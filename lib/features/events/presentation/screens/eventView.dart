@@ -15,7 +15,6 @@ class EventScreen extends StatefulWidget {
 }
 
 class _EventScreenState extends State<EventScreen> {
-
   final EventsApi _eventsApi = EventsApi();
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
@@ -25,7 +24,8 @@ class _EventScreenState extends State<EventScreen> {
   Uri? _parseUrl(String? urlString) {
     if (!_hasText(urlString)) return null;
     final normalized = urlString!.trim();
-    final hasScheme = normalized.startsWith('http://') || normalized.startsWith('https://');
+    final hasScheme =
+        normalized.startsWith('http://') || normalized.startsWith('https://');
     final urlWithScheme = hasScheme ? normalized : 'https://$normalized';
     final uri = Uri.tryParse(urlWithScheme);
     return (uri != null && uri.hasScheme && uri.host.isNotEmpty) ? uri : null;
@@ -61,7 +61,6 @@ class _EventScreenState extends State<EventScreen> {
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
-
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -73,9 +72,16 @@ class _EventScreenState extends State<EventScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
+                    ),
                     const SizedBox(height: 16),
-                    Text('Error: ${snapshot.error}', textAlign: TextAlign.center),
+                    Text(
+                      'Error: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _retryLoad,
@@ -88,9 +94,11 @@ class _EventScreenState extends State<EventScreen> {
           }
 
           final event = snapshot.data!;
-          final String startDate = EventTextUtils.formatDisplayDate(event.startDate) ?? '';
-          final String endDate = EventTextUtils.formatDisplayDate(event.endDate) ?? '';
-            final List<String> formattedCategories = event.categories
+          final String startDate =
+              EventTextUtils.formatDisplayDate(event.startDate) ?? '';
+          final String endDate =
+              EventTextUtils.formatDisplayDate(event.endDate) ?? '';
+          final List<String> formattedCategories = event.categories
               .map(EventTextUtils.labelOrNull)
               .whereType<String>()
               .toList();
@@ -150,8 +158,14 @@ class _EventScreenState extends State<EventScreen> {
                         Text(
                           event.description!.trim(),
                           maxLines: _isDescriptionExpanded ? null : 2,
-                          overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
+                          overflow: _isDescriptionExpanded
+                              ? TextOverflow.visible
+                              : TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            height: 1.5,
+                            color: Colors.black87,
+                          ),
                         ),
                       ],
                     ),
@@ -164,38 +178,71 @@ class _EventScreenState extends State<EventScreen> {
                       _buildInfoRow(
                         Icons.calendar_today_rounded,
                         'Data',
-                        (startDate == endDate) ? startDate : '$startDate - $endDate',
+                        (startDate == endDate)
+                            ? startDate
+                            : '$startDate - $endDate',
                       ),
                       if (_hasText(event.schedule))
-                        _buildInfoRow(Icons.access_time_rounded, 'Horari', event.schedule!.trim()),
-                      
-                      _buildInfoRow(Icons.euro_rounded, 'Preu', event.free ? 'Gratuït' : 'De pagament'),
-                      
+                        _buildInfoRow(
+                          Icons.access_time_rounded,
+                          'Horari',
+                          event.schedule!.trim(),
+                        ),
+
+                      _buildInfoRow(
+                        Icons.euro_rounded,
+                        'Preu',
+                        event.free ? 'Gratuït' : 'De pagament',
+                      ),
+
                       if (_hasText(event.modality))
-                        _buildInfoRow(Icons.info_outline_rounded, 'Modalitat', event.modality!.trim()),
-                      
+                        _buildInfoRow(
+                          Icons.info_outline_rounded,
+                          'Modalitat',
+                          event.modality!.trim(),
+                        ),
+
                       if (_hasText(event.address))
-                        _buildInfoRow(Icons.location_on_rounded, 'Adreça', event.address!.trim()),
-                      
-                      if (_hasText(event.location) && event.location != 'Per determinar')
-                        _buildInfoRow(Icons.map_rounded, 'Ubicació', event.location!),
+                        _buildInfoRow(
+                          Icons.location_on_rounded,
+                          'Adreça',
+                          event.address!.trim(),
+                        ),
+
+                      if (_hasText(event.location) &&
+                          event.location != 'Per determinar')
+                        _buildInfoRow(
+                          Icons.map_rounded,
+                          'Ubicació',
+                          event.location,
+                        ),
                     ],
                   ),
                 ),
 
-                if (_parseUrl(event.url_activity) != null || 
-                    _parseUrl(event.url_locality) != null || 
+                if (_parseUrl(event.url_activity) != null ||
+                    _parseUrl(event.url_locality) != null ||
                     _parseUrl(event.url_ticket) != null)
                   _buildSectionCard(
                     title: 'Enllaços d\'interès',
                     content: Column(
                       children: [
                         if (_parseUrl(event.url_activity) != null)
-                          _buildLinkTile('Web de l\'activitat', _parseUrl(event.url_activity)!),
+                          _buildLinkTile(
+                            'Web de l\'activitat',
+                            _parseUrl(event.url_activity)!,
+                          ),
                         if (_parseUrl(event.url_locality) != null)
-                          _buildLinkTile('Web de la localitat', _parseUrl(event.url_locality)!),
+                          _buildLinkTile(
+                            'Web de la localitat',
+                            _parseUrl(event.url_locality)!,
+                          ),
                         if (_parseUrl(event.url_ticket) != null)
-                          _buildLinkTile('Compra d\'entrades', _parseUrl(event.url_ticket)!, isPrimary: true),
+                          _buildLinkTile(
+                            'Compra d\'entrades',
+                            _parseUrl(event.url_ticket)!,
+                            isPrimary: true,
+                          ),
                       ],
                     ),
                   ),
@@ -207,12 +254,27 @@ class _EventScreenState extends State<EventScreen> {
                       spacing: 8,
                       runSpacing: 0,
                       children: formattedCategories
-                          .map((c) => Chip(
-                              label: Text(c, style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 202, 3, 3))),
-                                backgroundColor: const Color.fromARGB(255, 255, 219, 219),
-                                side: BorderSide.none,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ))
+                          .map(
+                            (c) => Chip(
+                              label: Text(
+                                c,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color.fromARGB(255, 202, 3, 3),
+                                ),
+                              ),
+                              backgroundColor: const Color.fromARGB(
+                                255,
+                                255,
+                                219,
+                                219,
+                              ),
+                              side: BorderSide.none,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          )
                           .toList(),
                     ),
                   ),
@@ -224,7 +286,11 @@ class _EventScreenState extends State<EventScreen> {
     );
   }
 
-  Widget _buildSectionCard({required String title, required Widget content, Widget? trailing}) {
+  Widget _buildSectionCard({
+    required String title,
+    required Widget content,
+    Widget? trailing,
+  }) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 20),
@@ -234,7 +300,7 @@ class _EventScreenState extends State<EventScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -249,7 +315,12 @@ class _EventScreenState extends State<EventScreen> {
               Expanded(
                 child: Text(
                   title.toUpperCase(),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 202, 3, 3), letterSpacing: 1.1),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 202, 3, 3),
+                    letterSpacing: 1.1,
+                  ),
                 ),
               ),
               if (trailing != null) trailing,
@@ -277,7 +348,10 @@ class _EventScreenState extends State<EventScreen> {
               text: TextSpan(
                 style: const TextStyle(fontSize: 14, color: Colors.black87),
                 children: [
-                  TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(
+                    text: '$label: ',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   TextSpan(text: value),
                 ],
               ),
@@ -293,11 +367,19 @@ class _EventScreenState extends State<EventScreen> {
   Widget _buildLinkTile(String label, Uri uri, {bool isPrimary = false}) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(Icons.open_in_new_rounded, color: isPrimary ? const Color.fromARGB(255, 202, 3, 3) : Colors.blueGrey, size: 20),
+      leading: Icon(
+        Icons.open_in_new_rounded,
+        color: isPrimary
+            ? const Color.fromARGB(255, 202, 3, 3)
+            : Colors.blueGrey,
+        size: 20,
+      ),
       title: Text(
         label,
         style: TextStyle(
-          color: isPrimary ? const Color.fromARGB(255, 202, 3, 3) : Colors.black87,
+          color: isPrimary
+              ? const Color.fromARGB(255, 202, 3, 3)
+              : Colors.black87,
           fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
           fontSize: 14,
           decoration: TextDecoration.underline,

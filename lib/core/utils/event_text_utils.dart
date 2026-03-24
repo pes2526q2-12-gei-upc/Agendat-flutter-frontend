@@ -58,6 +58,7 @@ class EventTextUtils {
     final mm = date.month.toString().padLeft(2, '0');
     return '$dd/$mm/${date.year}';
   }
+
   // Capitalizes the first letter of a string
   static String capitalizeFirst(String text) {
     if (text.isEmpty) return text;
