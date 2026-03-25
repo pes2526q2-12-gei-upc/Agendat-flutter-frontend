@@ -94,13 +94,29 @@ Future<List<UserSession>> fetchUserSessions({required String username}) async {
 /// Actualitza el perfil d'usuari amb PATCH /api/users/{id}/
 Future<UpdateProfileResult> updateUserProfile(
   int userId,
-  Map<String, dynamic> updates,
-) async {
+  Map<String, dynamic> updates, {
+  Uint8List? profileImageBytes,
+  String? profileImageFilename,
+  String? profileImageContentType,
+}) async {
   try {
-    final response = await ApiClient.patchJson(
-      '/api/users/$userId/',
-      body: updates,
-    );
+    final hasImage = profileImageBytes != null && profileImageBytes.isNotEmpty;
+    final response = hasImage
+        ? await ApiClient.patchMultipart(
+            '/api/users/$userId/',
+            fields: updates.map(
+              (key, value) => MapEntry(key, value?.toString() ?? ''),
+            ),
+            files: [
+              ApiClient.multipartFileFromBytes(
+                field: 'imatge',
+                bytes: profileImageBytes,
+                filename: profileImageFilename ?? 'profile_image.jpg',
+                contentType: profileImageContentType ?? 'image/jpeg',
+              ),
+            ],
+          )
+        : await ApiClient.patchJson('/api/users/$userId/', body: updates);
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final profile = UserProfile.fromJson(decoded);
     return UpdateProfileSuccess(profile: profile);
@@ -128,34 +144,6 @@ Future<UpdateProfileResult> updateUserProfile(
         }
       } catch (_) {}
     }
-    return UpdateProfileFailure(statusCode: e.statusCode, error: e);
-  } catch (e) {
-    return UpdateProfileFailure(statusCode: -1, error: e);
-  }
-}
-
-/// Actualitza la imatge de perfil amb POST /api/users/{id}/upload-profile-image/
-Future<UpdateProfileResult> uploadUserProfileImage(
-  int userId, {
-  required Uint8List profileImageBytes,
-  String? profileImageFilename,
-  String? profileImageContentType,
-}) async {
-  try {
-    final imageFile = ApiClient.multipartFileFromBytes(
-      field: 'profile_image',
-      bytes: profileImageBytes,
-      filename: profileImageFilename ?? 'profile_image.jpg',
-      contentType: profileImageContentType ?? 'image/jpeg',
-    );
-    final response = await ApiClient.postMultipart(
-      '/api/users/$userId/upload-profile-image/',
-      files: [imageFile],
-    );
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final profile = UserProfile.fromJson(decoded);
-    return UpdateProfileSuccess(profile: profile);
-  } on ApiException catch (e) {
     return UpdateProfileFailure(statusCode: e.statusCode, error: e);
   } catch (e) {
     return UpdateProfileFailure(statusCode: -1, error: e);

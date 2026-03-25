@@ -5,6 +5,7 @@ import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccoun
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
@@ -272,27 +273,37 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAvatar(UserProfile profile) {
-    String? imageUrl = profile.profileImage;
-    if (imageUrl != null &&
-        imageUrl.isNotEmpty &&
-        !imageUrl.startsWith('http')) {
-      final baseUrl = getBaseUrl();
-      if (imageUrl.startsWith('/')) {
-        imageUrl = '$baseUrl$imageUrl';
-      } else {
-        imageUrl = '$baseUrl/$imageUrl';
-      }
+    final imageUrl = resolveProfileImageUrl(profile.profileImage);
+    const radius = 45.0;
+    const size = radius * 2;
+
+    if (imageUrl == null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: Colors.grey.shade200,
+        child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
+      );
     }
 
-    return CircleAvatar(
-      radius: 45,
-      backgroundColor: Colors.grey.shade200,
-      backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-          ? NetworkImage(imageUrl)
-          : null,
-      child: (imageUrl == null || imageUrl.isEmpty)
-          ? Icon(Icons.person, size: 50, color: Colors.grey.shade400)
-          : null,
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          webHtmlElementStrategy: kIsWeb
+              ? WebHtmlElementStrategy.prefer
+              : WebHtmlElementStrategy.never,
+          errorBuilder: (_, __, ___) {
+            return Container(
+              color: Colors.grey.shade200,
+              alignment: Alignment.center,
+              child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
+            );
+          },
+        ),
+      ),
     );
   }
 

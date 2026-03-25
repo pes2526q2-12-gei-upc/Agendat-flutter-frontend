@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -83,23 +82,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       'description': description,
     };
 
-    if (_selectedProfileImageBytes != null &&
-        _selectedProfileImageBytes!.isNotEmpty) {
-      final uploadResult = await uploadUserProfileImage(
-        widget.currentProfile.id,
-        profileImageBytes: _selectedProfileImageBytes!,
-        profileImageFilename: _selectedProfileImage?.name,
-        profileImageContentType: _selectedProfileImage?.mimeType,
-      );
-      if (uploadResult is! UpdateProfileSuccess) {
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-        _handleUpdateResult(uploadResult);
-        return;
-      }
-    }
-
-    final result = await updateUserProfile(widget.currentProfile.id, updates);
+    final result = await updateUserProfile(
+      widget.currentProfile.id,
+      updates,
+      profileImageBytes: _selectedProfileImageBytes,
+      profileImageFilename: _selectedProfileImage?.name,
+      profileImageContentType: _selectedProfileImage?.mimeType,
+    );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -181,18 +170,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  CircleAvatar(
-                    radius: 52,
-                    backgroundColor: Colors.grey.shade200,
-                    backgroundImage: _buildAvatarImageProvider(),
-                    child: _buildAvatarImageProvider() == null
-                        ? Icon(
-                            Icons.person,
-                            size: 56,
-                            color: Colors.grey.shade400,
-                          )
-                        : null,
-                  ),
+                  _buildAvatar(),
                   Positioned(
                     right: -6,
                     bottom: -6,
@@ -379,21 +357,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  ImageProvider? _buildAvatarImageProvider() {
+  Widget _buildAvatar() {
+    const radius = 52.0;
+    const size = radius * 2;
+
     if (_selectedProfileImageBytes != null &&
         _selectedProfileImageBytes!.isNotEmpty) {
-      return MemoryImage(_selectedProfileImageBytes!);
+      return ClipOval(
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Image.memory(
+            _selectedProfileImageBytes!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildAvatarFallback(radius),
+          ),
+        ),
+      );
     }
 
-    final profileImage = widget.currentProfile.profileImage;
-    if (profileImage == null || profileImage.isEmpty) return null;
+    final imageUrl = resolveProfileImageUrl(widget.currentProfile.profileImage);
+    if (imageUrl == null) return _buildAvatarFallback(radius);
 
-    final baseUrl = getBaseUrl();
-    final imageUrl = profileImage.startsWith('http')
-        ? profileImage
-        : profileImage.startsWith('/')
-        ? '$baseUrl$profileImage'
-        : '$baseUrl/$profileImage';
-    return NetworkImage(imageUrl);
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          webHtmlElementStrategy: kIsWeb
+              ? WebHtmlElementStrategy.prefer
+              : WebHtmlElementStrategy.never,
+          errorBuilder: (_, __, ___) => _buildAvatarFallback(radius),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarFallback(double radius) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey.shade200,
+      child: Icon(Icons.person, size: 56, color: Colors.grey.shade400),
+    );
   }
 }
