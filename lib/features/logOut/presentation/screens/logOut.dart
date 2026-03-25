@@ -1,4 +1,5 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,6 +18,7 @@ class _LogOutScreenState extends State<LogOutScreen> {
     //debugPrint('Logout: token abans de remove = $tokenBeforeRemove');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
+    await logout();
     //final tokenAfterRemove = await TokenStorage.read();
     //debugPrint('Logout: token despres de remove = $tokenAfterRemove');
   }
