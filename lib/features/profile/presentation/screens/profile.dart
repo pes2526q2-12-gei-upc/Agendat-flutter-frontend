@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
+import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
@@ -227,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             if (_isOwnProfile) ...[
               const SizedBox(height: 16),
-              _buildDeleteAccountButton(),
+              _buildLogoutButton(),
             ],
           ],
         ),
@@ -637,22 +637,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildDeleteAccountButton() {
+  Widget _buildLogoutButton() {
     return SizedBox(
       width: double.infinity,
+      height: 50,
       child: OutlinedButton.icon(
-        icon: const Icon(Icons.delete_outline),
-        label: const Text('Eliminar compte'),
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LogOutScreen()));
+        },
+        icon: const Icon(Icons.logout_outlined),
         style: OutlinedButton.styleFrom(
           foregroundColor: _kPrimaryRed,
           side: const BorderSide(color: _kPrimaryRed),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
-          );
-        },
+        label: const Text(
+          'Tancar sessió',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
