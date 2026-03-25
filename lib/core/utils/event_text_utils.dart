@@ -52,6 +52,13 @@ class EventTextUtils {
     return text.isEmpty ? null : capitalizeFirst(text);
   }
 
+  static String? formatDisplayDate(DateTime? date) {
+    if (date == null) return null;
+    final dd = date.day.toString().padLeft(2, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${date.year}';
+  }
+
   // Capitalizes the first letter of a string
   static String capitalizeFirst(String text) {
     if (text.isEmpty) return text;
@@ -77,6 +84,19 @@ class EventTextUtils {
   // Converts a categories list into a readable comma-separated string capitalized
   static String? categoriesToCapitalizedString(List<dynamic>? value) {
     if (value == null || value.isEmpty) return null;
-    return value.map((e) => capitalizeFirst(e['name'] as String)).join(', ');
+
+    final names = value
+        .map((item) {
+          if (item is String) return labelOrNull(item);
+          if (item is Map) {
+            return labelOrNull(item['name']);
+          }
+          return null;
+        })
+        .whereType<String>()
+        .toList();
+
+    if (names.isEmpty) return null;
+    return names.map(capitalizeFirst).join(', ');
   }
 }

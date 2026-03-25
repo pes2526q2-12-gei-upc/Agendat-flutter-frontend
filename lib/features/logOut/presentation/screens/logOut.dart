@@ -12,6 +12,15 @@ class LogOutScreen extends StatefulWidget {
 class _LogOutScreenState extends State<LogOutScreen> {
   bool _isLoggingOut = false;
 
+  Future<void> _clearAuthToken() async {
+    //final tokenBeforeRemove = await TokenStorage.read();
+    //debugPrint('Logout: token abans de remove = $tokenBeforeRemove');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    //final tokenAfterRemove = await TokenStorage.read();
+    //debugPrint('Logout: token despres de remove = $tokenAfterRemove');
+  }
+
   Future<void> _requestLogOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
