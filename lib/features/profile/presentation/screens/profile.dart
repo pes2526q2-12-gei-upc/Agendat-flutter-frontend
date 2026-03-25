@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
@@ -102,6 +104,30 @@ class _ProfileScreenState extends State<ProfileScreen>
               ? 'Error de connexió. Comprova la teva connexió a internet.'
               : 'Error del servidor (codi $statusCode).';
         });
+    }
+  }
+
+  Future<void> _navigateToEditProfile() async {
+    if (_profile == null) return;
+
+    final updatedProfile = await Navigator.push<UserProfile>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProfileScreen(currentProfile: _profile!),
+      ),
+    );
+
+    if (updatedProfile != null && mounted) {
+      setState(() => _profile = updatedProfile);
+      await setCurrentLoggedInUser({
+        ...currentLoggedInUser ?? {},
+        'username': updatedProfile.username,
+        'email': updatedProfile.email,
+        'first_name': updatedProfile.firstName,
+        'last_name': updatedProfile.lastName,
+        'description': updatedProfile.description,
+        'profile_image': updatedProfile.profileImage,
+      });
     }
   }
 
@@ -231,6 +257,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               _buildAvatar(profile),
               const SizedBox(width: 16),
               Expanded(child: _buildProfileInfo(profile)),
+              if (_isOwnProfile)
+                IconButton(
+                  icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600),
+                  onPressed: _navigateToEditProfile,
+                ),
             ],
           ),
           const SizedBox(height: 20),
@@ -241,39 +272,27 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAvatar(UserProfile profile) {
-    return Stack(
-      children: [
-        CircleAvatar(
-          radius: 45,
-          backgroundColor: Colors.grey.shade200,
-          backgroundImage: profile.profileImage != null
-              ? NetworkImage(profile.profileImage!)
-              : null,
-          child: profile.profileImage == null
-              ? Icon(Icons.person, size: 50, color: Colors.grey.shade400)
-              : null,
-        ),
-        if (_isOwnProfile)
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: () {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('pendent')));
-              },
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade700,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.edit, size: 16, color: Colors.white),
-              ),
-            ),
-          ),
-      ],
+    String? imageUrl = profile.profileImage;
+    if (imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        !imageUrl.startsWith('http')) {
+      final baseUrl = getBaseUrl();
+      if (imageUrl.startsWith('/')) {
+        imageUrl = '$baseUrl$imageUrl';
+      } else {
+        imageUrl = '$baseUrl/$imageUrl';
+      }
+    }
+
+    return CircleAvatar(
+      radius: 45,
+      backgroundColor: Colors.grey.shade200,
+      backgroundImage: imageUrl != null && imageUrl.isNotEmpty
+          ? NetworkImage(imageUrl)
+          : null,
+      child: (imageUrl == null || imageUrl.isEmpty)
+          ? Icon(Icons.person, size: 50, color: Colors.grey.shade400)
+          : null,
     );
   }
 
@@ -299,21 +318,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (_isOwnProfile) ...[
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Editar descripció pendent')),
-                  );
-                },
-                child: Icon(
-                  Icons.edit_outlined,
-                  size: 20,
-                  color: Colors.grey.shade500,
-                ),
-              ),
-            ],
           ],
         ),
       ],
