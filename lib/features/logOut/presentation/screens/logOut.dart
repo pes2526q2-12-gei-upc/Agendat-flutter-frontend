@@ -1,7 +1,6 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:flutter/material.dart';
-
-//PENDENT: esborrar el token d'autenticació
 
 class LogOutScreen extends StatefulWidget {
   const LogOutScreen({super.key});
@@ -37,22 +36,13 @@ class _LogOutScreenState extends State<LogOutScreen> {
     if (confirmed != true) return;
 
     setState(() => _isLoggingOut = true);
-
-    // Esborra el token d'autenticació: PENDENT
-    //final prefs = await SharedPreferences.getInstance();
-    //await prefs.remove('token');
+    await logout();
 
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
-
-    if (mounted) {
-      setState(() => _isLoggingOut = false);
-    }
-
-    setState(() => _isLoggingOut = true);
   }
 
   @override
