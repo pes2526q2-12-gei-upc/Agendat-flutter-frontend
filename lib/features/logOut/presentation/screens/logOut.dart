@@ -36,7 +36,16 @@ class _LogOutScreenState extends State<LogOutScreen> {
     if (confirmed != true) return;
 
     setState(() => _isLoggingOut = true);
-    await logout();
+    try {
+      await logout();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No s\'ha pogut tancar la sessio.')),
+      );
+      setState(() => _isLoggingOut = false);
+      return;
+    }
 
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
