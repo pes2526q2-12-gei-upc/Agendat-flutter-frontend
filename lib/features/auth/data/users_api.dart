@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/services/token_storage.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
+import 'package:agendat/features/auth/data/models/forgot_password_request.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
+import 'package:agendat/features/auth/data/models/reset_password_request.dart';
 
 /// Resultat de la creació d'usuari.
 sealed class CreateUserResult {}
@@ -61,7 +63,6 @@ String? currentAuthToken;
 
 Future<void> setCurrentLoggedInUser(Map<String, dynamic>? userJson) async {
   currentLoggedInUser = userJson;
-  // Persist user data to secure storage
   await TokenStorage.writeUser(userJson);
 }
 
@@ -113,7 +114,6 @@ Future<LoginUserResult> loginWithGoogle({
       body: body,
       expectedStatusCode: 200,
     );
-    // Backend returns: { "token": "...", "user": { ... } }
     final decoded = response.body.isNotEmpty
         ? jsonDecode(response.body) as Map<String, dynamic>?
         : null;
@@ -147,8 +147,6 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
       body: request.toJson(),
       expectedStatusCode: 200,
     );
-    // Backend returns: { "token": "...",
-    //                    "user": { ... } }
     final decoded = response.body.isNotEmpty
         ? jsonDecode(response.body) as Map<String, dynamic>?
         : null;
@@ -165,5 +163,99 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
     return LoginUserFailure(statusCode: e.statusCode, error: e);
   } catch (e) {
     return LoginUserFailure(statusCode: -1, error: e);
+  }
+}
+
+// --- Forgot / reset password ---
+
+sealed class ForgotPasswordResult {}
+
+class ForgotPasswordSuccess extends ForgotPasswordResult {
+  ForgotPasswordSuccess({this.message, this.statusCode = 200});
+  final int statusCode;
+  final String? message;
+}
+
+class ForgotPasswordFailure extends ForgotPasswordResult {
+  ForgotPasswordFailure({required this.statusCode, this.body, this.error});
+  final int statusCode;
+  final Map<String, dynamic>? body;
+  final Object? error;
+}
+
+/// POST /api/users/password-reset/ — envia un codi de 6 dígits al correu.
+Future<ForgotPasswordResult> forgotPassword(
+  ForgotPasswordRequest request,
+) async {
+  try {
+    final response = await ApiClient.postJson(
+      '/api/users/password-reset/',
+      body: request.toJson(),
+      expectedStatusCode: 200,
+    );
+    final dynamic decoded = response.body.isNotEmpty
+        ? jsonDecode(response.body)
+        : null;
+    return ForgotPasswordSuccess(
+      statusCode: response.statusCode,
+      message: decoded?.toString(),
+    );
+  } on ApiException catch (e) {
+    Map<String, dynamic>? body;
+    if (e.body.isNotEmpty) {
+      try {
+        body = jsonDecode(e.body) as Map<String, dynamic>?;
+      } catch (_) {}
+    }
+    return ForgotPasswordFailure(
+      statusCode: e.statusCode,
+      body: body,
+      error: e,
+    );
+  } catch (e) {
+    return ForgotPasswordFailure(statusCode: -1, error: e);
+  }
+}
+
+sealed class ResetPasswordResult {}
+
+class ResetPasswordSuccess extends ResetPasswordResult {
+  ResetPasswordSuccess({this.statusCode = 200, this.detail});
+  final int statusCode;
+  final String? detail;
+}
+
+class ResetPasswordFailure extends ResetPasswordResult {
+  ResetPasswordFailure({required this.statusCode, this.body, this.error});
+  final int statusCode;
+  final Map<String, dynamic>? body;
+  final Object? error;
+}
+
+/// POST /api/users/password-reset/confirm/ — valida el codi i desa la nova contrasenya.
+Future<ResetPasswordResult> resetPassword(ResetPasswordRequest request) async {
+  try {
+    final response = await ApiClient.postJson(
+      '/api/users/password-reset/confirm/',
+      body: request.toJson(),
+      expectedStatusCode: 200,
+    );
+    final dynamic decoded = response.body.isNotEmpty
+        ? jsonDecode(response.body)
+        : null;
+    return ResetPasswordSuccess(
+      statusCode: response.statusCode,
+      detail: decoded?.toString(),
+    );
+  } on ApiException catch (e) {
+    Map<String, dynamic>? body;
+    if (e.body.isNotEmpty) {
+      try {
+        body = jsonDecode(e.body) as Map<String, dynamic>?;
+      } catch (_) {}
+    }
+    return ResetPasswordFailure(statusCode: e.statusCode, body: body, error: e);
+  } catch (e) {
+    return ResetPasswordFailure(statusCode: -1, error: e);
   }
 }

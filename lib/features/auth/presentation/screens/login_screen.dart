@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/main.dart';
+import 'package:agendat/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 
@@ -390,6 +391,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     icon: _GoogleGIcon(),
                     label: const Text('Continua amb Google'),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ForgotPasswordScreen(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'He oblidat la meva contrasenya',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: EventTextUtils.kPrimaryRed,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 28),
                   Center(
