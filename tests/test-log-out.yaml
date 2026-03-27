@@ -1,0 +1,25 @@
+# Fer aquest test després del sign up ja que així ja està el compte creat
+
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+    
+# Happy path de login
+- tapOn: El teu nom d'usuari
+- inputText: Casteller98
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- tapOn: Inicia sessió
+- assertNotVisible: Inicia sessió per continuar
+
+# Happy path
+- tapOn: |-
+    Social
+    Pestanya 4 de 5
+- tapOn:
+    text: Tancar sessió
+- tapOn: Tancar sessió
+- waitForAnimationToEnd
+- assertVisible: Inicia sessió per continuar
+

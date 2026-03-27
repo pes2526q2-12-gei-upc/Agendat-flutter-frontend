@@ -1,0 +1,41 @@
+# Fer aquest test després del sign up ja que així ja està el compte creat
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+- assertVisible: Inicia sessió
+
+# Error1: Nom d'usuari no existeix
+- tapOn: El teu nom d'usuari
+- inputText: Casteller100
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- tapOn: Inicia sessió
+- assertVisible: No s'ha pogut iniciar sessió.
+- waitForAnimationToEnd
+- tapOn: Casteller100
+- eraseText
+- tapOn: ••••••••
+- eraseText
+
+# Error2: Contrasenya incorrecta
+- tapOn: El teu nom d'usuari
+- inputText: Casteller98
+- tapOn: La teva contrasenya
+- inputText: k.87_oP]
+- tapOn: Inicia sessió
+- assertVisible: No s'ha pogut iniciar sessió.
+- waitForAnimationToEnd
+- tapOn: Casteller98
+- eraseText
+- tapOn: ••••••••
+- eraseText
+
+# Happy path
+- tapOn: El teu nom d'usuari
+- inputText: Casteller98
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- tapOn: Inicia sessió
+- assertNotVisible: Inicia sessió per continuar

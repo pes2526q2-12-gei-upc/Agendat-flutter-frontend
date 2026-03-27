@@ -1,0 +1,86 @@
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+- assertVisible: Inicia sessió
+- tapOn: Registra't
+- assertVisible: Crea el teu compte
+
+# Happy path
+- tapOn: Nom d'usuari únic
+- inputText: Casteller98
+- tapOn: El teu nom
+- inputText: Elon Musk
+- tapOn: exemple@correu.cat
+- inputText: Casteller98@gmail.com
+- tapOn: Mínim 8 caràcters
+- inputText: k.87_oP[
+- tapOn: Repeteix la contrasenya
+- inputText: k.87_oP[
+- tapOn: Crear compte
+# - assertVisible: Benvingut/da! comprovat el primer cop
+- tapOn: Enrere
+- waitForAnimationToEnd
+
+# Error 1: falten camps (username buit)
+- tapOn: Registra't
+- tapOn: exemple@correu.cat
+- inputText: Casteller99@gmail.com
+- tapOn: Mínim 8 caràcters
+- inputText: k.87_oP[
+- tapOn: Repeteix la contrasenya
+- inputText: k.87_oP[
+- tapOn: Crear compte
+- assertVisible: Introdueix un nom d'usuari.
+- waitForAnimationToEnd
+- tapOn: Enrere
+
+# Error 2: password massa curta
+- tapOn: Registra't
+- tapOn: Nom d'usuari únic
+- inputText: Casteller99
+- tapOn: El teu nom
+- inputText: Elon Musk
+- tapOn: exemple@correu.cat
+- inputText: Casteller99@gmail.com
+- tapOn: Mínim 8 caràcters
+- inputText: k.87_oP
+- tapOn: Repeteix la contrasenya
+- inputText: k.87_oP
+- tapOn: Crear compte
+- assertVisible: La contrasenya ha de tenir almenys 8 caràcters.
+- waitForAnimationToEnd
+- tapOn: Enrere
+
+# Error 3: usuari duplicat
+- tapOn: Registra't
+- tapOn: Nom d'usuari únic
+- inputText: Casteller98
+- tapOn: El teu nom
+- inputText: Elon Musk
+- tapOn: exemple@correu.cat
+- inputText: CastellerNoExistent@gmail.com
+- tapOn: Mínim 8 caràcters
+- inputText: k.87_oP[
+- tapOn: Repeteix la contrasenya
+- inputText: k.87_oP[
+- tapOn: Crear compte
+- assertVisible: No s'ha pogut crear el compte.
+- waitForAnimationToEnd
+- tapOn: Enrere
+
+# Error 4: correu duplicat
+- tapOn: Registra't
+- tapOn: Nom d'usuari únic
+- inputText: NomNoExistent
+- tapOn: El teu nom
+- inputText: Elon Musk
+- tapOn: exemple@correu.cat
+- inputText: Casteller98@gmail.com
+- tapOn: Mínim 8 caràcters
+- inputText: k.87_oP[
+- tapOn: Repeteix la contrasenya
+- inputText: k.87_oP[
+- tapOn: Crear compte
+- assertVisible: Crea el teu compte
