@@ -153,7 +153,9 @@ class _MapScreenState extends State<MapScreen> {
         : screenWidth < 720
         ? 20.0
         : 28.0;
-    final selectedCardHeight = (screenHeight * 0.2).clamp(185.0, 280.0);
+    // L'alçada de la card ha de ser suficient per encabir títols llargs
+    // (amb ellipsis) i els dos botons.
+    final selectedCardHeight = (screenHeight * 0.22).clamp(220.0, 320.0);
 
     final filteredEvents = _events
         .where((event) => _eventMatchesSearch(event, _searchQuery))
