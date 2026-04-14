@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ApiClient {
   static const Duration timeout = Duration(seconds: 12);
@@ -87,6 +88,112 @@ class ApiClient {
     }
 
     return response;
+  }
+
+  static Future<http.Response> patchJson(
+    String path, {
+    Map<String, String>? queryParams,
+    Object? body,
+    int expectedStatusCode = 200,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path').replace(
+      queryParameters: queryParams != null && queryParams.isNotEmpty
+          ? queryParams
+          : null,
+    );
+
+    final response = await http
+        .patch(
+          uri,
+          headers: _headers(jsonContentType: true),
+          body: jsonEncode(body),
+        )
+        .timeout(timeout);
+
+    if (response.statusCode != expectedStatusCode) {
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      throw ApiException(response.statusCode, snippet, uri);
+    }
+
+    return response;
+  }
+
+  static Future<http.Response> patchMultipart(
+    String path, {
+    Map<String, String>? fields,
+    List<http.MultipartFile>? files,
+    int expectedStatusCode = 200,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final request = http.MultipartRequest('PATCH', uri);
+    request.headers.addAll(_headers());
+    if (fields != null && fields.isNotEmpty) {
+      request.fields.addAll(fields);
+    }
+    if (files != null && files.isNotEmpty) {
+      request.files.addAll(files);
+    }
+
+    final streamed = await request.send().timeout(timeout);
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode != expectedStatusCode) {
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      throw ApiException(response.statusCode, snippet, uri);
+    }
+
+    return response;
+  }
+
+  static Future<http.Response> postMultipart(
+    String path, {
+    Map<String, String>? fields,
+    List<http.MultipartFile>? files,
+    int expectedStatusCode = 200,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers.addAll(_headers());
+    if (fields != null && fields.isNotEmpty) {
+      request.fields.addAll(fields);
+    }
+    if (files != null && files.isNotEmpty) {
+      request.files.addAll(files);
+    }
+
+    final streamed = await request.send().timeout(timeout);
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode != expectedStatusCode) {
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      throw ApiException(response.statusCode, snippet, uri);
+    }
+
+    return response;
+  }
+
+  static http.MultipartFile multipartFileFromBytes({
+    required String field,
+    required List<int> bytes,
+    required String filename,
+    String contentType = 'image/jpeg',
+  }) {
+    final parts = contentType.split('/');
+    final mediaType = parts.length == 2
+        ? MediaType(parts[0], parts[1])
+        : MediaType('application', 'octet-stream');
+    return http.MultipartFile.fromBytes(
+      field,
+      bytes,
+      filename: filename,
+      contentType: mediaType,
+    );
   }
 
   static Future<http.Response> delete(

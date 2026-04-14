@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
@@ -16,6 +17,25 @@ class ProfileUnavailable extends ProfileResult {}
 
 class ProfileFailure extends ProfileResult {
   ProfileFailure({required this.statusCode, this.error});
+  final int statusCode;
+  final Object? error;
+}
+
+sealed class UpdateProfileResult {}
+
+class UpdateProfileSuccess extends UpdateProfileResult {
+  UpdateProfileSuccess({required this.profile});
+  final UserProfile profile;
+}
+
+class UpdateProfileValidationError extends UpdateProfileResult {
+  UpdateProfileValidationError({required this.field, required this.message});
+  final String field;
+  final String message;
+}
+
+class UpdateProfileFailure extends UpdateProfileResult {
+  UpdateProfileFailure({required this.statusCode, this.error});
   final int statusCode;
   final Object? error;
 }
@@ -69,4 +89,70 @@ Future<List<UserSession>> fetchUserSessions({required String username}) async {
       .whereType<Map<String, dynamic>>()
       .map(UserSession.fromJson)
       .toList();
+}
+
+/// Actualitza el perfil d'usuari amb PATCH /api/users/{id}/
+Future<UpdateProfileResult> updateUserProfile(
+  int userId,
+  Map<String, dynamic> updates, {
+  Uint8List? profileImageBytes,
+  String? profileImageFilename,
+  String? profileImageContentType,
+}) async {
+  try {
+    final hasImage = profileImageBytes != null && profileImageBytes.isNotEmpty;
+    final response = hasImage
+        ? await ApiClient.patchMultipart(
+            '/api/users/$userId/',
+            fields: updates.map(
+              (key, value) => MapEntry(key, value?.toString() ?? ''),
+            ),
+            files: [
+              ApiClient.multipartFileFromBytes(
+                field: 'imatge',
+                bytes: profileImageBytes,
+                filename: profileImageFilename ?? 'profile_image.jpg',
+                contentType: profileImageContentType ?? 'image/jpeg',
+              ),
+            ],
+          )
+        : await ApiClient.patchJson('/api/users/$userId/', body: updates);
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final profile = UserProfile.fromJson(decoded);
+    return UpdateProfileSuccess(profile: profile);
+  } on ApiException catch (e) {
+    if (e.statusCode == 400) {
+      try {
+        final body = jsonDecode(e.body) as Map<String, dynamic>;
+        if (body['email'] != null) {
+          return UpdateProfileValidationError(
+            field: 'email',
+            message: _extractErrorMessage(body['email']),
+          );
+        }
+        if (body['username'] != null) {
+          return UpdateProfileValidationError(
+            field: 'username',
+            message: _extractErrorMessage(body['username']),
+          );
+        }
+        if (body['password'] != null) {
+          return UpdateProfileValidationError(
+            field: 'password',
+            message: _extractErrorMessage(body['password']),
+          );
+        }
+      } catch (_) {}
+    }
+    return UpdateProfileFailure(statusCode: e.statusCode, error: e);
+  } catch (e) {
+    return UpdateProfileFailure(statusCode: -1, error: e);
+  }
+}
+
+String _extractErrorMessage(dynamic value) {
+  if (value is List && value.isNotEmpty) {
+    return value.first.toString();
+  }
+  return value.toString();
 }

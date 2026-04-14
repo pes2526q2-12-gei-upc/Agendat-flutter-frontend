@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
+import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
@@ -105,6 +108,30 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _navigateToEditProfile() async {
+    if (_profile == null) return;
+
+    final updatedProfile = await Navigator.push<UserProfile>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProfileScreen(currentProfile: _profile!),
+      ),
+    );
+
+    if (updatedProfile != null && mounted) {
+      setState(() => _profile = updatedProfile);
+      await setCurrentLoggedInUser({
+        ...currentLoggedInUser ?? {},
+        'username': updatedProfile.username,
+        'email': updatedProfile.email,
+        'first_name': updatedProfile.firstName,
+        'last_name': updatedProfile.lastName,
+        'description': updatedProfile.description,
+        'profile_image': updatedProfile.profileImage,
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -200,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             if (_isOwnProfile) ...[
               const SizedBox(height: 16),
-              _buildDeleteAccountButton(),
+              _buildLogoutButton(),
             ],
           ],
         ),
@@ -231,6 +258,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               _buildAvatar(profile),
               const SizedBox(width: 16),
               Expanded(child: _buildProfileInfo(profile)),
+              if (_isOwnProfile)
+                IconButton(
+                  icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600),
+                  onPressed: _navigateToEditProfile,
+                ),
             ],
           ),
           const SizedBox(height: 20),
@@ -241,39 +273,37 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAvatar(UserProfile profile) {
-    return Stack(
-      children: [
-        CircleAvatar(
-          radius: 45,
-          backgroundColor: Colors.grey.shade200,
-          backgroundImage: profile.profileImage != null
-              ? NetworkImage(profile.profileImage!)
-              : null,
-          child: profile.profileImage == null
-              ? Icon(Icons.person, size: 50, color: Colors.grey.shade400)
-              : null,
+    final imageUrl = resolveProfileImageUrl(profile.profileImage);
+    const radius = 45.0;
+    const size = radius * 2;
+
+    if (imageUrl == null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: Colors.grey.shade200,
+        child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
+      );
+    }
+
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          webHtmlElementStrategy: kIsWeb
+              ? WebHtmlElementStrategy.prefer
+              : WebHtmlElementStrategy.never,
+          errorBuilder: (_, __, ___) {
+            return Container(
+              color: Colors.grey.shade200,
+              alignment: Alignment.center,
+              child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
+            );
+          },
         ),
-        if (_isOwnProfile)
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: () {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('pendent')));
-              },
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade700,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.edit, size: 16, color: Colors.white),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 
@@ -299,21 +329,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (_isOwnProfile) ...[
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Editar descripció pendent')),
-                  );
-                },
-                child: Icon(
-                  Icons.edit_outlined,
-                  size: 20,
-                  color: Colors.grey.shade500,
-                ),
-              ),
-            ],
           ],
         ),
       ],
@@ -622,22 +637,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildDeleteAccountButton() {
+  Widget _buildLogoutButton() {
     return SizedBox(
       width: double.infinity,
+      height: 50,
       child: OutlinedButton.icon(
-        icon: const Icon(Icons.delete_outline),
-        label: const Text('Eliminar compte'),
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LogOutScreen()));
+        },
+        icon: const Icon(Icons.logout_outlined),
         style: OutlinedButton.styleFrom(
           foregroundColor: _kPrimaryRed,
           side: const BorderSide(color: _kPrimaryRed),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
-          );
-        },
+        label: const Text(
+          'Tancar sessió',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

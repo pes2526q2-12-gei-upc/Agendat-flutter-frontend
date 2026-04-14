@@ -59,6 +59,18 @@ class UserProfile {
     final desc = description?.trim();
     return (desc == null || desc.isEmpty) ? 'Sense descripció' : desc;
   }
+
+  Map<String, dynamic> toJson() => {
+    'username': username,
+    'email': email,
+    'description': description,
+    'first_name': firstName,
+    'last_name': lastName,
+    'phone': phone,
+    'birth_date': birthDate?.toIso8601String().split('T').first,
+    'location_allowed': locationAllowed,
+    'notifications_allowed': notificationsAllowed,
+  };
 }
 
 class UserStats {
