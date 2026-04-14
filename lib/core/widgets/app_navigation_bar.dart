@@ -13,7 +13,6 @@ class AppNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(40.0),
       child: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: onTap,
