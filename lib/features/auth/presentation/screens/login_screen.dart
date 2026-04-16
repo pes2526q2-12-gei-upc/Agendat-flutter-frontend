@@ -237,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 28),
                   const Text(
                     'Nom d\'usuari',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Colors.black87,
@@ -276,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   const Text(
                     'Contrasenya',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Colors.black87,
@@ -341,13 +341,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.arrow_forward,
                           size: 20,
                           color: Colors.white,
                         ),
-                        const SizedBox(width: 8),
-                        const Text('Inicia sessió'),
+                        SizedBox(width: 8),
+                        Text('Inicia sessió'),
                       ],
                     ),
                   ),
@@ -405,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       child: const Text(
                         'He oblidat la meva contrasenya',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: EventTextUtils.kPrimaryRed,
