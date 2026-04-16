@@ -187,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const _CalendarIcon(),
                       const SizedBox(height: 12),
-                      Text(
+                      const Text(
                         'Agenda\'t',
                         style: TextStyle(
                           color: Colors.white,
@@ -221,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
+                  const Text(
                     'Benvingut/da!',
                     style: TextStyle(
                       fontSize: 24,
@@ -235,9 +235,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 28),
-                  Text(
+                  const Text(
                     'Nom d\'usuari',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Colors.black87,
@@ -262,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
+                        borderSide: const BorderSide(
                           color: EventTextUtils.kPrimaryRed,
                           width: 1.5,
                         ),
@@ -274,9 +274,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text(
+                  const Text(
                     'Contrasenya',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Colors.black87,
@@ -301,7 +301,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
+                        borderSide: const BorderSide(
                           color: EventTextUtils.kPrimaryRed,
                           width: 1.5,
                         ),
@@ -338,10 +338,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.arrow_forward,
                           size: 20,
                           color: Colors.white,
@@ -403,9 +403,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      child: Text(
+                      child: const Text(
                         'He oblidat la meva contrasenya',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: EventTextUtils.kPrimaryRed,
@@ -470,7 +470,7 @@ class _CalendarIcon extends StatelessWidget {
         children: [
           Text(
             EventTextUtils.calendarMonthNames[DateTime.now().month - 1],
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -479,7 +479,7 @@ class _CalendarIcon extends StatelessWidget {
           ),
           Text(
             DateTime.now().day.toString(),
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
