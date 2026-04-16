@@ -243,7 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
+          const BoxShadow(
             color: const Color(0x14000000),
             blurRadius: 14,
             offset: const Offset(0, 6),
@@ -403,7 +403,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
+          const BoxShadow(
             color: const Color(0x14000000),
             blurRadius: 14,
             offset: const Offset(0, 6),
@@ -481,7 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
+          const BoxShadow(
             color: const Color(0x14000000),
             blurRadius: 14,
             offset: const Offset(0, 6),

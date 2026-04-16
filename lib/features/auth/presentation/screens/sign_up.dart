@@ -168,7 +168,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Navigator.pop(context);
                               },
                               behavior: HitTestBehavior.opaque,
-                              child: Row(
+                              child: const Row(
                                 children: [
                                   const Icon(
                                     Icons.arrow_back_ios_new,

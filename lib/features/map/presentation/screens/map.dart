@@ -71,8 +71,9 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       setState(() => _eventsLoadError = e.toString());
     } finally {
-      if (!mounted) return;
-      setState(() => _isLoadingEvents = false);
+      if (mounted) {
+        setState(() => _isLoadingEvents = false);
+      }
     }
   }
 
