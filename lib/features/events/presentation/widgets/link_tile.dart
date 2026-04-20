@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Tile per obrir un enllaç extern al navegador.
-/// isPrimary destaca enllaços importants (p.ex. compra d'entrades).
+/// Fila que, en tocar-la, obre [uri] al navegador extern.
+///
+/// Si [isPrimary] és `true`, el text es pinta en vermell i en negreta per
+/// destacar enllaços importants (p. ex. "Compra d'entrades").
+/// Si no es pot obrir l'enllaç es mostra un `SnackBar` amb un missatge d'error.
 class LinkTile extends StatelessWidget {
   const LinkTile({
     super.key,

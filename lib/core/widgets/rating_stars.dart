@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+/// Fila d'estrelles per mostrar o demanar una puntuació (de 0 a `maxStars`).
+///
+/// - Si [isEnabled] és `true`, tocar una estrella canvia la valoració i
+///   es notifica a [onRatingChanged] amb el nou valor.
+/// - Si [isEnabled] és `false`, les estrelles es mostren només de lectura
+///   (p. ex. a les targetes de ressenya ja enviades).
 class RatingStars extends StatelessWidget {
   const RatingStars({
     super.key,
