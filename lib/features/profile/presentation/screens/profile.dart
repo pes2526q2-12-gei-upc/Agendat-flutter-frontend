@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -7,6 +9,7 @@ import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
+import 'package:agendat/features/social/data/social_api.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -35,7 +38,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   String? _errorMessage;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
 
+  FriendshipStatus? _friendshipStatus;
+  bool _isFriendshipLoading = false;
+  bool _isFriendshipActionInProgress = false;
+
   bool get _isOwnProfile => widget.userId == null;
+
+  int? get _currentUserId => currentLoggedInUser?['id'] as int?;
 
   @override
   void initState() {
@@ -108,6 +117,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           _sessions = sessions;
           _isLoading = false;
         });
+        if (!_isOwnProfile) {
+          unawaited(_loadFriendshipStatus());
+        }
       case ProfileNotFound():
         setState(() {
           _isLoading = false;
@@ -167,6 +179,126 @@ class _ProfileScreenState extends State<ProfileScreen>
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  Future<void> _loadFriendshipStatus() async {
+    final me = _currentUserId;
+    final other = widget.userId;
+    if (me == null || other == null || me == other) return;
+
+    setState(() {
+      _isFriendshipLoading = true;
+    });
+
+    final result = await fetchFriendshipStatus(
+      myUserId: me,
+      otherUserId: other,
+    );
+
+    if (!mounted) return;
+
+    switch (result) {
+      case FriendshipStatusSuccess(:final status):
+        setState(() {
+          _friendshipStatus = status;
+          _isFriendshipLoading = false;
+        });
+      case FriendshipStatusUnauthorized():
+      case FriendshipStatusFailure():
+        setState(() {
+          _friendshipStatus = null;
+          _isFriendshipLoading = false;
+        });
+    }
+  }
+
+  Future<void> _runFriendshipAction({
+    required Future<FriendActionResult> Function() action,
+    required FriendshipStatus successStatus,
+    required String successMessage,
+    required String genericErrorMessage,
+  }) async {
+    if (_isFriendshipActionInProgress) return;
+
+    setState(() => _isFriendshipActionInProgress = true);
+
+    final result = await action();
+
+    if (!mounted) return;
+
+    switch (result) {
+      case FriendActionSuccess():
+        setState(() {
+          _friendshipStatus = successStatus;
+          _isFriendshipActionInProgress = false;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
+      case FriendActionUnauthorized():
+        setState(() => _isFriendshipActionInProgress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cal iniciar sessió per fer aquesta acció.'),
+          ),
+        );
+      case FriendActionFailure(:final statusCode, :final message, :final error):
+        setState(() => _isFriendshipActionInProgress = false);
+        final text =
+            message ??
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : genericErrorMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
+        // Refresquem l'estat real per si el backend ja ha canviat les coses.
+        unawaited(_loadFriendshipStatus());
+    }
+  }
+
+  Future<void> _sendFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => sendFriendRequest(userId),
+      successStatus: FriendshipStatus.requestSent,
+      successMessage: 'Sol·licitud d\'amistat enviada.',
+      genericErrorMessage: 'No s\'ha pogut enviar la sol·licitud.',
+    );
+  }
+
+  Future<void> _cancelFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => cancelFriendRequest(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Sol·licitud d\'amistat cancel·lada.',
+      genericErrorMessage: 'No s\'ha pogut cancel·lar la sol·licitud.',
+    );
+  }
+
+  Future<void> _acceptFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => acceptFriendRequest(userId),
+      successStatus: FriendshipStatus.friends,
+      successMessage: 'Sol·licitud acceptada. Ara sou amics!',
+      genericErrorMessage: 'No s\'ha pogut acceptar la sol·licitud.',
+    );
+  }
+
+  Future<void> _rejectFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => rejectFriendRequest(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Sol·licitud rebutjada.',
+      genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
     );
   }
 
@@ -354,7 +486,168 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: 20),
           _buildStatsRow(_stats),
+          if (!_isOwnProfile) ...[
+            const SizedBox(height: 16),
+            _buildFriendshipSection(),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildFriendshipSection() {
+    if (_currentUserId == null || widget.userId == _currentUserId) {
+      return const SizedBox.shrink();
+    }
+
+    if (_isFriendshipLoading && _friendshipStatus == null) {
+      return const SizedBox(
+        height: 44,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    final status = _friendshipStatus ?? FriendshipStatus.none;
+    final busy = _isFriendshipActionInProgress;
+
+    switch (status) {
+      case FriendshipStatus.none:
+        return _buildFriendshipPrimaryButton(
+          onPressed: busy ? null : _sendFriendRequest,
+          icon: Icons.person_add_alt_1,
+          label: 'Enviar sol·licitud d\'amistat',
+          busy: busy,
+        );
+      case FriendshipStatus.requestSent:
+        return _buildFriendshipOutlinedButton(
+          onPressed: busy ? null : _cancelFriendRequest,
+          icon: Icons.hourglass_top,
+          label: 'Sol·licitud enviada · Cancel·lar',
+          busy: busy,
+        );
+      case FriendshipStatus.requestReceived:
+        return Row(
+          children: [
+            Expanded(
+              child: _buildFriendshipPrimaryButton(
+                onPressed: busy ? null : _acceptFriendRequest,
+                icon: Icons.check,
+                label: 'Acceptar',
+                busy: busy,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildFriendshipOutlinedButton(
+                onPressed: busy ? null : _rejectFriendRequest,
+                icon: Icons.close,
+                label: 'Rebutjar',
+                busy: false,
+              ),
+            ),
+          ],
+        );
+      case FriendshipStatus.friends:
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green.shade200),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Ja sou amics',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green.shade800,
+                ),
+              ),
+            ],
+          ),
+        );
+    }
+  }
+
+  Widget _buildFriendshipPrimaryButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required bool busy,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kPrimaryRed,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _kPrimaryRed.withValues(alpha: 0.6),
+          disabledForegroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFriendshipOutlinedButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required bool busy,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kPrimaryRed,
+          side: const BorderSide(color: _kPrimaryRed),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }
