@@ -6,7 +6,7 @@ import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
-import 'package:agendat/features/profile/presentation/screens/notification_preferences_screen.dart';
+import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -171,8 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            NotificationPreferencesScreen(currentProfile: _profile!),
+        builder: (_) => SettingsScreen(currentProfile: _profile!),
       ),
     );
 
