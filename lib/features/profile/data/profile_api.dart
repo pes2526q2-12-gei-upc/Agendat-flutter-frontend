@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/dto/session_dto.dart';
+import 'package:agendat/core/mappers/session_mapper.dart';
+import 'package:agendat/core/models/session.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 
 sealed class ProfileResult {}
@@ -79,7 +82,7 @@ Future<UserReviewsResponse> fetchUserReviews(int userId) async {
 
 /// "Attended events" are represented by Sessions.
 /// Uses GET /api/sessions/?user=<username>
-Future<List<UserSession>> fetchUserSessions({required String username}) async {
+Future<List<Session>> fetchUserSessions({required String username}) async {
   final response = await ApiClient.get(
     '/api/sessions/',
     queryParams: {'user': username},
@@ -87,7 +90,8 @@ Future<List<UserSession>> fetchUserSessions({required String username}) async {
   final decoded = jsonDecode(response.body) as List<dynamic>;
   return decoded
       .whereType<Map<String, dynamic>>()
-      .map(UserSession.fromJson)
+      .map(SessionDto.fromJson)
+      .map((dto) => dto.toDomain())
       .toList();
 }
 

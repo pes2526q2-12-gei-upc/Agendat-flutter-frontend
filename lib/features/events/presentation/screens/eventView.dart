@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/api/events_api.dart';
+import 'package:agendat/core/api/sessions_api.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EventScreen extends StatefulWidget {
@@ -16,8 +19,10 @@ class EventScreen extends StatefulWidget {
 
 class _EventScreenState extends State<EventScreen> {
   final EventsApi _eventsApi = EventsApi();
+  final SessionsApi _sessionsApi = SessionsApi();
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
+  bool _isCreatingSession = false;
 
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
@@ -51,6 +56,185 @@ class _EventScreenState extends State<EventScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('No s\'ha pogut obrir l\'enllaç')),
     );
+  }
+
+  Future<void> _handleAssistir(EventExtended event) async {
+    final username = currentLoggedInUser?['username']?.toString().trim();
+    if (username == null || username.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cal iniciar sessió per assistir a l\'esdeveniment.'),
+        ),
+      );
+      return;
+    }
+
+    final initialDateTime = event.startDate ?? DateTime.now();
+    final selectedDateTime = await _showSessionDateTimeDialog(
+      initialDateTime: initialDateTime,
+      eventTitle: event.title,
+    );
+
+    if (selectedDateTime == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _isCreatingSession = true;
+    });
+
+    try {
+      await _sessionsApi.createSession(
+        CreateSessionRequest(
+          event: event.code,
+          user: username,
+          startTime: selectedDateTime,
+        ),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Assistència registrada correctament.')),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No s\'ha pogut registrar l\'assistència (${e.statusCode}).',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No s\'ha pogut registrar l\'assistència.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreatingSession = false;
+        });
+      }
+    }
+  }
+
+  Future<DateTime?> _showSessionDateTimeDialog({
+    required DateTime initialDateTime,
+    required String eventTitle,
+  }) async {
+    DateTime selectedDate = DateTime(
+      initialDateTime.year,
+      initialDateTime.month,
+      initialDateTime.day,
+    );
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: initialDateTime.hour,
+      minute: initialDateTime.minute,
+    );
+
+    return showDialog<DateTime>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final combinedDateTime = DateTime(
+              selectedDate.year,
+              selectedDate.month,
+              selectedDate.day,
+              selectedTime.hour,
+              selectedTime.minute,
+            );
+
+            return AlertDialog(
+              title: const Text('Confirma l\'assistència'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    eventTitle,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_rounded),
+                    title: const Text('Data'),
+                    subtitle: Text(_formatDate(selectedDate)),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final pickedDate = await showDatePicker(
+                          context: dialogContext,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (pickedDate == null) return;
+                        setDialogState(() {
+                          selectedDate = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                          );
+                        });
+                      },
+                      child: const Text('Canvia'),
+                    ),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.access_time_rounded),
+                    title: const Text('Hora'),
+                    subtitle: Text(selectedTime.format(dialogContext)),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final pickedTime = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: selectedTime,
+                        );
+                        if (pickedTime == null) return;
+                        setDialogState(() {
+                          selectedTime = pickedTime;
+                        });
+                      },
+                      child: const Text('Canvia'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Es crearà una sessió amb la data i l\'hora seleccionades.',
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel·la'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(combinedDateTime);
+                  },
+                  child: const Text('Confirmar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final dd = date.day.toString().padLeft(2, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${date.year}';
   }
 
   @override
@@ -278,6 +462,42 @@ class _EventScreenState extends State<EventScreen> {
                           .toList(),
                     ),
                   ),
+
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isCreatingSession
+                        ? null
+                        : () => _handleAssistir(event),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: const Color.fromARGB(255, 202, 3, 3),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: _isCreatingSession
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            'Assistir',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
               ],
             ),
           );

@@ -155,31 +155,3 @@ class UserReviewsResponse {
     );
   }
 }
-
-class UserSession {
-  const UserSession({
-    required this.id,
-    required this.eventCode,
-    required this.username,
-    required this.startTime,
-    this.endTime,
-  });
-
-  final int id;
-  final String eventCode;
-  final String username;
-  final DateTime startTime;
-  final DateTime? endTime;
-
-  factory UserSession.fromJson(Map<String, dynamic> json) {
-    final start = DateTime.tryParse((json['start_time'] as String?) ?? '');
-    final end = DateTime.tryParse((json['end_time'] as String?) ?? '');
-    return UserSession(
-      id: (json['id'] as num).toInt(),
-      eventCode: (json['event'] as String?) ?? '',
-      username: (json['user'] as String?) ?? '',
-      startTime: start ?? DateTime.fromMillisecondsSinceEpoch(0),
-      endTime: end,
-    );
-  }
-}
