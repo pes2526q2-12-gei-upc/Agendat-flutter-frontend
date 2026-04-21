@@ -59,5 +59,6 @@ extension EventDtoMapper on EventDto {
 
 DateTime? _parseDate(String? raw) {
   if (raw == null) return null;
-  return DateTime.tryParse(raw);
+  final parsed = DateTime.tryParse(raw);
+  return parsed?.toLocal();
 }

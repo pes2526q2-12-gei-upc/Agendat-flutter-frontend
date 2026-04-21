@@ -8,6 +8,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      automaticallyImplyLeading: false,
       title: Text(
         title,
         style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),

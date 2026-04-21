@@ -6,7 +6,7 @@ import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
-import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
+import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
 import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
 
 Future<void> main() async {
@@ -61,7 +61,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   static const List<Widget> _screens = [
     VisualizeScreen(),
     MapScreen(),
-    DeleteAccountScreen(),
+    CalendarScreen(),
     LogOutScreen(),
     ProfileScreen(),
   ];
