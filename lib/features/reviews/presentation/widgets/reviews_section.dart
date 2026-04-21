@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:agendat/core/widgets/rating_stars.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
 import 'package:agendat/core/models/review.dart';
 import 'package:agendat/features/reviews/presentation/widgets/add_review_form.dart';
+import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_list.dart';
 
 /// Secció "VALORACIONS" de la vista de detall d'un esdeveniment.
@@ -110,11 +110,29 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   double get _averageGeneral {
     if (_reviews.isEmpty) return 0;
     final sum = _reviews.fold<int>(0, (acc, r) => acc + r.general);
-    return sum / _reviews.length;
+    return (sum / _reviews.length).clamp(0, 5);
   }
 
-  /// Mitjana arrodonida (0..5) per pintar-la com a estrelles.
-  int get _averageStars => _averageGeneral.round().clamp(0, 5);
+  /// Mitjana de la puntuació "Preu" sobre totes les valoracions.
+  double get _averagePreu {
+    if (_reviews.isEmpty) return 0;
+    final sum = _reviews.fold<int>(0, (acc, r) => acc + r.preu);
+    return (sum / _reviews.length).clamp(0, 5);
+  }
+
+  /// Mitjana de la puntuació "Accessibilitat" sobre totes les valoracions.
+  double get _averageAccessibilitat {
+    if (_reviews.isEmpty) return 0;
+    final sum = _reviews.fold<int>(0, (acc, r) => acc + r.accessibilitat);
+    return (sum / _reviews.length).clamp(0, 5);
+  }
+
+  /// Mitjana de la puntuació "Ambient" sobre totes les valoracions.
+  double get _averageAmbient {
+    if (_reviews.isEmpty) return 0;
+    final sum = _reviews.fold<int>(0, (acc, r) => acc + r.ambient);
+    return (sum / _reviews.length).clamp(0, 5);
+  }
 
   /// Username de l'usuari que ha iniciat sessió, o `null` si no n'hi ha cap.
   String? get _currentUsername => currentLoggedInUser?['username'] as String?;
@@ -297,22 +315,45 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         style: TextStyle(fontSize: 14, color: Colors.black54),
       );
     }
-    return Row(
+    const labelStyle = TextStyle(
+      fontSize: 14,
+      color: Colors.black87,
+      fontWeight: FontWeight.w500,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Valoració mitjana: ',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-          ),
+        ReviewRatingRow(
+          label: 'General (${_averageGeneral.round()})',
+          rating: _averageGeneral.round(),
+          labelWidth: 130,
+          labelStyle: labelStyle,
+          starSize: 20,
+          bottomSpacing: 6,
         ),
-        RatingStars(
-          rating: _averageStars,
-          onRatingChanged: (_) {},
-          isEnabled: false,
-          size: 20,
-          spacing: 2,
+        ReviewRatingRow(
+          label: 'Preu (${_averagePreu.round()})',
+          rating: _averagePreu.round(),
+          labelWidth: 130,
+          labelStyle: labelStyle,
+          starSize: 20,
+          bottomSpacing: 6,
+        ),
+        ReviewRatingRow(
+          label: 'Ambient (${_averageAmbient.round()})',
+          rating: _averageAmbient.round(),
+          labelWidth: 130,
+          labelStyle: labelStyle,
+          starSize: 20,
+          bottomSpacing: 6,
+        ),
+        ReviewRatingRow(
+          label: 'Accessibilitat (${_averageAccessibilitat.round()})',
+          rating: _averageAccessibilitat.round(),
+          labelWidth: 130,
+          labelStyle: labelStyle,
+          starSize: 20,
+          bottomSpacing: 0,
         ),
       ],
     );
