@@ -5,7 +5,6 @@ import 'package:agendat/core/api/sessions_api.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EventScreen extends StatefulWidget {
@@ -59,24 +58,16 @@ class _EventScreenState extends State<EventScreen> {
   }
 
   Future<void> _handleAssistir(EventExtended event) async {
-    final username = currentLoggedInUser?['username']?.toString().trim();
-    if (username == null || username.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cal iniciar sessió per assistir a l\'esdeveniment.'),
-        ),
-      );
-      return;
-    }
-
-    final initialDateTime = event.startDate ?? DateTime.now();
-    final selectedDateTime = await _showSessionDateTimeDialog(
-      initialDateTime: initialDateTime,
+    final initialStartDateTime = event.startDate ?? DateTime.now();
+    final initialEndDateTime =
+        event.endDate ?? initialStartDateTime.add(const Duration(hours: 1));
+    final selectedDateTimes = await _showSessionDateTimeDialog(
+      initialDateTime: initialStartDateTime,
+      initialEndDateTime: initialEndDateTime,
       eventTitle: event.title,
     );
 
-    if (selectedDateTime == null || !mounted) {
+    if (selectedDateTimes == null || !mounted) {
       return;
     }
 
@@ -88,8 +79,8 @@ class _EventScreenState extends State<EventScreen> {
       await _sessionsApi.createSession(
         CreateSessionRequest(
           event: event.code,
-          user: username,
-          startTime: selectedDateTime,
+          startTime: selectedDateTimes.start,
+          endTime: selectedDateTimes.end,
         ),
       );
 
@@ -122,32 +113,54 @@ class _EventScreenState extends State<EventScreen> {
     }
   }
 
-  Future<DateTime?> _showSessionDateTimeDialog({
+  Future<DateTimeRange?> _showSessionDateTimeDialog({
     required DateTime initialDateTime,
+    required DateTime initialEndDateTime,
     required String eventTitle,
   }) async {
-    DateTime selectedDate = DateTime(
+    DateTime selectedStartDate = DateTime(
       initialDateTime.year,
       initialDateTime.month,
       initialDateTime.day,
     );
-    TimeOfDay selectedTime = TimeOfDay(
+    TimeOfDay selectedStartTime = TimeOfDay(
       hour: initialDateTime.hour,
       minute: initialDateTime.minute,
     );
 
-    return showDialog<DateTime>(
+    DateTime selectedEndDate = DateTime(
+      initialEndDateTime.year,
+      initialEndDateTime.month,
+      initialEndDateTime.day,
+    );
+    TimeOfDay selectedEndTime = TimeOfDay(
+      hour: initialEndDateTime.hour,
+      minute: initialEndDateTime.minute,
+    );
+
+    return showDialog<DateTimeRange>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
+        DateTime combineDateAndTime(DateTime date, TimeOfDay time) {
+          return DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+        }
+
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final combinedDateTime = DateTime(
-              selectedDate.year,
-              selectedDate.month,
-              selectedDate.day,
-              selectedTime.hour,
-              selectedTime.minute,
+            final startDateTime = combineDateAndTime(
+              selectedStartDate,
+              selectedStartTime,
+            );
+            final endDateTime = combineDateAndTime(
+              selectedEndDate,
+              selectedEndTime,
             );
 
             return AlertDialog(
@@ -164,23 +177,31 @@ class _EventScreenState extends State<EventScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.calendar_today_rounded),
-                    title: const Text('Data'),
-                    subtitle: Text(_formatDate(selectedDate)),
+                    title: const Text('Inici'),
+                    subtitle: Text(
+                      '${_formatDate(selectedStartDate)} · ${selectedStartTime.format(dialogContext)}',
+                    ),
                     trailing: TextButton(
                       onPressed: () async {
                         final pickedDate = await showDatePicker(
                           context: dialogContext,
-                          initialDate: selectedDate,
+                          initialDate: selectedStartDate,
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
                         );
                         if (pickedDate == null) return;
+                        final pickedTime = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: selectedStartTime,
+                        );
+                        if (pickedTime == null) return;
                         setDialogState(() {
-                          selectedDate = DateTime(
+                          selectedStartDate = DateTime(
                             pickedDate.year,
                             pickedDate.month,
                             pickedDate.day,
                           );
+                          selectedStartTime = pickedTime;
                         });
                       },
                       child: const Text('Canvia'),
@@ -189,17 +210,31 @@ class _EventScreenState extends State<EventScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.access_time_rounded),
-                    title: const Text('Hora'),
-                    subtitle: Text(selectedTime.format(dialogContext)),
+                    title: const Text('Final'),
+                    subtitle: Text(
+                      '${_formatDate(selectedEndDate)} · ${selectedEndTime.format(dialogContext)}',
+                    ),
                     trailing: TextButton(
                       onPressed: () async {
+                        final pickedDate = await showDatePicker(
+                          context: dialogContext,
+                          initialDate: selectedEndDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (pickedDate == null) return;
                         final pickedTime = await showTimePicker(
                           context: dialogContext,
-                          initialTime: selectedTime,
+                          initialTime: selectedEndTime,
                         );
                         if (pickedTime == null) return;
                         setDialogState(() {
-                          selectedTime = pickedTime;
+                          selectedEndDate = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                          );
+                          selectedEndTime = pickedTime;
                         });
                       },
                       child: const Text('Canvia'),
@@ -207,7 +242,7 @@ class _EventScreenState extends State<EventScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Es crearà una sessió amb la data i l\'hora seleccionades.',
+                    'Es crearà una sessió amb la data i l\'hora d\'inici i final seleccionades.',
                     style: TextStyle(color: Colors.grey[700], fontSize: 13),
                   ),
                 ],
@@ -219,7 +254,9 @@ class _EventScreenState extends State<EventScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(dialogContext).pop(combinedDateTime);
+                    Navigator.of(dialogContext).pop(
+                      DateTimeRange(start: startDateTime, end: endDateTime),
+                    );
                   },
                   child: const Text('Confirmar'),
                 ),

@@ -4,28 +4,20 @@ import 'package:agendat/core/dto/session_dto.dart';
 class CreateSessionRequest {
   CreateSessionRequest({
     required this.event,
-    required this.user,
     required this.startTime,
-    this.endTime,
+    required this.endTime,
   });
 
   final String event;
-  final String user;
   final DateTime startTime;
-  final DateTime? endTime;
+  final DateTime endTime;
 
   Map<String, dynamic> toJson() {
-    final payload = <String, dynamic>{
+    return <String, dynamic>{
       'event': event,
-      'user': user,
       'start_time': startTime.toIso8601String(),
+      'end_time': endTime.toIso8601String(),
     };
-
-    if (endTime != null) {
-      payload['end_time'] = endTime!.toIso8601String();
-    }
-
-    return payload;
   }
 }
 
