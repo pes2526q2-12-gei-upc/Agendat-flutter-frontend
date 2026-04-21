@@ -1,9 +1,8 @@
 /// Model d'una valoració (ressenya) d'un esdeveniment.
 ///
-/// De moment només es fa servir amb dades mock dins la UI.
-/// TODO(backend): quan existeixi l'API de ressenyes, afegir un camp `id`
-/// (identificador a la BBDD) i els mètodes `fromJson` / `toJson` per
-/// serialitzar la valoració quan es parli amb el servidor.
+/// És el model de domini que consumeix la UI. La serialització HTTP es fa
+/// a `ReviewDto` (veure `lib/core/dto/review_dto.dart`) i es converteix a
+/// aquest model mitjançant `ReviewDto.toModel()`.
 class Review {
   const Review({
     required this.author,
@@ -12,20 +11,25 @@ class Review {
     required this.ambient,
     required this.accessibilitat,
     required this.date,
+    this.id,
     this.comment,
     this.imageUrls = const [],
   });
 
+  /// Identificador a la BBDD. És `null` per a valoracions encara no
+  /// persistides (p. ex. dades mock o formularis de creació).
+  final int? id;
   final String author;
   final int general;
   final int preu;
   final int ambient;
   final int accessibilitat;
-  final String? comment; //opcional
-  final List<String> imageUrls; //opcional
+  final String? comment;
+  final List<String> imageUrls;
   final String date;
 
   Review copyWith({
+    int? id,
     int? general,
     int? preu,
     int? ambient,
@@ -35,6 +39,7 @@ class Review {
     String? date,
   }) {
     return Review(
+      id: id ?? this.id,
       author: author,
       general: general ?? this.general,
       preu: preu ?? this.preu,
