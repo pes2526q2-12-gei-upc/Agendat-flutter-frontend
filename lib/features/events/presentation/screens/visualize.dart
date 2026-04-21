@@ -15,7 +15,7 @@ class VisualizeScreen extends StatefulWidget {
 }
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
-  final EventsQuery _eventsQuery = EventsQuery();
+  final EventsQuery _eventsQuery = EventsQuery.instance;
   late Future<List<Event>> _eventsFuture;
   String _query = '';
   EventFilters _activeFilters = const EventFilters();
@@ -27,10 +27,10 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   void _refresh() {
-    _eventsQuery.invalidate();
     setState(() {
       _eventsFuture = _eventsQuery.getEvents(
         filters: _activeFilters.isEmpty ? null : _activeFilters,
+        forceRefresh: true,
       );
     });
   }
@@ -38,7 +38,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   void _onApplyFilters(EventFilters filters) {
     setState(() {
       _activeFilters = filters;
-      _eventsQuery.invalidate();
       _eventsFuture = _eventsQuery.getEvents(
         filters: filters.isEmpty ? null : filters,
       );

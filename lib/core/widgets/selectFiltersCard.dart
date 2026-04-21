@@ -21,8 +21,8 @@ class SelectedFiltersCard extends StatefulWidget {
 }
 
 class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
-  final CategoriesQuery _categoriesQuery = CategoriesQuery();
-  final LocationsQuery _locationsQuery = LocationsQuery();
+  final CategoriesQuery _categoriesQuery = CategoriesQuery.instance;
+  final LocationsQuery _locationsQuery = LocationsQuery.instance;
 
   late EventFilters _filters;
   bool _isLoading = true;
