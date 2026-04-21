@@ -136,6 +136,23 @@ class ProfileQuery {
     _client.invalidate('$_prefix:reviews:$userId');
   }
 
+  /// Actualitza optimistament el camp `friendshipStatus` del perfil
+  /// d'[userId] a la caché. Útil perquè si surts i tornes a entrar al perfil
+  /// abans que expiri la caché, l'estat del botó sigui coherent.
+  void setCachedFriendshipStatus(int userId, FriendshipStatus? status) {
+    final current = _client.getQueryData<ProfileResult>(
+      '$_prefix:user:$userId',
+    );
+    if (current is ProfileSuccess) {
+      _client.setQueryData<ProfileResult>(
+        '$_prefix:user:$userId',
+        ProfileSuccess(
+          profile: current.profile.copyWithFriendshipStatus(status),
+        ),
+      );
+    }
+  }
+
   void invalidateSessionsByUsername(String username) {
     _client.invalidate('$_prefix:sessions:$username');
   }

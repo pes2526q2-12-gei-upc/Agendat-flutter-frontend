@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -39,7 +37,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   final ProfileQuery _profileQuery = ProfileQuery.instance;
 
   FriendshipStatus? _friendshipStatus;
-  bool _isFriendshipLoading = false;
   bool _isFriendshipActionInProgress = false;
 
   bool get _isOwnProfile => widget.userId == null;
@@ -115,11 +112,12 @@ class _ProfileScreenState extends State<ProfileScreen>
           _interests = interests;
           _reviewsResponse = reviewsResponse;
           _sessions = sessions;
+          // L'estat d'amistat el dicta el backend via `friendship_status`
+          // dins del perfil. Si encara no ve informat, per defecte és null i
+          // es mostra el botó d'"Enviar sol·licitud".
+          _friendshipStatus = profile.friendshipStatus;
           _isLoading = false;
         });
-        if (!_isOwnProfile) {
-          unawaited(_loadFriendshipStatus());
-        }
       case ProfileNotFound():
         setState(() {
           _isLoading = false;
@@ -182,37 +180,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Future<void> _loadFriendshipStatus() async {
-    final me = _currentUserId;
-    final other = widget.userId;
-    if (me == null || other == null || me == other) return;
-
-    setState(() {
-      _isFriendshipLoading = true;
-    });
-
-    final result = await fetchFriendshipStatus(
-      myUserId: me,
-      otherUserId: other,
-    );
-
-    if (!mounted) return;
-
-    switch (result) {
-      case FriendshipStatusSuccess(:final status):
-        setState(() {
-          _friendshipStatus = status;
-          _isFriendshipLoading = false;
-        });
-      case FriendshipStatusUnauthorized():
-      case FriendshipStatusFailure():
-        setState(() {
-          _friendshipStatus = null;
-          _isFriendshipLoading = false;
-        });
-    }
-  }
-
   Future<void> _runFriendshipAction({
     required Future<FriendActionResult> Function() action,
     required FriendshipStatus successStatus,
@@ -231,8 +198,17 @@ class _ProfileScreenState extends State<ProfileScreen>
       case FriendActionSuccess():
         setState(() {
           _friendshipStatus = successStatus;
+          if (_profile != null) {
+            _profile = _profile!.copyWithFriendshipStatus(successStatus);
+          }
           _isFriendshipActionInProgress = false;
         });
+        // Actualitzem la caché del QueryClient per mantenir l'estat entre
+        // navegacions, fins que expiri el staleTime o el backend el refresqui.
+        final otherId = widget.userId;
+        if (otherId != null) {
+          _profileQuery.setCachedFriendshipStatus(otherId, successStatus);
+        }
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(successMessage)));
@@ -253,8 +229,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(text)));
-        // Refresquem l'estat real per si el backend ja ha canviat les coses.
-        unawaited(_loadFriendshipStatus());
     }
   }
 
@@ -500,19 +474,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       return const SizedBox.shrink();
     }
 
-    if (_isFriendshipLoading && _friendshipStatus == null) {
-      return const SizedBox(
-        height: 44,
-        child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
     final status = _friendshipStatus ?? FriendshipStatus.none;
     final busy = _isFriendshipActionInProgress;
 
@@ -554,31 +515,58 @@ class _ProfileScreenState extends State<ProfileScreen>
           ],
         );
       case FriendshipStatus.friends:
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.green.shade200),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Ja sou amics',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green.shade800,
-                ),
-              ),
-            ],
-          ),
+        return _buildFriendshipBadge(
+          icon: Icons.check_circle,
+          text: 'Ja sou amics',
+          background: Colors.green.shade50,
+          borderColor: Colors.green.shade200,
+          iconColor: Colors.green.shade700,
+          textColor: Colors.green.shade800,
+        );
+      case FriendshipStatus.blocked:
+        return _buildFriendshipBadge(
+          icon: Icons.block,
+          text: 'Usuari bloquejat',
+          background: Colors.grey.shade100,
+          borderColor: Colors.grey.shade300,
+          iconColor: Colors.grey.shade700,
+          textColor: Colors.grey.shade800,
         );
     }
+  }
+
+  Widget _buildFriendshipBadge({
+    required IconData icon,
+    required String text,
+    required Color background,
+    required Color borderColor,
+    required Color iconColor,
+    required Color textColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildFriendshipPrimaryButton({

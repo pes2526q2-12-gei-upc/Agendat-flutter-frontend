@@ -1,3 +1,51 @@
+/// Estat de la relació d'amistat del meu usuari amb un altre usuari.
+///
+/// El backend hauria de retornar aquest valor com a camp `friendship_status`
+/// dins de la resposta de `GET /api/users/{id}/` per evitar crides extra i
+/// inconsistències locals. Mentre el backend no l'enviï, es considera `null`.
+enum FriendshipStatus {
+  /// No són amics i no hi ha cap sol·licitud pendent.
+  none,
+
+  /// Jo he enviat una sol·licitud a l'altre usuari i està pendent.
+  requestSent,
+
+  /// L'altre usuari m'ha enviat una sol·licitud que jo encara no he respost.
+  requestReceived,
+
+  /// Ja som amics.
+  friends,
+
+  /// Tinc aquest usuari bloquejat.
+  blocked,
+}
+
+FriendshipStatus? friendshipStatusFromString(String? raw) {
+  if (raw == null) return null;
+  switch (raw.toLowerCase().replaceAll('-', '_')) {
+    case 'none':
+    case '':
+      return FriendshipStatus.none;
+    case 'request_sent':
+    case 'sent':
+    case 'outgoing':
+    case 'pending_sent':
+      return FriendshipStatus.requestSent;
+    case 'request_received':
+    case 'received':
+    case 'incoming':
+    case 'pending_received':
+      return FriendshipStatus.requestReceived;
+    case 'friends':
+    case 'friend':
+    case 'accepted':
+      return FriendshipStatus.friends;
+    case 'blocked':
+      return FriendshipStatus.blocked;
+  }
+  return null;
+}
+
 /// Model d'usuari per a la visualització del perfil.
 /// Coincideix amb la resposta de GET /api/users/{id}/.
 class UserProfile {
@@ -16,6 +64,7 @@ class UserProfile {
     this.eventUpdatesAllowed = true,
     this.socialAlertsAllowed = true,
     this.description,
+    this.friendshipStatus,
   });
 
   final int id;
@@ -32,6 +81,10 @@ class UserProfile {
   final bool eventUpdatesAllowed;
   final bool socialAlertsAllowed;
   final String? description;
+
+  /// Relació d'amistat de l'usuari autenticat envers aquest perfil. Només està
+  /// present si el backend l'inclou a la resposta (camp `friendship_status`).
+  final FriendshipStatus? friendshipStatus;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final notificationsAllowed = json['notifications_allowed'] as bool? ?? true;
@@ -55,6 +108,29 @@ class UserProfile {
       socialAlertsAllowed:
           json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
       description: json['description'] as String?,
+      friendshipStatus: friendshipStatusFromString(
+        json['friendship_status'] as String?,
+      ),
+    );
+  }
+
+  UserProfile copyWithFriendshipStatus(FriendshipStatus? status) {
+    return UserProfile(
+      id: id,
+      username: username,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      birthDate: birthDate,
+      profileImage: profileImage,
+      locationAllowed: locationAllowed,
+      notificationsAllowed: notificationsAllowed,
+      eventRemindersAllowed: eventRemindersAllowed,
+      eventUpdatesAllowed: eventUpdatesAllowed,
+      socialAlertsAllowed: socialAlertsAllowed,
+      description: description,
+      friendshipStatus: status,
     );
   }
 
