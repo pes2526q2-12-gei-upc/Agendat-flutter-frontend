@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/api/events_api.dart';
+import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
@@ -18,7 +18,7 @@ class EventScreen extends StatefulWidget {
 }
 
 class _EventScreenState extends State<EventScreen> {
-  final EventsApi _eventsApi = EventsApi();
+  final EventsQuery _eventsQuery = EventsQuery.instance;
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
 
@@ -37,12 +37,15 @@ class _EventScreenState extends State<EventScreen> {
   @override
   void initState() {
     super.initState();
-    _eventFuture = _eventsApi.fetchEventByCode(widget.eventCode);
+    _eventFuture = _eventsQuery.getEventByCode(widget.eventCode);
   }
 
   void _retryLoad() {
     setState(() {
-      _eventFuture = _eventsApi.fetchEventByCode(widget.eventCode);
+      _eventFuture = _eventsQuery.getEventByCode(
+        widget.eventCode,
+        forceRefresh: true,
+      );
     });
   }
 

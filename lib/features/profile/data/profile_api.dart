@@ -4,6 +4,17 @@ import 'dart:typed_data';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 
+sealed class DeleteAccountResult {}
+
+class DeleteAccountSuccess extends DeleteAccountResult {}
+
+class DeleteAccountUnauthorized extends DeleteAccountResult {}
+
+class DeleteAccountFailure extends DeleteAccountResult {
+  DeleteAccountFailure({required this.statusCode});
+  final int statusCode;
+}
+
 sealed class ProfileResult {}
 
 class ProfileSuccess extends ProfileResult {
@@ -147,6 +158,21 @@ Future<UpdateProfileResult> updateUserProfile(
     return UpdateProfileFailure(statusCode: e.statusCode, error: e);
   } catch (e) {
     return UpdateProfileFailure(statusCode: -1, error: e);
+  }
+}
+
+/// DELETE /api/users/{id}/ — el backend retorna 204.
+Future<DeleteAccountResult> deleteUserAccount(int userId) async {
+  try {
+    await ApiClient.delete('/api/users/$userId/', expectedStatusCode: 204);
+    return DeleteAccountSuccess();
+  } on ApiException catch (e) {
+    if (e.statusCode == 401 || e.statusCode == 403) {
+      return DeleteAccountUnauthorized();
+    }
+    return DeleteAccountFailure(statusCode: e.statusCode);
+  } catch (_) {
+    return DeleteAccountFailure(statusCode: -1);
   }
 }
 

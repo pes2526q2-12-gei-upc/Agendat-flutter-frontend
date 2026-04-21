@@ -4,6 +4,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:flutter/foundation.dart';
 
@@ -30,6 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   List<UserSession> _sessions = const [];
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
+  final ProfileQuery _profileQuery = ProfileQuery.instance;
 
   bool get _isOwnProfile => widget.userId == null;
 
@@ -46,7 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _loadProfile({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -61,24 +63,40 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    final result = await fetchUserProfile(userId);
+    final result = await _profileQuery.getUserProfile(
+      userId,
+      forceRefresh: forceRefresh,
+    );
 
     if (!mounted) return;
 
     switch (result) {
       case ProfileSuccess(:final profile):
-        final stats = await fetchUserStats(userId).catchError((_) {
-          return const UserStats(eventCount: 0, reviewCount: 0, reputation: 0);
-        });
-        final interests = await fetchUserInterests(userId).catchError((_) {
-          return const <UserInterest>[];
-        });
-        final reviewsResponse = await fetchUserReviews(userId).catchError((_) {
-          return const UserReviewsResponse(count: 0, reviews: []);
-        });
-        final sessions = await fetchUserSessions(
-          username: profile.username,
-        ).catchError((_) => const <UserSession>[]);
+        final stats = await _profileQuery
+            .getUserStats(userId, forceRefresh: forceRefresh)
+            .catchError((_) {
+              return const UserStats(
+                eventCount: 0,
+                reviewCount: 0,
+                reputation: 0,
+              );
+            });
+        final interests = await _profileQuery
+            .getUserInterests(userId, forceRefresh: forceRefresh)
+            .catchError((_) {
+              return const <UserInterest>[];
+            });
+        final reviewsResponse = await _profileQuery
+            .getUserReviews(userId, forceRefresh: forceRefresh)
+            .catchError((_) {
+              return const UserReviewsResponse(count: 0, reviews: []);
+            });
+        final sessions = await _profileQuery
+            .getUserSessions(
+              username: profile.username,
+              forceRefresh: forceRefresh,
+            )
+            .catchError((_) => const <UserSession>[]);
 
         setState(() {
           _profile = profile;
@@ -195,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loadProfile,
+                onPressed: () => _loadProfile(forceRefresh: true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kPrimaryRed,
                   foregroundColor: Colors.white,
@@ -210,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     final profile = _profile!;
     return RefreshIndicator(
-      onRefresh: _loadProfile,
+      onRefresh: () => _loadProfile(forceRefresh: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -243,10 +261,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: const Color(0x14000000),
+          const BoxShadow(
+            color: Color(0x14000000),
             blurRadius: 14,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -403,10 +421,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: const Color(0x14000000),
+          const BoxShadow(
+            color: Color(0x14000000),
             blurRadius: 14,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -481,10 +499,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: const Color(0x14000000),
+          const BoxShadow(
+            color: Color(0x14000000),
             blurRadius: 14,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
