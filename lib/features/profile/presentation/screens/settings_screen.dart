@@ -4,21 +4,16 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 
-class NotificationPreferencesScreen extends StatefulWidget {
-  const NotificationPreferencesScreen({
-    super.key,
-    required this.currentProfile,
-  });
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key, required this.currentProfile});
 
   final UserProfile currentProfile;
 
   @override
-  State<NotificationPreferencesScreen> createState() =>
-      _NotificationPreferencesScreenState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _NotificationPreferencesScreenState
-    extends State<NotificationPreferencesScreen> {
+class _SettingsScreenState extends State<SettingsScreen> {
   static const _unauthenticatedMessage =
       'Cal iniciar sessió per configurar alertes.';
 
@@ -146,87 +141,113 @@ class _NotificationPreferencesScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text('Preferències d\'alertes'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
+      appBar: _buildAppBar(),
+      body: _buildBody(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: const Text(
+        'Configuració',
+        style: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
+          color: Colors.black,
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text(
-            'Decideix quines alertes vols rebre. Els canvis s\'apliquen al moment.',
-            style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
-          ),
-          const SizedBox(height: 24),
-          _NotificationBlock(
-            notificationsAllowed: _notificationsAllowed,
-            enabled: !_isSaving,
-            onToggleNotifications: _updateNotificationsAllowed,
-            child: AnimatedCrossFade(
-              duration: const Duration(milliseconds: 180),
-              crossFadeState: _notificationsAllowed
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              firstChild: const SizedBox.shrink(),
-              secondChild: Column(
-                children: [
-                  _SubalertTile(
-                    title: 'Recordatoris d\'esdeveniments',
-                    subtitle:
-                        'Avisos previs per no perdre sessions o activitats.',
-                    value: _eventRemindersAllowed,
-                    enabled: !_isSaving,
-                    onChanged: (value) => _updateSubalert(
-                      value: value,
-                      assignLocalValue: (nextValue) {
-                        _eventRemindersAllowed = nextValue;
-                      },
-                    ),
-                  ),
-                  _SubalertTile(
-                    title: 'Canvis en esdeveniments',
-                    subtitle:
-                        'Actualitzacions d\'horari, ubicació o cancel·lacions.',
-                    value: _eventUpdatesAllowed,
-                    enabled: !_isSaving,
-                    onChanged: (value) => _updateSubalert(
-                      value: value,
-                      assignLocalValue: (nextValue) {
-                        _eventUpdatesAllowed = nextValue;
-                      },
-                    ),
-                  ),
-                  _SubalertTile(
-                    title: 'Alertes socials',
-                    subtitle:
-                        'Notificacions relacionades amb amistats i activitat social.',
-                    value: _socialAlertsAllowed,
-                    enabled: !_isSaving,
-                    onChanged: (value) => _updateSubalert(
-                      value: value,
-                      assignLocalValue: (nextValue) {
-                        _socialAlertsAllowed = nextValue;
-                      },
-                    ),
-                  ),
-                ],
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      iconTheme: const IconThemeData(color: Colors.black),
+    );
+  }
+
+  Widget _buildBody() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _buildIntroText(),
+        const SizedBox(height: 24),
+        _buildNotificationBlock(),
+        const SizedBox(height: 12),
+        _buildSavingIndicator(),
+      ],
+    );
+  }
+
+  Widget _buildIntroText() {
+    return Text(
+      'Decideix quines alertes vols rebre. Els canvis s\'apliquen al moment.',
+      style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
+    );
+  }
+
+  Widget _buildNotificationBlock() {
+    return _NotificationBlock(
+      notificationsAllowed: _notificationsAllowed,
+      enabled: !_isSaving,
+      onToggleNotifications: _updateNotificationsAllowed,
+      child: AnimatedCrossFade(
+        duration: const Duration(milliseconds: 180),
+        crossFadeState: _notificationsAllowed
+            ? CrossFadeState.showSecond
+            : CrossFadeState.showFirst,
+        firstChild: const SizedBox.shrink(),
+        secondChild: Column(
+          children: [
+            _SubalertTile(
+              title: 'Recordatoris d\'esdeveniments',
+              subtitle: 'Avisos previs per no perdre sessions o activitats.',
+              value: _eventRemindersAllowed,
+              enabled: !_isSaving,
+              onChanged: (value) => _updateSubalert(
+                value: value,
+                assignLocalValue: (nextValue) {
+                  _eventRemindersAllowed = nextValue;
+                },
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          AnimatedOpacity(
-            opacity: _isSaving ? 1 : 0,
-            duration: const Duration(milliseconds: 180),
-            child: const Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: CircularProgressIndicator(),
+            _SubalertTile(
+              title: 'Canvis en esdeveniments',
+              subtitle: 'Actualitzacions d\'horari, ubicació o cancel·lacions.',
+              value: _eventUpdatesAllowed,
+              enabled: !_isSaving,
+              onChanged: (value) => _updateSubalert(
+                value: value,
+                assignLocalValue: (nextValue) {
+                  _eventUpdatesAllowed = nextValue;
+                },
               ),
             ),
-          ),
-        ],
+            _SubalertTile(
+              title: 'Alertes socials',
+              subtitle:
+                  'Notificacions relacionades amb amistats i activitat social.',
+              value: _socialAlertsAllowed,
+              enabled: !_isSaving,
+              onChanged: (value) => _updateSubalert(
+                value: value,
+                assignLocalValue: (nextValue) {
+                  _socialAlertsAllowed = nextValue;
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSavingIndicator() {
+    return AnimatedOpacity(
+      opacity: _isSaving ? 1 : 0,
+      duration: const Duration(milliseconds: 180),
+      child: const Center(
+        child: Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: CircularProgressIndicator(),
+        ),
       ),
     );
   }
