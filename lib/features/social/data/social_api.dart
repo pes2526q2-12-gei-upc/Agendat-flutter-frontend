@@ -18,10 +18,11 @@ class SearchUsersFailure extends SearchUsersResult {
   final Object? error;
 }
 
-/// Crida GET /api/users/?search=<query> per cercar usuaris pel seu nom.
+/// Crida GET /api/users/?q=<query> per cercar usuaris pel seu nom.
 ///
-/// El backend (DRF) retorna una llista (o un objecte amb `results`) amb
-/// les dades bàsiques dels usuaris que coincideixen.
+/// El backend filtra per coincidències parcials (case-insensitive) sobre
+/// `username`, `first_name` i `last_name`, i retorna una llista (o un
+/// objecte amb `results`) amb les dades bàsiques dels usuaris trobats.
 Future<SearchUsersResult> searchUsers(String query) async {
   final trimmed = query.trim();
   if (trimmed.isEmpty) {
@@ -31,7 +32,7 @@ Future<SearchUsersResult> searchUsers(String query) async {
   try {
     final response = await ApiClient.get(
       '/api/users/',
-      queryParams: {'search': trimmed},
+      queryParams: {'q': trimmed},
     );
     final decoded = jsonDecode(response.body);
 
