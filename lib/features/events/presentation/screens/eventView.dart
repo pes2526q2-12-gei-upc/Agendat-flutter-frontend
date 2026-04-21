@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:agendat/features/events/presentation/widgets/info_row.dart';
+import 'package:agendat/features/events/presentation/widgets/link_tile.dart';
+import 'package:agendat/features/reviews/presentation/widgets/reviews_section.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key, required this.eventCode});
@@ -44,16 +47,6 @@ class _EventScreenState extends State<EventScreen> {
         forceRefresh: true,
       );
     });
-  }
-
-  // Opens external links using the system browser/app.
-  Future<void> _openLink(Uri uri) async {
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!mounted || opened) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No s\'ha pogut obrir l\'enllaç')),
-    );
   }
 
   @override
@@ -111,7 +104,7 @@ class _EventScreenState extends State<EventScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header section with title and optional subtitle.
+                // Capçalera: títol i subtítol (opcional).
                 Text(
                   event.title,
                   style: const TextStyle(
@@ -133,9 +126,14 @@ class _EventScreenState extends State<EventScreen> {
                 ],
                 const Divider(height: 32, thickness: 1),
 
-                // Expandable description section.
+                // Secció de valoracions: col·lapsada per defecte, mostra
+                // només la mitjana fins que l'usuari la desplega.
+                ReviewsSection(eventCode: widget.eventCode),
+
+                // Descripció de l'esdeveniment, amb opció d'expandir/col·lapsar
+                // si el text és massa llarg.
                 if (_hasText(event.description))
-                  _buildSectionCard(
+                  SectionCard(
                     title: 'Descripció',
                     trailing: InkWell(
                       borderRadius: BorderRadius.circular(18),
@@ -174,50 +172,50 @@ class _EventScreenState extends State<EventScreen> {
                     ),
                   ),
 
-                _buildSectionCard(
+                SectionCard(
                   title: 'Informació de l\'esdeveniment',
                   content: Column(
                     children: [
-                      _buildInfoRow(
-                        Icons.calendar_today_rounded,
-                        'Data',
-                        (startDate == endDate)
+                      InfoRow(
+                        icon: Icons.calendar_today_rounded,
+                        label: 'Data',
+                        value: (startDate == endDate)
                             ? startDate
                             : '$startDate - $endDate',
                       ),
                       if (_hasText(event.schedule))
-                        _buildInfoRow(
-                          Icons.access_time_rounded,
-                          'Horari',
-                          event.schedule!.trim(),
+                        InfoRow(
+                          icon: Icons.access_time_rounded,
+                          label: 'Horari',
+                          value: event.schedule!.trim(),
                         ),
 
-                      _buildInfoRow(
-                        Icons.euro_rounded,
-                        'Preu',
-                        event.free ? 'Gratuït' : 'De pagament',
+                      InfoRow(
+                        icon: Icons.euro_rounded,
+                        label: 'Preu',
+                        value: event.free ? 'Gratuït' : 'De pagament',
                       ),
 
                       if (_hasText(event.modality))
-                        _buildInfoRow(
-                          Icons.info_outline_rounded,
-                          'Modalitat',
-                          event.modality!.trim(),
+                        InfoRow(
+                          icon: Icons.info_outline_rounded,
+                          label: 'Modalitat',
+                          value: event.modality!.trim(),
                         ),
 
                       if (_hasText(event.address))
-                        _buildInfoRow(
-                          Icons.location_on_rounded,
-                          'Adreça',
-                          event.address!.trim(),
+                        InfoRow(
+                          icon: Icons.location_on_rounded,
+                          label: 'Adreça',
+                          value: event.address!.trim(),
                         ),
 
                       if (_hasText(event.location) &&
                           event.location != 'Per determinar')
-                        _buildInfoRow(
-                          Icons.map_rounded,
-                          'Ubicació',
-                          event.location,
+                        InfoRow(
+                          icon: Icons.map_rounded,
+                          label: 'Ubicació',
+                          value: event.location,
                         ),
                     ],
                   ),
@@ -226,24 +224,24 @@ class _EventScreenState extends State<EventScreen> {
                 if (_parseUrl(event.url_activity) != null ||
                     _parseUrl(event.url_locality) != null ||
                     _parseUrl(event.url_ticket) != null)
-                  _buildSectionCard(
+                  SectionCard(
                     title: 'Enllaços d\'interès',
                     content: Column(
                       children: [
                         if (_parseUrl(event.url_activity) != null)
-                          _buildLinkTile(
-                            'Web de l\'activitat',
-                            _parseUrl(event.url_activity)!,
+                          LinkTile(
+                            label: 'Web de l\'activitat',
+                            uri: _parseUrl(event.url_activity)!,
                           ),
                         if (_parseUrl(event.url_locality) != null)
-                          _buildLinkTile(
-                            'Web de la localitat',
-                            _parseUrl(event.url_locality)!,
+                          LinkTile(
+                            label: 'Web de la localitat',
+                            uri: _parseUrl(event.url_locality)!,
                           ),
                         if (_parseUrl(event.url_ticket) != null)
-                          _buildLinkTile(
-                            'Compra d\'entrades',
-                            _parseUrl(event.url_ticket)!,
+                          LinkTile(
+                            label: 'Compra d\'entrades',
+                            uri: _parseUrl(event.url_ticket)!,
                             isPrimary: true,
                           ),
                       ],
@@ -286,111 +284,6 @@ class _EventScreenState extends State<EventScreen> {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required Widget content,
-    Widget? trailing,
-  }) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 202, 3, 3),
-                    letterSpacing: 1.1,
-                  ),
-                ),
-              ),
-              if (trailing != null) trailing,
-            ],
-          ),
-          const SizedBox(height: 12),
-          content,
-        ],
-      ),
-    );
-  }
-
-  // Shared row renderer for icon + label/value metadata lines.
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    if (value.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: const Color.fromARGB(255, 202, 3, 3)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
-                children: [
-                  TextSpan(
-                    text: '$label: ',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  TextSpan(text: value),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Standardized tile for opening external resources.
-  // isPrimary highlights more important calls to action (e.g., ticket link).
-  Widget _buildLinkTile(String label, Uri uri, {bool isPrimary = false}) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        Icons.open_in_new_rounded,
-        color: isPrimary
-            ? const Color.fromARGB(255, 202, 3, 3)
-            : Colors.blueGrey,
-        size: 20,
-      ),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: isPrimary
-              ? const Color.fromARGB(255, 202, 3, 3)
-              : Colors.black87,
-          fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
-          fontSize: 14,
-          decoration: TextDecoration.underline,
-        ),
-      ),
-      onTap: () => _openLink(uri),
-      dense: true,
-      visualDensity: VisualDensity.compact,
     );
   }
 }
