@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:agendat/core/query/query_client.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 
@@ -72,12 +75,58 @@ class ProfileQuery {
     );
   }
 
-  /// Writes an up-to-date [UserProfile] into the cache (e.g. after editing it).
-  void setProfile(UserProfile profile) {
-    _client.setQueryData<ProfileResult>(
-      '$_prefix:user:${profile.id}',
-      ProfileSuccess(profile: profile),
+  /// Mutation: PATCH /api/users/{id}/ amb només els camps que han canviat.
+  /// Si té èxit, actualitza el cache del perfil i invalida les dades
+  /// derivades (sessions, stats, interests, reviews) per mantenir-les
+  /// coherents amb el nou estat.
+  Future<UpdateProfileResult> updateProfile(
+    int userId,
+    Map<String, dynamic> updates, {
+    Uint8List? profileImageBytes,
+    String? profileImageFilename,
+    String? profileImageContentType,
+  }) async {
+    final result = await updateUserProfile(
+      userId,
+      updates,
+      profileImageBytes: profileImageBytes,
+      profileImageFilename: profileImageFilename,
+      profileImageContentType: profileImageContentType,
     );
+
+    if (result is UpdateProfileSuccess) {
+      _client.setQueryData<ProfileResult>(
+        '$_prefix:user:$userId',
+        ProfileSuccess(profile: result.profile),
+      );
+      // Les dades derivades depenen (directament o indirecta) del perfil,
+      // així que les invalidem per forçar un refetch la propera vegada.
+      _client.invalidate('$_prefix:stats:$userId');
+      _client.invalidate('$_prefix:interests:$userId');
+      _client.invalidate('$_prefix:reviews:$userId');
+      _client.invalidatePrefix('$_prefix:sessions:');
+    }
+
+    return result;
+  }
+
+  /// Mutation: DELETE /api/users/{id}/. Si té èxit tanca la sessió local
+  /// i neteja qualsevol cache vinculat a aquest usuari.
+  Future<DeleteAccountResult> deleteAccount() async {
+    final userId = currentLoggedInUser?['id'];
+    if (currentLoggedInUser == null ||
+        userId is! int ||
+        userId.toString().trim().isEmpty) {
+      return DeleteAccountFailure(statusCode: -1);
+    }
+
+    final result = await deleteUserAccount(userId);
+    if (result is DeleteAccountSuccess) {
+      invalidateUser(userId);
+      _client.invalidatePrefix('$_prefix:sessions:');
+      await logout();
+    }
+    return result;
   }
 
   void invalidateUser(int userId) {

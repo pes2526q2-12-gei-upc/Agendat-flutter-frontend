@@ -138,7 +138,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     if (updatedProfile != null && mounted) {
       setState(() => _profile = updatedProfile);
-      _profileQuery.setProfile(updatedProfile);
       await setCurrentLoggedInUser({
         ...currentLoggedInUser ?? {},
         'username': updatedProfile.username,
