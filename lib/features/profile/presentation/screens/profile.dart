@@ -6,7 +6,6 @@ import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
-import 'package:agendat/features/profile/presentation/screens/notification_preferences_screen.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -141,43 +140,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       setState(() => _profile = updatedProfile);
       await setCurrentLoggedInUser({
         ...currentLoggedInUser ?? {},
-        'id': updatedProfile.id,
         'username': updatedProfile.username,
         'email': updatedProfile.email,
         'first_name': updatedProfile.firstName,
         'last_name': updatedProfile.lastName,
         'description': updatedProfile.description,
         'profile_image': updatedProfile.profileImage,
-        'notifications_allowed': updatedProfile.notificationsAllowed,
-        'event_reminders_allowed': updatedProfile.eventRemindersAllowed,
-        'event_updates_allowed': updatedProfile.eventUpdatesAllowed,
-        'social_alerts_allowed': updatedProfile.socialAlertsAllowed,
       });
-    }
-  }
-
-  Future<void> _navigateToNotificationPreferences() async {
-    if (currentLoggedInUser == null || currentAuthToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cal iniciar sessió per configurar alertes.'),
-        ),
-      );
-      return;
-    }
-
-    if (_profile == null) return;
-
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            NotificationPreferencesScreen(currentProfile: _profile!),
-      ),
-    );
-
-    if (mounted) {
-      await _loadProfile();
     }
   }
 
@@ -212,7 +181,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Icons.settings_outlined,
                   color: Colors.black54,
                 ),
-                onPressed: _navigateToNotificationPreferences,
+                onPressed: () {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('pendent')));
+                },
               ),
             ]
           : null,
