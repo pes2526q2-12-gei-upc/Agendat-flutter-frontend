@@ -10,7 +10,8 @@ import 'package:agendat/features/reviews/presentation/widgets/review_card.dart';
 /// per tornar a l'estat inicial.
 ///
 /// Si [currentUsername] coincideix amb l'autor d'alguna valoració i es
-/// passa [onEditReview], a aquella valoració s'hi mostra el botó d'editar.
+/// passen els callbacks d'edició/esborrat, a aquella valoració s'hi
+/// mostren els botons corresponents.
 class ReviewsList extends StatefulWidget {
   const ReviewsList({
     super.key,
@@ -18,6 +19,9 @@ class ReviewsList extends StatefulWidget {
     this.initialLimit = 3,
     this.currentUsername,
     this.onEditReview,
+    this.onDeleteReview,
+    this.onToggleLike,
+    this.busyLikeIds = const {},
   });
 
   final List<Review> reviews;
@@ -26,8 +30,21 @@ class ReviewsList extends StatefulWidget {
 
   /// Es crida quan l'usuari prem el llapis d'una valoració seva.
   /// Rep l'índex dins de [reviews] per localitzar-la.
-  /// Si és `null` mai es mostra el botó d'editar
+  /// Si és `null` mai es mostra el botó d'editar.
   final void Function(int index)? onEditReview;
+
+  /// Es crida quan l'usuari prem la paperera d'una valoració seva.
+  /// Rep la `Review` per localitzar-la. Si és `null` mai es mostra el
+  /// botó d'eliminar.
+  final void Function(Review review)? onDeleteReview;
+
+  /// Es crida quan l'usuari prem el cor d'una valoració per alternar el
+  /// seu like. Si és `null` el botó queda deshabilitat.
+  final void Function(Review review)? onToggleLike;
+
+  /// Conjunt d'`id` de valoracions amb una petició de like/unlike en curs
+  /// per deshabilitar el botó i evitar doble click.
+  final Set<int> busyLikeIds;
 
   @override
   State<ReviewsList> createState() => _ReviewsListState();
@@ -57,9 +74,19 @@ class _ReviewsListState extends State<ReviewsList> {
         for (int i = 0; i < visibleReviews.length; i++)
           ReviewCard(
             review: visibleReviews[i],
-            onEdit: _canEdit(visibleReviews[i])
+            onEdit: _canMutate(visibleReviews[i]) && widget.onEditReview != null
                 ? () => widget.onEditReview!(i)
                 : null,
+            onDelete:
+                _canMutate(visibleReviews[i]) && widget.onDeleteReview != null
+                ? () => widget.onDeleteReview!(visibleReviews[i])
+                : null,
+            onLikeToggle: widget.onToggleLike == null
+                ? null
+                : () => widget.onToggleLike!(visibleReviews[i]),
+            isLikeBusy:
+                visibleReviews[i].id != null &&
+                widget.busyLikeIds.contains(visibleReviews[i].id),
           ),
         if (hasMore) _buildTextButton('Mostrar més', _showMore),
         if (canCollapse) _buildTextButton('Mostrar menys', _showLess),
@@ -68,11 +95,9 @@ class _ReviewsListState extends State<ReviewsList> {
     );
   }
 
-  /// Una valoració es pot editar només si és de l'usuari loggejat i
-  /// el pare ens ha proporcionat un callback d'edició.
-  bool _canEdit(Review review) {
-    return widget.onEditReview != null &&
-        widget.currentUsername != null &&
+  /// Una valoració només es pot editar/esborrar si és de l'usuari loggejat.
+  bool _canMutate(Review review) {
+    return widget.currentUsername != null &&
         review.author == widget.currentUsername;
   }
 

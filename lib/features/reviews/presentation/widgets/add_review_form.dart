@@ -8,10 +8,8 @@ import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.
 /// Conté 4 files de puntuació (General, Preu, Ambient, Accessibilitat),
 /// un camp de comentari opcional i un selector d'imatges/vídeos.
 /// Quan l'usuari prem "Afegir" (o "Desar" en mode edició) es crida
-/// [onSubmit] amb els valors seleccionats.
-///
-/// TODO(backend): aquest widget només recull dades i les passa al pare.
-/// El pare (`ReviewsSection`) s'encarrega d'enviar-ho al servidor.
+/// [onSubmit] amb els valors seleccionats. El pare (`ReviewsSection`)
+/// s'encarrega d'enviar-ho al servidor.
 class AddReviewForm extends StatefulWidget {
   const AddReviewForm({
     super.key,
@@ -89,11 +87,21 @@ class _AddReviewFormState extends State<AddReviewForm> {
     super.dispose();
   }
 
-  /// Valida i envia el formulari. Si la puntuació general és 0 mostra
-  /// un avís i no crida `onSubmit`.
+  /// Valida i envia el formulari. Totes les puntuacions han de tenir
+  /// almenys 1 estrella; altrament es mostra un avís i no es crida
+  /// `onSubmit`.
   void _submitForm() {
-    if (_generalRating == 0) {
-      _showSnack('Has de posar almenys la valoració General.');
+    final missing = <String>[];
+    if (_generalRating == 0) missing.add('General');
+    if (_preuRating == 0) missing.add('Preu');
+    if (_ambientRating == 0) missing.add('Ambient');
+    if (_accessibilitatRating == 0) missing.add('Accessibilitat');
+    if (missing.isNotEmpty) {
+      _showSnack(
+        missing.length == 1
+            ? 'Has de posar almenys 1 estrella a ${missing.first}.'
+            : 'Totes les puntuacions han de tenir almenys 1 estrella.',
+      );
       return;
     }
     widget.onSubmit(

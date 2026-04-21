@@ -1,8 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
+import 'package:agendat/core/api/reviews_api.dart';
+import 'package:agendat/core/dto/review_dto.dart';
 import 'package:agendat/core/models/review.dart';
+import 'package:agendat/features/profile/data/profile_api.dart'
+    show fetchUserSessions;
 import 'package:agendat/features/reviews/presentation/widgets/add_review_form.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_list.dart';
@@ -18,15 +24,6 @@ import 'package:agendat/features/reviews/presentation/widgets/reviews_list.dart'
 ///   - Un usuari només pot tenir una valoració per esdeveniment; clicant
 ///     "Editar" (o el llapis a la seva pròpia targeta) s'obre el mateix
 ///     formulari pre-omplert.
-///
-/// TODO(backend): substituir la llista mock [_reviews] per les valoracions
-/// reals. Caldrà:
-///   1. Afegir els mètodes `fetchReviewsByEventCode` i `createReview` a
-///      `ReviewsApi` (o a `EventsApi`).
-///   2. Carregar-les dins un `FutureBuilder` usant [ReviewsSection.eventCode]
-///      per identificar l'esdeveniment.
-///   3. A [_submitReview] fer el POST/PATCH real i refrescar la llista
-///      amb la resposta del servidor.
 class ReviewsSection extends StatefulWidget {
   const ReviewsSection({super.key, required this.eventCode});
 
@@ -40,97 +37,74 @@ class ReviewsSection extends StatefulWidget {
 class _ReviewsSectionState extends State<ReviewsSection> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
 
+  final ReviewsApi _reviewsApi = ReviewsApi();
+
   bool _isExpanded = false;
   bool _isFormOpen = false;
+  bool _isLoading = false;
+  bool _isSubmitting = false;
+  String? _error;
 
   /// Índex dins [_reviews] de la valoració que s'està editant.
   /// `null` si el formulari està obert per afegir-ne una de nova
   /// o si no hi ha formulari obert.
   int? _editingIndex;
 
-  // TODO(backend): valoracions d'exemple per poder provar la UI (mitjana,
-  // paginació, edició de la valoració pròpia...). S'ha d'eliminar quan la
-  // llista vingui del backend.
-  final List<Review> _reviews = [
-    const Review(
-      author: 'Usuari Demo',
-      general: 4,
-      preu: 3,
-      ambient: 5,
-      accessibilitat: 4,
-      comment:
-          'Una experiència molt recomanable! L\'ambient era immillorable i '
-          'l\'organització va ser impecable. El preu em sembla una mica alt '
-          'per el que s\'ofereix, però en general ha valgut molt la pena.',
-      date: '15/04/2026',
-    ),
-    const Review(
-      author: 'Marta',
-      general: 5,
-      preu: 4,
-      ambient: 5,
-      accessibilitat: 5,
-      comment: 'M\'ha encantat! Repetiria sense dubtar-ho.',
-      date: '10/04/2026',
-    ),
-    const Review(
-      author: 'Jordi',
-      general: 3,
-      preu: 2,
-      ambient: 4,
-      accessibilitat: 3,
-      comment:
-          'Està bé, però esperava més pel preu que té. L\'ambient era correcte.',
-      date: '05/04/2026',
-    ),
-    const Review(
-      author: 'Laia',
-      general: 4,
-      preu: 4,
-      ambient: 4,
-      accessibilitat: 5,
-      comment: 'Molt ben organitzat i accessible per tothom.',
-      date: '02/04/2026',
-    ),
-    const Review(
-      author: 'Pau',
-      general: 5,
-      preu: 5,
-      ambient: 5,
-      accessibilitat: 4,
-      comment: 'Increïble! Una de les millors experiències de l\'any.',
-      date: '28/03/2026',
-    ),
-  ];
+  /// Ids de valoracions amb una petició de like/unlike en curs.
+  final Set<int> _busyLikeIds = <int>{};
 
-  // ───────────────────────── Helpers de negoci ─────────────────────────
+  List<Review> _reviews = [];
 
-  /// Mitjana de la puntuació "General" sobre totes les valoracions.
+  @override
+  void initState() {
+    super.initState();
+    _fetchReviews();
+  }
+
+  // ─────────────────────────── Carrega dades ───────────────────────────
+
+  Future<void> _fetchReviews() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final dtos = await _reviewsApi.fetchReviewsByEventCode(widget.eventCode);
+      if (!mounted) return;
+      final reviews = dtos.map((dto) => dto.toModel()).toList(growable: true);
+      _pinOwnReviewFirst(reviews);
+      setState(() {
+        _reviews = reviews;
+        _isLoading = false;
+      });
+    } catch (e, stack) {
+      debugPrint('ReviewsSection._fetchReviews failed: $e');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      setState(() {
+        _error = 'No s\'han pogut carregar les valoracions.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Si l'usuari té una valoració dins [reviews] i no està ja al principi,
+  /// la mou a la posició 0. Muta la llista rebuda.
+  void _pinOwnReviewFirst(List<Review> reviews) {
+    final username = _currentUsername;
+    if (username == null) return;
+    final idx = reviews.indexWhere((r) => r.author == username);
+    if (idx > 0) {
+      final mine = reviews.removeAt(idx);
+      reviews.insert(0, mine);
+    }
+  }
+
+  /// Mitjana d'una puntuació concreta per a totes les valoracions carregades.
   /// Retorna 0 si encara no n'hi ha cap.
-  double get _averageGeneral {
+  double _averageOf(int Function(Review r) selector) {
     if (_reviews.isEmpty) return 0;
-    final sum = _reviews.fold<int>(0, (acc, r) => acc + r.general);
-    return (sum / _reviews.length).clamp(0, 5);
-  }
-
-  /// Mitjana de la puntuació "Preu" sobre totes les valoracions.
-  double get _averagePreu {
-    if (_reviews.isEmpty) return 0;
-    final sum = _reviews.fold<int>(0, (acc, r) => acc + r.preu);
-    return (sum / _reviews.length).clamp(0, 5);
-  }
-
-  /// Mitjana de la puntuació "Accessibilitat" sobre totes les valoracions.
-  double get _averageAccessibilitat {
-    if (_reviews.isEmpty) return 0;
-    final sum = _reviews.fold<int>(0, (acc, r) => acc + r.accessibilitat);
-    return (sum / _reviews.length).clamp(0, 5);
-  }
-
-  /// Mitjana de la puntuació "Ambient" sobre totes les valoracions.
-  double get _averageAmbient {
-    if (_reviews.isEmpty) return 0;
-    final sum = _reviews.fold<int>(0, (acc, r) => acc + r.ambient);
+    final sum = _reviews.fold<int>(0, (acc, r) => acc + selector(r));
     return (sum / _reviews.length).clamp(0, 5);
   }
 
@@ -146,14 +120,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     return idx >= 0 ? idx : null;
   }
 
-  /// Data d'avui formatada com a `dd/mm/aaaa`.
-  String _todayFormatted() {
-    final now = DateTime.now();
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(now.day)}/${two(now.month)}/${now.year}';
-  }
-
-  // ───────────────────────────── Accions ───────────────────────────────
+  // ───────────────────────────── Situacions que podem tenir ───────────────────────────────
 
   void _toggleExpanded() {
     setState(() {
@@ -163,11 +130,91 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     });
   }
 
-  void _openAddForm() {
+  Future<void> _openAddForm() async {
+    // Abans d'obrir el formulari confirmem que l'usuari té alguna sessió
+    // ja finalitzada per aquest esdeveniment (condició que imposa el
+    // backend). Si la comprovació falla per xarxa deixem continuar: el
+    // POST ja es rebutjarà i ho capturarem com a
+    // `ReviewAttendanceRequiredException`.
+    final attended = await _hasConfirmedAttendance();
+    if (!mounted) return;
+    if (!attended) {
+      _showAttendanceRequiredDialog();
+      return;
+    }
     setState(() {
       _isFormOpen = true;
       _editingIndex = null;
     });
+  }
+
+  /// Comprova si l'usuari té almenys una sessió ja finalitzada per
+  /// l'esdeveniment actual. És la condició que el backend exigeix per
+  /// poder deixar una valoració.
+  ///
+  /// Si la petició falla (xarxa, etc.) retornem `true` per no bloquejar
+  /// l'usuari: en cas que no hi hagi assistit, el POST posterior ho
+  /// acabarà detectant igualment.
+  Future<bool> _hasConfirmedAttendance() async {
+    final username = _currentUsername;
+    if (username == null) return false;
+    try {
+      final sessions = await fetchUserSessions(username: username);
+      final now = DateTime.now();
+      return sessions.any(
+        (s) =>
+            s.eventCode == widget.eventCode &&
+            s.endTime != null &&
+            s.endTime!.isBefore(now),
+      );
+    } catch (e, stack) {
+      debugPrint('ReviewsSection._hasConfirmedAttendance failed: $e');
+      debugPrintStack(stackTrace: stack);
+      return true;
+    }
+  }
+
+  /// Diàleg que avisa que l'usuari no pot valorar un esdeveniment perquè
+  /// no hi ha assistit.
+  void _showAttendanceRequiredDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('No pots valorar aquest esdeveniment'),
+        content: const Text(
+          'Només pots valorar esdeveniments als quals has assistit.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(foregroundColor: _brandRed),
+            child: const Text('Entesos'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Diàleg que avisa que l'usuari ja té una valoració d'aquest
+  /// esdeveniment i que ha d'editar-la en comptes de crear-ne una nova.
+  void _showAlreadyReviewedDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ja has valorat aquest esdeveniment'),
+        content: const Text(
+          'Ja tens una valoració per aquest esdeveniment. Si la vols '
+          'canviar, fes servir el botó d\'editar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(foregroundColor: _brandRed),
+            child: const Text('Entesos'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openEditForm(int index) {
@@ -182,53 +229,190 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     _editingIndex = null;
   }
 
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   /// Es crida quan l'usuari prem "Afegir"/"Desar" al formulari.
-  /// Si estem en mode edició, substitueix la valoració existent;
-  /// si no, n'insereix una de nova al principi de la llista.
+  /// Envia la petició al servidor (POST/PATCH) i actualitza la llista
+  /// amb la resposta.
   ///
-  /// TODO(backend): substituir la mutació local per una crida al servidor
-  /// (POST a `/api/events/{eventCode}/reviews/` o PATCH a
-  /// `/api/reviews/{id}/`) i refrescar `_reviews` amb la resposta.
-  void _submitReview({
+  /// TODO(backend): quan hi hagi endpoint de pujada de fitxers, convertir
+  /// [media] a URLs abans d'enviar-les al DTO.
+  Future<void> _submitReview({
     required int generalRating,
     required int preuRating,
     required int ambientRating,
     required int accessibilitatRating,
     required String comment,
     required List<XFile> media,
-  }) {
-    setState(() {
-      if (_editingIndex != null) {
-        _reviews[_editingIndex!] = _reviews[_editingIndex!].copyWith(
-          general: generalRating,
-          preu: preuRating,
-          ambient: ambientRating,
-          accessibilitat: accessibilitatRating,
-          comment: comment,
-          date: _todayFormatted(),
-        );
+  }) async {
+    if (_isSubmitting) return;
+
+    final editingIndex = _editingIndex;
+    final existing = editingIndex != null ? _reviews[editingIndex] : null;
+
+    final dto = ReviewDto(
+      id: existing?.id,
+      eventCode: widget.eventCode,
+      general: generalRating,
+      preu: preuRating,
+      ambient: ambientRating,
+      accessibilitat: accessibilitatRating,
+      comment: comment.trim().isEmpty ? null : comment.trim(),
+    );
+
+    setState(() => _isSubmitting = true);
+    try {
+      final ReviewDto saved;
+      if (existing != null) {
+        saved = await _reviewsApi.updateReview(widget.eventCode, dto);
       } else {
-        _reviews.insert(
-          0,
-          Review(
-            // TODO(backend): l'autoria l'hauria d'assignar el servidor a
-            // partir del token d'autenticació. Aquí només guardem el
-            // username per poder detectar localment la valoració com a pròpia.
-            author: _currentUsername ?? 'Tu',
-            general: generalRating,
-            preu: preuRating,
-            ambient: ambientRating,
-            accessibilitat: accessibilitatRating,
-            comment: comment,
-            // TODO(backend): substituir per les URLs retornades pel
-            // servidor un cop pujats els fitxers de `media`.
-            imageUrls: const [],
-            date: _todayFormatted(),
-          ),
-        );
+        saved = await _reviewsApi.createReview(widget.eventCode, dto);
       }
-      _closeForm();
+      if (!mounted) return;
+      // Forcem `author` a l'username actual (quan el tenim) perquè la UI
+      // reconegui la valoració com a pròpia —botons d'editar/eliminar—
+      // sense dependre del format exacte de l'autor que torni el backend.
+      final username = _currentUsername;
+      final savedReview = (username != null && username.isNotEmpty)
+          ? saved.toModel().copyWith(author: username)
+          : saved.toModel();
+      setState(() {
+        if (editingIndex != null) {
+          _reviews[editingIndex] = savedReview;
+        } else {
+          _reviews.insert(0, savedReview);
+        }
+        _closeForm();
+        _isSubmitting = false;
+      });
+      _showSnack(
+        existing != null
+            ? 'Valoració actualitzada correctament.'
+            : 'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.',
+      );
+    } on ReviewAttendanceRequiredException catch (e) {
+      debugPrint('ReviewsSection._submitReview attendance required: $e');
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      _showAttendanceRequiredDialog();
+    } on ReviewAlreadyExistsException catch (e) {
+      debugPrint('ReviewsSection._submitReview duplicate: $e');
+      if (!mounted) return;
+      setState(() {
+        _closeForm();
+        _isSubmitting = false;
+      });
+      _showAlreadyReviewedDialog();
+      // Recarreguem per poder ensenyar la valoració existent i permetre
+      // editar-la enlloc d'intentar crear-ne una altra.
+      _fetchReviews();
+    } catch (e, stack) {
+      debugPrint('ReviewsSection._submitReview failed: $e');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      _showSnack(
+        existing != null
+            ? 'No s\'ha pogut actualitzar la valoració.'
+            : 'No s\'ha pogut publicar la valoració.',
+      );
+    }
+  }
+
+  /// Demana confirmació i elimina una valoració pròpia al servidor.
+  Future<void> _deleteReview(Review review) async {
+    final reviewId = review.id;
+    if (reviewId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar valoració'),
+        content: const Text(
+          'Segur que vols eliminar la teva valoració? Aquesta acció no es '
+          'pot desfer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel·lar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: _brandRed),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _reviewsApi.deleteReview(widget.eventCode, reviewId);
+      if (!mounted) return;
+      setState(() {
+        _reviews.removeWhere((r) => r.id == reviewId);
+        if (_editingIndex != null) _closeForm();
+      });
+      _showSnack('Valoració eliminada.');
+    } catch (e, stack) {
+      debugPrint('ReviewsSection._deleteReview failed: $e');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      _showSnack('No s\'ha pogut eliminar la valoració.');
+    }
+  }
+
+  /// Alterna el like d'una valoració amb actualització optimista.
+  Future<void> _toggleLike(Review review) async {
+    final reviewId = review.id;
+    if (reviewId == null) return;
+    if (_currentUsername == null) {
+      _showSnack('Cal iniciar sessió per fer like.');
+      return;
+    }
+    if (_busyLikeIds.contains(reviewId)) return;
+
+    final idx = _reviews.indexWhere((r) => r.id == reviewId);
+    if (idx < 0) return;
+
+    final original = _reviews[idx];
+    final optimistic = original.copyWith(
+      isLikedByMe: !original.isLikedByMe,
+      likesCount: original.isLikedByMe
+          ? math.max(0, original.likesCount - 1)
+          : original.likesCount + 1,
+    );
+
+    setState(() {
+      _reviews[idx] = optimistic;
+      _busyLikeIds.add(reviewId);
     });
+
+    try {
+      if (original.isLikedByMe) {
+        await _reviewsApi.unlikeReview(widget.eventCode, reviewId);
+      } else {
+        await _reviewsApi.likeReview(widget.eventCode, reviewId);
+      }
+      if (!mounted) return;
+      setState(() => _busyLikeIds.remove(reviewId));
+    } catch (e, stack) {
+      debugPrint('ReviewsSection._toggleLike failed: $e');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      setState(() {
+        final current = _reviews.indexWhere((r) => r.id == reviewId);
+        if (current >= 0) _reviews[current] = original;
+        _busyLikeIds.remove(reviewId);
+      });
+      _showSnack('No s\'ha pogut actualitzar el like.');
+    }
   }
 
   // ───────────────────────────── UI ────────────────────────────────────
@@ -239,17 +423,72 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildCollapsibleHeader(),
-        if (_isExpanded) ...[
-          if (!_isFormOpen) _buildMainActionButton(),
-          if (_isFormOpen) _buildReviewForm(),
-          ReviewsList(
-            reviews: _reviews,
-            currentUsername: _currentUsername,
-            // Mentre hi ha un formulari obert no deixem editar una altra.
-            onEditReview: _isFormOpen ? null : _openEditForm,
+        if (_isExpanded) ..._buildExpandedBody(),
+      ],
+    );
+  }
+
+  List<Widget> _buildExpandedBody() {
+    if (_isLoading) {
+      return const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: CircularProgressIndicator(color: _brandRed)),
+        ),
+      ];
+    }
+    return [
+      if (_error != null) _buildErrorBanner(),
+      if (!_isFormOpen) _buildMainActionButton(),
+      if (_isFormOpen) _buildReviewForm(),
+      ReviewsList(
+        reviews: _reviews,
+        currentUsername: _currentUsername,
+        // Mentre hi ha un formulari obert no deixem editar/eliminar una altra.
+        onEditReview: _isFormOpen ? null : _openEditForm,
+        onDeleteReview: _isFormOpen ? null : _deleteReview,
+        onToggleLike: _currentUsername == null ? null : _toggleLike,
+        busyLikeIds: _busyLikeIds,
+      ),
+    ];
+  }
+
+  /// Banner inline que avisa d'un error de càrrega sense bloquejar la resta
+  /// de la secció (l'usuari continua podent afegir valoracions).
+  Widget _buildErrorBanner() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.shade100),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, size: 18, color: Colors.red.shade400),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _error ?? 'Hi ha hagut un error carregant les valoracions.',
+              style: const TextStyle(fontSize: 13, color: Colors.black87),
+            ),
+          ),
+          TextButton(
+            onPressed: _fetchReviews,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Tornar a intentar',
+              style: TextStyle(color: _brandRed, fontSize: 13),
+            ),
           ),
         ],
-      ],
+      ),
     );
   }
 
@@ -309,6 +548,12 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   /// Text "Valoració mitjana: ★★★★" o bé un missatge si encara no n'hi ha.
   Widget _buildAverageSummary() {
+    if (_isLoading && _reviews.isEmpty) {
+      return const Text(
+        'Carregant valoracions...',
+        style: TextStyle(fontSize: 14, color: Colors.black54),
+      );
+    }
     if (_reviews.isEmpty) {
       return const Text(
         'Encara no hi ha valoracions.',
@@ -320,36 +565,40 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       color: Colors.black87,
       fontWeight: FontWeight.w500,
     );
+    final general = _averageOf((r) => r.general).round();
+    final preu = _averageOf((r) => r.preu).round();
+    final ambient = _averageOf((r) => r.ambient).round();
+    final access = _averageOf((r) => r.accessibilitat).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ReviewRatingRow(
-          label: 'General (${_averageGeneral.round()})',
-          rating: _averageGeneral.round(),
+          label: 'General ($general)',
+          rating: general,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Preu (${_averagePreu.round()})',
-          rating: _averagePreu.round(),
+          label: 'Preu ($preu)',
+          rating: preu,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Ambient (${_averageAmbient.round()})',
-          rating: _averageAmbient.round(),
+          label: 'Ambient ($ambient)',
+          rating: ambient,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Accessibilitat (${_averageAccessibilitat.round()})',
-          rating: _averageAccessibilitat.round(),
+          label: 'Accessibilitat ($access)',
+          rating: access,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,
@@ -371,7 +620,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          onPressed: isEditing ? () => _openEditForm(userIdx) : _openAddForm,
+          onPressed: _currentUsername == null
+              ? null
+              : (isEditing
+                    ? () => _openEditForm(userIdx)
+                    : () => _openAddForm()),
           icon: Icon(
             isEditing ? Icons.edit_rounded : Icons.add_rounded,
             size: 20,
@@ -402,14 +655,14 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   Widget _buildReviewForm() {
     final editing = _editingIndex != null ? _reviews[_editingIndex!] : null;
     return AddReviewForm(
-      key: ValueKey('review-form-${_editingIndex ?? 'new'}'),
+      key: ValueKey('review-form-${editing?.id ?? 'new'}'),
       isEditing: editing != null,
       initialGeneralRating: editing?.general ?? 0,
       initialPreuRating: editing?.preu ?? 0,
       initialAmbientRating: editing?.ambient ?? 0,
       initialAccessibilitatRating: editing?.accessibilitat ?? 0,
       initialComment: editing?.comment ?? '',
-      onCancel: () => setState(_closeForm),
+      onCancel: _isSubmitting ? () {} : () => setState(_closeForm),
       onSubmit: _submitReview,
     );
   }

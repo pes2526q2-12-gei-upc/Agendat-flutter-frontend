@@ -6,23 +6,38 @@ import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.
 ///
 /// Inclou:
 ///   - Capçalera amb avatar (inicial de l'autor), nom i data.
-///   - Una fila d'estrelles amb la puntuació General. La resta de puntuacions
-///     (Preu, Ambient, Accessibilitat) només es mostren agregades a la
-///     capçalera de la secció, no per cada valoració individual.
+///   - Una fila d'estrelles amb la puntuació General.
 ///   - Comentari de text (si n'hi ha).
 ///   - Galeria horitzontal d'imatges adjuntes (si n'hi ha).
+///   - Peu amb botó de like i comptador.
 ///
-/// Si es passa [onEdit], a la capçalera apareix una icona de llapis perquè
-/// l'usuari pugui editar la valoració. Només s'hauria de passar per a les
-/// ressenyes de l'usuari loggejat.
+/// Si es passa [onEdit] (i la valoració és de l'usuari loggejat) apareix
+/// una icona de llapis a la capçalera. Si es passa [onDelete] (també
+/// només per valoracions pròpies) apareix una icona de paperera.
 class ReviewCard extends StatelessWidget {
-  const ReviewCard({super.key, required this.review, this.onEdit});
+  const ReviewCard({
+    super.key,
+    required this.review,
+    this.onEdit,
+    this.onDelete,
+    this.onLikeToggle,
+    this.isLikeBusy = false,
+  });
 
   final Review review;
 
-  /// Callback per entrar en mode edició. Si és `null`, no es mostra el
-  /// botó de llapis.
+  /// Callback per entrar en mode edició. Si és `null` no es mostra el botó.
   final VoidCallback? onEdit;
+
+  /// Callback per eliminar la valoració. Si és `null` no es mostra el botó.
+  final VoidCallback? onDelete;
+
+  /// Callback per alternar el like. Si és `null` el botó queda deshabilitat
+  /// (p. ex. quan l'usuari no està autenticat).
+  final VoidCallback? onLikeToggle;
+
+  /// Deshabilita el botó de like mentre hi ha una petició en curs.
+  final bool isLikeBusy;
 
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
 
@@ -58,6 +73,8 @@ class ReviewCard extends StatelessWidget {
             const SizedBox(height: 8),
             _buildImagesGallery(),
           ],
+          const SizedBox(height: 10),
+          _buildFooter(),
         ],
       ),
     );
@@ -66,26 +83,12 @@ class ReviewCard extends StatelessWidget {
   bool get _hasComment =>
       review.comment != null && review.comment!.trim().isNotEmpty;
 
-  /// Capçalera: avatar amb la inicial, nom, data i (si escau) botó d'edició.
+  /// Capçalera: avatar (foto de perfil o inicial), nom, data i botons
+  /// d'edició/esborrat (aquests últims només per valoracions pròpies).
   Widget _buildHeader() {
-    final initial = review.author.isNotEmpty
-        ? review.author[0].toUpperCase()
-        : '?';
-
     return Row(
       children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: _brandRed,
-          child: Text(
-            initial,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ),
+        _buildAuthorAvatar(),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -98,21 +101,110 @@ class ReviewCard extends StatelessWidget {
           ),
         ),
         Text(
-          review.date,
+          _formatDate(review.date),
           style: TextStyle(fontSize: 12, color: Colors.grey[500]),
         ),
         if (onEdit != null) ...[
           const SizedBox(width: 4),
-          InkWell(
-            onTap: onEdit,
-            borderRadius: BorderRadius.circular(16),
-            child: const Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(Icons.edit_rounded, size: 18, color: _brandRed),
-            ),
-          ),
+          _iconButton(icon: Icons.edit_rounded, onTap: onEdit!),
+        ],
+        if (onDelete != null) ...[
+          const SizedBox(width: 2),
+          _iconButton(icon: Icons.delete_outline_rounded, onTap: onDelete!),
         ],
       ],
+    );
+  }
+
+  /// Avatar circular. Si hi ha foto de perfil la pintem; altrament mostrem
+  /// la inicial del nom com a fallback.
+  Widget _buildAuthorAvatar() {
+    final avatarUrl = review.authorAvatarUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
+    final initial = review.author.isNotEmpty
+        ? review.author[0].toUpperCase()
+        : '?';
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: _brandRed,
+      backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+      onBackgroundImageError: hasAvatar ? (_, __) {} : null,
+      child: hasAvatar
+          ? null
+          : Text(
+              initial,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+    );
+  }
+
+  /// Formata una data ISO (com la que retorna el backend) a
+  /// `dd/MM/yyyy HH:mm`. Si el string no és parsejable, el retorna tal qual.
+  String _formatDate(String raw) {
+    if (raw.trim().isEmpty) return '';
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return raw;
+    final local = parsed.toLocal();
+    String two(int x) => x.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
+
+  /// Peu de la targeta amb el botó de like i el comptador.
+  Widget _buildFooter() {
+    final liked = review.isLikedByMe;
+    final count = review.likesCount;
+    final isDisabled = onLikeToggle == null || isLikeBusy;
+
+    return Row(
+      children: [
+        InkWell(
+          onTap: isDisabled ? null : onLikeToggle,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  size: 20,
+                  color: isDisabled
+                      ? Colors.grey.shade400
+                      : (liked ? _brandRed : Colors.grey.shade600),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDisabled ? Colors.grey.shade400 : Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _iconButton({required IconData icon, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Icon(icon, size: 18, color: _brandRed),
+      ),
     );
   }
 
