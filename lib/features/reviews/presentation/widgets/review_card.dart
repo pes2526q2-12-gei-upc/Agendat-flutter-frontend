@@ -6,7 +6,9 @@ import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.
 ///
 /// Inclou:
 ///   - Capçalera amb avatar (inicial de l'autor), nom i data.
-///   - 4 files d'estrelles (General, Preu, Ambient, Accessibilitat).
+///   - Una fila d'estrelles amb la puntuació General. La resta de puntuacions
+///     (Preu, Ambient, Accessibilitat) només es mostren agregades a la
+///     capçalera de la secció, no per cada valoració individual.
 ///   - Comentari de text (si n'hi ha).
 ///   - Galeria horitzontal d'imatges adjuntes (si n'hi ha).
 ///
@@ -40,13 +42,7 @@ class ReviewCard extends StatelessWidget {
         children: [
           _buildHeader(),
           const SizedBox(height: 10),
-          ReviewRatingRow(label: 'General', rating: review.general),
-          ReviewRatingRow(label: 'Preu', rating: review.preu),
-          ReviewRatingRow(label: 'Ambient', rating: review.ambient),
-          ReviewRatingRow(
-            label: 'Accessibilitat',
-            rating: review.accessibilitat,
-          ),
+          ReviewRatingRow(label: 'Valoració general', rating: review.general),
           if (_hasComment) ...[
             const SizedBox(height: 8),
             Text(
