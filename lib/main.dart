@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +14,11 @@ import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final hasSession = await restoreSession();
+  const forceLogin = bool.fromEnvironment('FORCE_LOGIN');
+  if (forceLogin) {
+    await clearLocalSession();
+  }
+  final hasSession = forceLogin ? false : await restoreSession();
   runApp(
     MyApp(
       initialHome: hasSession
@@ -19,6 +26,11 @@ Future<void> main() async {
           : const LoginScreen(),
     ),
   );
+  if (hasSession) {
+    unawaited(
+      PushNotificationsService.instance.requestPermissionAndRegisterDevice(),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {

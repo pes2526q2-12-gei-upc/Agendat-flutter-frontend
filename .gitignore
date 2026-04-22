@@ -34,6 +34,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/flutter/
 
 # Accidental duplicate lockfiles (e.g. "pubspec 2.lock", "pubspec 3.lock")
 pubspec *.lock

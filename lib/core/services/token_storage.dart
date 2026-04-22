@@ -18,6 +18,7 @@ class TokenStorage {
 
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
+  static const _notificationDeviceIdKey = 'notification_device_id';
 
   // TOKEN
 
@@ -82,8 +83,39 @@ class TokenStorage {
     try {
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _userKey);
+      await _storage.delete(key: _notificationDeviceIdKey);
     } catch (e) {
       debugPrint('[TokenStorage] clear failed (Keychain unavailable?): $e');
+    }
+  }
+
+  // NOTIFICATION DEVICE
+
+  /// Persists the backend notification device id returned after saving an FCM token.
+  static Future<void> writeNotificationDeviceId(int? id) async {
+    try {
+      if (id == null) {
+        await _storage.delete(key: _notificationDeviceIdKey);
+      } else {
+        await _storage.write(
+          key: _notificationDeviceIdKey,
+          value: id.toString(),
+        );
+      }
+    } catch (e) {
+      debugPrint('[TokenStorage] writeNotificationDeviceId failed: $e');
+    }
+  }
+
+  /// Returns the backend notification device id, if one has been stored.
+  static Future<int?> readNotificationDeviceId() async {
+    try {
+      final raw = await _storage.read(key: _notificationDeviceIdKey);
+      if (raw == null) return null;
+      return int.tryParse(raw);
+    } catch (e) {
+      debugPrint('[TokenStorage] readNotificationDeviceId failed: $e');
+      return null;
     }
   }
 }
