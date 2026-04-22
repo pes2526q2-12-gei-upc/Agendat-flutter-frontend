@@ -1,5 +1,6 @@
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
 
   final EventsQuery _eventsQuery = EventsQuery.instance;
   late Future<List<Event>> _eventsFuture;
+  int _selectedIndex = 2; // Calendari tab in navigation bar
 
   @override
   void initState() {
@@ -29,6 +31,12 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
     _eventsQuery.invalidateLists();
     setState(() {
       _eventsFuture = _eventsQuery.getEvents();
+    });
+  }
+
+  void _onDestinationSelected(int index) {
+    setState(() {
+      _selectedIndex = index;
     });
   }
 
@@ -52,6 +60,10 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
             );
           },
         ),
+      ),
+      bottomNavigationBar: AppNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onDestinationSelected,
       ),
     );
   }
