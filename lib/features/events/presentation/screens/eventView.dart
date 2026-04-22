@@ -58,9 +58,21 @@ class _EventScreenState extends State<EventScreen> {
   }
 
   Future<void> _handleAssistir(EventExtended event) async {
-    final initialStartDateTime = event.startDate ?? DateTime.now();
-    final initialEndDateTime =
-        event.endDate ?? initialStartDateTime.add(const Duration(hours: 1));
+    final now = DateTime.now();
+    final initialStartDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
+    final initialEndDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour < 23 ? now.hour + 1 : now.hour,
+      now.minute,
+    );
     final selectedDateTimes = await _showSessionDateTimeDialog(
       initialDateTime: initialStartDateTime,
       initialEndDateTime: initialEndDateTime,
@@ -188,11 +200,14 @@ class _EventScreenState extends State<EventScreen> {
                           initialDate: selectedStartDate,
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
+                          confirmText: 'D\'acord',
                         );
                         if (pickedDate == null) return;
                         final pickedTime = await showTimePicker(
                           context: dialogContext,
                           initialTime: selectedStartTime,
+                          initialEntryMode: TimePickerEntryMode.input,
+                          confirmText: 'D\'acord',
                         );
                         if (pickedTime == null) return;
                         setDialogState(() {
@@ -221,11 +236,14 @@ class _EventScreenState extends State<EventScreen> {
                           initialDate: selectedEndDate,
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
+                          confirmText: 'D\'acord',
                         );
                         if (pickedDate == null) return;
                         final pickedTime = await showTimePicker(
                           context: dialogContext,
                           initialTime: selectedEndTime,
+                          initialEntryMode: TimePickerEntryMode.input,
+                          confirmText: 'D\'acord',
                         );
                         if (pickedTime == null) return;
                         setDialogState(() {
@@ -241,10 +259,6 @@ class _EventScreenState extends State<EventScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Es crearà una sessió amb la data i l\'hora d\'inici i final seleccionades.',
-                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                  ),
                 ],
               ),
               actions: [
