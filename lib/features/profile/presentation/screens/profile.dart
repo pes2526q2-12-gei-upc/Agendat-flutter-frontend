@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
+import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -25,12 +27,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   late TabController _tabController;
   bool _isLoading = true;
+  bool _isLoggingOut = false;
   UserProfile? _profile;
   UserStats? _stats;
   List<UserInterest> _interests = const [];
   List<Session> _sessions = const [];
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
+  final ProfileQuery _profileQuery = ProfileQuery.instance;
 
   bool get _isOwnProfile => widget.userId == null;
 
@@ -47,7 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _loadProfile({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -62,24 +66,40 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    final result = await fetchUserProfile(userId);
+    final result = await _profileQuery.getUserProfile(
+      userId,
+      forceRefresh: forceRefresh,
+    );
 
     if (!mounted) return;
 
     switch (result) {
       case ProfileSuccess(:final profile):
-        final stats = await fetchUserStats(userId).catchError((_) {
-          return const UserStats(eventCount: 0, reviewCount: 0, reputation: 0);
-        });
-        final interests = await fetchUserInterests(userId).catchError((_) {
-          return const <UserInterest>[];
-        });
-        final reviewsResponse = await fetchUserReviews(userId).catchError((_) {
-          return const UserReviewsResponse(count: 0, reviews: []);
-        });
-        final sessions = await fetchUserSessions(
-          username: profile.username,
-        ).catchError((_) => const <Session>[]);
+        final stats = await _profileQuery
+            .getUserStats(userId, forceRefresh: forceRefresh)
+            .catchError((_) {
+              return const UserStats(
+                eventCount: 0,
+                reviewCount: 0,
+                reputation: 0,
+              );
+            });
+        final interests = await _profileQuery
+            .getUserInterests(userId, forceRefresh: forceRefresh)
+            .catchError((_) {
+              return const <UserInterest>[];
+            });
+        final reviewsResponse = await _profileQuery
+            .getUserReviews(userId, forceRefresh: forceRefresh)
+            .catchError((_) {
+              return const UserReviewsResponse(count: 0, reviews: []);
+            });
+        final sessions = await _profileQuery
+            .getUserSessions(
+              username: profile.username,
+              forceRefresh: forceRefresh,
+            )
+            .catchError((_) => const <Session>[]);
 
         setState(() {
           _profile = profile;
@@ -109,6 +129,48 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _requestLogOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirma'),
+          content: const Text('Estàs segur/a que vols tancar la sessió?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Tancar sessió'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoggingOut = true);
+    try {
+      await logout();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No s\'ha pogut tancar la sessio.')),
+      );
+      setState(() => _isLoggingOut = false);
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   Future<void> _navigateToEditProfile() async {
     if (_profile == null) return;
 
@@ -123,13 +185,42 @@ class _ProfileScreenState extends State<ProfileScreen>
       setState(() => _profile = updatedProfile);
       await setCurrentLoggedInUser({
         ...currentLoggedInUser ?? {},
+        'id': updatedProfile.id,
         'username': updatedProfile.username,
         'email': updatedProfile.email,
         'first_name': updatedProfile.firstName,
         'last_name': updatedProfile.lastName,
         'description': updatedProfile.description,
         'profile_image': updatedProfile.profileImage,
+        'notifications_allowed': updatedProfile.notificationsAllowed,
+        'event_reminders_allowed': updatedProfile.eventRemindersAllowed,
+        'event_updates_allowed': updatedProfile.eventUpdatesAllowed,
+        'social_alerts_allowed': updatedProfile.socialAlertsAllowed,
       });
+    }
+  }
+
+  Future<void> _navigateToNotificationPreferences() async {
+    if (currentLoggedInUser == null || currentAuthToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cal iniciar sessió per configurar alertes.'),
+        ),
+      );
+      return;
+    }
+
+    if (_profile == null) return;
+
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(currentProfile: _profile!),
+      ),
+    );
+
+    if (mounted) {
+      await _loadProfile();
     }
   }
 
@@ -164,11 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Icons.settings_outlined,
                   color: Colors.black54,
                 ),
-                onPressed: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('pendent')));
-                },
+                onPressed: _navigateToNotificationPreferences,
               ),
             ]
           : null,
@@ -196,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loadProfile,
+                onPressed: () => _loadProfile(forceRefresh: true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kPrimaryRed,
                   foregroundColor: Colors.white,
@@ -211,7 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     final profile = _profile!;
     return RefreshIndicator(
-      onRefresh: _loadProfile,
+      onRefresh: () => _loadProfile(forceRefresh: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -643,12 +730,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       width: double.infinity,
       height: 50,
       child: OutlinedButton.icon(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const LogOutScreen()));
-        },
-        icon: const Icon(Icons.logout_outlined),
+        onPressed: _isLoggingOut ? null : _requestLogOut,
+        icon: _isLoggingOut
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.logout_outlined),
         style: OutlinedButton.styleFrom(
           foregroundColor: _kPrimaryRed,
           side: const BorderSide(color: _kPrimaryRed),
