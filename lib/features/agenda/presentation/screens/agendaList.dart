@@ -16,7 +16,7 @@ class AgendaListScreen extends StatefulWidget {
 class _AgendaListScreenState extends State<AgendaListScreen> {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
 
-  final EventsQuery _eventsQuery = EventsQuery();
+  final EventsQuery _eventsQuery = EventsQuery.instance;
   late Future<List<Event>> _eventsFuture;
 
   @override
@@ -26,7 +26,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
   }
 
   void _refresh() {
-    _eventsQuery.invalidate();
+    _eventsQuery.invalidateLists();
     setState(() {
       _eventsFuture = _eventsQuery.getEvents();
     });

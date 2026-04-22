@@ -17,7 +17,7 @@ enum _AgendaView { calendar, list }
 class _CalendarScreenState extends State<CalendarScreen> {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
 
-  final EventsQuery _eventsQuery = EventsQuery();
+  final EventsQuery _eventsQuery = EventsQuery.instance;
 
   late Future<List<Event>> _eventsFuture;
 
@@ -28,7 +28,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _refresh() {
-    _eventsQuery.invalidate();
+    _eventsQuery.invalidateLists();
     setState(() {
       _eventsFuture = _eventsQuery.getEvents();
     });

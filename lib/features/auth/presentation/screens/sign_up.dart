@@ -168,15 +168,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Navigator.pop(context);
                               },
                               behavior: HitTestBehavior.opaque,
-                              child: Row(
+                              child: const Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.arrow_back_ios_new,
                                     color: Colors.white,
                                     size: 18,
                                   ),
-                                  const SizedBox(width: 4),
-                                  const Text(
+                                  SizedBox(width: 4),
+                                  Text(
                                     'Enrere',
                                     style: TextStyle(
                                       color: Colors.white,

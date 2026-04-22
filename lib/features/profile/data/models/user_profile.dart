@@ -12,6 +12,9 @@ class UserProfile {
     this.profileImage,
     this.locationAllowed = false,
     this.notificationsAllowed = true,
+    this.eventRemindersAllowed = true,
+    this.eventUpdatesAllowed = true,
+    this.socialAlertsAllowed = true,
     this.description,
   });
 
@@ -25,9 +28,13 @@ class UserProfile {
   final String? profileImage;
   final bool locationAllowed;
   final bool notificationsAllowed;
+  final bool eventRemindersAllowed;
+  final bool eventUpdatesAllowed;
+  final bool socialAlertsAllowed;
   final String? description;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    final notificationsAllowed = json['notifications_allowed'] as bool? ?? true;
     return UserProfile(
       id: json['id'] as int,
       username: json['username'] as String,
@@ -40,7 +47,13 @@ class UserProfile {
           : null,
       profileImage: json['profile_image'] as String?,
       locationAllowed: json['location_allowed'] as bool? ?? false,
-      notificationsAllowed: json['notifications_allowed'] as bool? ?? true,
+      notificationsAllowed: notificationsAllowed,
+      eventRemindersAllowed:
+          json['event_reminders_allowed'] as bool? ?? notificationsAllowed,
+      eventUpdatesAllowed:
+          json['event_updates_allowed'] as bool? ?? notificationsAllowed,
+      socialAlertsAllowed:
+          json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
       description: json['description'] as String?,
     );
   }
@@ -70,6 +83,9 @@ class UserProfile {
     'birth_date': birthDate?.toIso8601String().split('T').first,
     'location_allowed': locationAllowed,
     'notifications_allowed': notificationsAllowed,
+    'event_reminders_allowed': eventRemindersAllowed,
+    'event_updates_allowed': eventUpdatesAllowed,
+    'social_alerts_allowed': socialAlertsAllowed,
   };
 }
 
@@ -152,34 +168,6 @@ class UserReviewsResponse {
           .whereType<Map<String, dynamic>>()
           .map(UserReview.fromJson)
           .toList(),
-    );
-  }
-}
-
-class UserSession {
-  const UserSession({
-    required this.id,
-    required this.eventCode,
-    required this.username,
-    required this.startTime,
-    this.endTime,
-  });
-
-  final int id;
-  final String eventCode;
-  final String username;
-  final DateTime startTime;
-  final DateTime? endTime;
-
-  factory UserSession.fromJson(Map<String, dynamic> json) {
-    final start = DateTime.tryParse((json['start_time'] as String?) ?? '');
-    final end = DateTime.tryParse((json['end_time'] as String?) ?? '');
-    return UserSession(
-      id: (json['id'] as num).toInt(),
-      eventCode: (json['event'] as String?) ?? '',
-      username: (json['user'] as String?) ?? '',
-      startTime: start ?? DateTime.fromMillisecondsSinceEpoch(0),
-      endTime: end,
     );
   }
 }

@@ -20,7 +20,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   final Distance _distanceCalculator = const Distance();
-  final EventsQuery _eventsQuery = EventsQuery();
+  final EventsQuery _eventsQuery = EventsQuery.instance;
   final DeviceLocationService _deviceLocationService = DeviceLocationService();
   final MapNavigationService _mapNavigationService = MapNavigationService();
 
@@ -55,10 +55,9 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     try {
-      if (forceRefresh) _eventsQuery.invalidate();
-
       final events = await _eventsQuery.getEvents(
         filters: _activeFilters.isEmpty ? null : _activeFilters,
+        forceRefresh: forceRefresh,
       );
 
       if (!mounted) return;
@@ -71,8 +70,9 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       setState(() => _eventsLoadError = e.toString());
     } finally {
-      if (!mounted) return;
-      setState(() => _isLoadingEvents = false);
+      if (mounted) {
+        setState(() => _isLoadingEvents = false);
+      }
     }
   }
 

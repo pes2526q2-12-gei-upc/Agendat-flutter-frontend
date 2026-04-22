@@ -4,9 +4,10 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
-import 'package:agendat/features/deleteAccount/presentation/screens/deleteAccount.dart';
+import 'package:agendat/features/profile/presentation/screens/deleteAccount.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.currentProfile});
@@ -76,14 +77,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _isLoading = true);
 
-    final updates = <String, dynamic>{
-      'username': username,
-      'email': email,
-      'description': description,
-    };
+    // PATCH parcial: només incloem els camps que han canviat respecte al
+    // perfil actual, per no sobreescriure al backend amb valors "stale".
+    final current = widget.currentProfile;
+    final updates = <String, dynamic>{};
+    if (username != current.username) updates['username'] = username;
+    if (email != (current.email ?? '')) updates['email'] = email;
+    if (description != (current.description ?? '')) {
+      updates['description'] = description;
+    }
 
-    final result = await updateUserProfile(
-      widget.currentProfile.id,
+    final hasImageChange =
+        _selectedProfileImageBytes != null &&
+        _selectedProfileImageBytes!.isNotEmpty;
+
+    if (updates.isEmpty && !hasImageChange) {
+      setState(() => _isLoading = false);
+      Navigator.pop(context, current);
+      return;
+    }
+
+    final result = await ProfileQuery.instance.updateProfile(
+      current.id,
       updates,
       profileImageBytes: _selectedProfileImageBytes,
       profileImageFilename: _selectedProfileImage?.name,
