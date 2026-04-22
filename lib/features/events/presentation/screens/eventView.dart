@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/api/sessions_api.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
@@ -19,8 +21,10 @@ class EventScreen extends StatefulWidget {
 
 class _EventScreenState extends State<EventScreen> {
   final EventsQuery _eventsQuery = EventsQuery.instance;
+  final SessionsApi _sessionsApi = SessionsApi();
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
+  bool _isCreatingSession = false;
 
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
@@ -47,6 +51,237 @@ class _EventScreenState extends State<EventScreen> {
         forceRefresh: true,
       );
     });
+  }
+
+  Future<void> _handleAssistir(EventExtended event) async {
+    final now = DateTime.now();
+    final initialStartDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
+    final initialEndDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour < 23 ? now.hour + 1 : now.hour,
+      now.minute,
+    );
+    final selectedDateTimes = await _showSessionDateTimeDialog(
+      initialDateTime: initialStartDateTime,
+      initialEndDateTime: initialEndDateTime,
+      eventTitle: event.title,
+    );
+
+    if (selectedDateTimes == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _isCreatingSession = true;
+    });
+
+    try {
+      await _sessionsApi.createSession(
+        CreateSessionRequest(
+          event: event.code,
+          startTime: selectedDateTimes.start,
+          endTime: selectedDateTimes.end,
+        ),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Assistència registrada correctament.')),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No s\'ha pogut registrar l\'assistència (${e.statusCode}).',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No s\'ha pogut registrar l\'assistència.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreatingSession = false;
+        });
+      }
+    }
+  }
+
+  Future<DateTimeRange?> _showSessionDateTimeDialog({
+    required DateTime initialDateTime,
+    required DateTime initialEndDateTime,
+    required String eventTitle,
+  }) async {
+    DateTime selectedStartDate = DateTime(
+      initialDateTime.year,
+      initialDateTime.month,
+      initialDateTime.day,
+    );
+    TimeOfDay selectedStartTime = TimeOfDay(
+      hour: initialDateTime.hour,
+      minute: initialDateTime.minute,
+    );
+
+    DateTime selectedEndDate = DateTime(
+      initialEndDateTime.year,
+      initialEndDateTime.month,
+      initialEndDateTime.day,
+    );
+    TimeOfDay selectedEndTime = TimeOfDay(
+      hour: initialEndDateTime.hour,
+      minute: initialEndDateTime.minute,
+    );
+
+    return showDialog<DateTimeRange>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        DateTime combineDateAndTime(DateTime date, TimeOfDay time) {
+          return DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+        }
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final startDateTime = combineDateAndTime(
+              selectedStartDate,
+              selectedStartTime,
+            );
+            final endDateTime = combineDateAndTime(
+              selectedEndDate,
+              selectedEndTime,
+            );
+
+            return AlertDialog(
+              title: const Text('Confirma l\'assistència'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    eventTitle,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_rounded),
+                    title: const Text('Inici'),
+                    subtitle: Text(
+                      '${_formatDate(selectedStartDate)} · ${selectedStartTime.format(dialogContext)}',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final pickedDate = await showDatePicker(
+                          context: dialogContext,
+                          initialDate: selectedStartDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                          confirmText: 'D\'acord',
+                        );
+                        if (pickedDate == null) return;
+                        final pickedTime = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: selectedStartTime,
+                          initialEntryMode: TimePickerEntryMode.input,
+                          confirmText: 'D\'acord',
+                        );
+                        if (pickedTime == null) return;
+                        setDialogState(() {
+                          selectedStartDate = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                          );
+                          selectedStartTime = pickedTime;
+                        });
+                      },
+                      child: const Text('Canvia'),
+                    ),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.access_time_rounded),
+                    title: const Text('Final'),
+                    subtitle: Text(
+                      '${_formatDate(selectedEndDate)} · ${selectedEndTime.format(dialogContext)}',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final pickedDate = await showDatePicker(
+                          context: dialogContext,
+                          initialDate: selectedEndDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                          confirmText: 'D\'acord',
+                        );
+                        if (pickedDate == null) return;
+                        final pickedTime = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: selectedEndTime,
+                          initialEntryMode: TimePickerEntryMode.input,
+                          confirmText: 'D\'acord',
+                        );
+                        if (pickedTime == null) return;
+                        setDialogState(() {
+                          selectedEndDate = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                          );
+                          selectedEndTime = pickedTime;
+                        });
+                      },
+                      child: const Text('Canvia'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel·la'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(
+                      DateTimeRange(start: startDateTime, end: endDateTime),
+                    );
+                  },
+                  child: const Text('Confirmar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final dd = date.day.toString().padLeft(2, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${date.year}';
   }
 
   @override
@@ -279,6 +514,42 @@ class _EventScreenState extends State<EventScreen> {
                           .toList(),
                     ),
                   ),
+
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isCreatingSession
+                        ? null
+                        : () => _handleAssistir(event),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: const Color.fromARGB(255, 202, 3, 3),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: _isCreatingSession
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            'Assistir',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
               ],
             ),
           );

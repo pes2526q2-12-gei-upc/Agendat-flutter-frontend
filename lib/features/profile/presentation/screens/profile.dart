@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/models/session.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
@@ -30,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserProfile? _profile;
   UserStats? _stats;
   List<UserInterest> _interests = const [];
-  List<UserSession> _sessions = const [];
+  List<Session> _sessions = const [];
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
@@ -98,7 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               username: profile.username,
               forceRefresh: forceRefresh,
             )
-            .catchError((_) => const <UserSession>[]);
+            .catchError((_) => const <Session>[]);
 
         setState(() {
           _profile = profile;
@@ -560,7 +561,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildTabSection({
-    required List<UserSession> attendedSessions,
+    required List<Session> attendedSessions,
     required UserReviewsResponse? reviewsResponse,
   }) {
     return Container(
@@ -636,7 +637,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildAttendedSessionsTab(List<UserSession> sessions) {
+  Widget _buildAttendedSessionsTab(List<Session> sessions) {
     if (sessions.isEmpty) {
       return _buildEmptyTabContent(
         'No hi ha esdeveniments',
@@ -659,7 +660,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.event, color: Colors.grey.shade600),
           title: Text(
-            s.eventCode.isEmpty ? 'Event' : s.eventCode,
+            s.event.isEmpty ? 'Event' : s.event,
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text(startLabel),
