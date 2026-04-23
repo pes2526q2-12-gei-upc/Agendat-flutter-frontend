@@ -43,6 +43,10 @@ pubspec *.lock
 android/app/src/**/AndroidManifest *.xml
 import 'dartconvert'; *.txt
 
+# Local Firebase configuration
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
 # Symbolication related
 app.*.symbols
 

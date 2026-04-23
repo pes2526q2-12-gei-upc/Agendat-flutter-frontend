@@ -7,6 +7,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+const String _logPrefix = '[PushNotifications]';
+
 bool get _supportsFirebaseMessaging {
   if (kIsWeb) return false;
 
@@ -24,8 +26,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
+  } on FirebaseException catch (e) {
+    debugPrint(
+      '$_logPrefix background Firebase init failed '
+      '(${e.code}): ${e.message ?? e}',
+    );
   } catch (e) {
-    debugPrint('[PushNotifications] background init failed: $e');
+    debugPrint('$_logPrefix background Firebase init failed: $e');
   }
 }
 
@@ -43,6 +50,10 @@ class PushNotificationsService {
     if (_initialized) return;
     if (!_supportsFirebaseMessaging) {
       _initialized = true;
+      debugPrint(
+        '$_logPrefix Firebase Messaging is not supported on '
+        '${defaultTargetPlatform.name}',
+      );
       return;
     }
 
@@ -55,9 +66,21 @@ class PushNotificationsService {
       _firebaseReady = true;
       _initialized = true;
       _messaging = messaging;
+      debugPrint(
+        '$_logPrefix Firebase initialized on ${defaultTargetPlatform.name}',
+      );
+    } on FirebaseException catch (e) {
+      _firebaseReady = false;
+      debugPrint(
+        '$_logPrefix Firebase initialization failed '
+        '(${e.code}): ${e.message ?? e}. '
+        'On Android, verify android/app/google-services.json exists and '
+        'matches applicationId com.example.agendat.',
+      );
+      return;
     } catch (e) {
       _firebaseReady = false;
-      debugPrint('[PushNotifications] Firebase initialization failed: $e');
+      debugPrint('$_logPrefix Firebase initialization failed: $e');
       return;
     }
 
@@ -66,20 +89,32 @@ class PushNotificationsService {
     await _tokenRefreshSubscription?.cancel();
     _tokenRefreshSubscription = _messaging!.onTokenRefresh.listen(
       (token) async {
+        debugPrint('$_logPrefix FCM token refreshed (${_tokenSummary(token)})');
         final authToken = await TokenStorage.read();
-        if (authToken == null || authToken.isEmpty) return;
+        if (authToken == null || authToken.isEmpty) {
+          debugPrint(
+            '$_logPrefix token refresh ignored because no auth token exists',
+          );
+          return;
+        }
         await _saveToken(token);
       },
       onError: (Object e) {
-        debugPrint('[PushNotifications] token refresh failed: $e');
+        debugPrint('$_logPrefix token refresh failed: $e');
       },
     );
+    debugPrint('$_logPrefix token refresh listener registered');
   }
 
   Future<void> requestPermissionAndRegisterDevice() async {
     await initialize();
     final messaging = _messaging;
-    if (!_firebaseReady || messaging == null) return;
+    if (!_firebaseReady || messaging == null) {
+      debugPrint(
+        '$_logPrefix device registration skipped because Firebase is not ready',
+      );
+      return;
+    }
 
     try {
       final settings = await messaging.requestPermission(
@@ -87,33 +122,49 @@ class PushNotificationsService {
         badge: true,
         sound: true,
       );
+      debugPrint(
+        '$_logPrefix notification permission status: '
+        '${settings.authorizationStatus.name}',
+      );
 
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        debugPrint('[PushNotifications] notification permission denied');
+        debugPrint('$_logPrefix notification permission denied');
         return;
       }
 
       final token = await messaging.getToken();
       if (token == null || token.isEmpty) {
-        debugPrint('[PushNotifications] Firebase returned no FCM token');
+        debugPrint('$_logPrefix Firebase returned no FCM token');
         return;
       }
 
+      debugPrint('$_logPrefix FCM token obtained (${_tokenSummary(token)})');
       await _saveToken(token);
     } catch (e) {
-      debugPrint('[PushNotifications] register device failed: $e');
+      debugPrint('$_logPrefix register device failed: $e');
     }
   }
 
   Future<void> unregisterDevice() async {
     final deviceId = await TokenStorage.readNotificationDeviceId();
-    if (deviceId == null) return;
+    if (deviceId == null) {
+      debugPrint(
+        '$_logPrefix unregister skipped because no device id is saved',
+      );
+      return;
+    }
 
     try {
       await ApiClient.delete('/api/notifications/devices/$deviceId/');
       await TokenStorage.writeNotificationDeviceId(null);
+      debugPrint('$_logPrefix device $deviceId unregistered');
+    } on ApiException catch (e) {
+      debugPrint(
+        '$_logPrefix unregister device failed '
+        '(HTTP ${e.statusCode}) for ${e.uri}: ${e.body}',
+      );
     } catch (e) {
-      debugPrint('[PushNotifications] unregister device failed: $e');
+      debugPrint('$_logPrefix unregister device failed: $e');
     }
   }
 
@@ -125,19 +176,41 @@ class PushNotificationsService {
         expectedStatusCode: 201,
       );
 
-      final decoded = response.body.isNotEmpty
-          ? jsonDecode(response.body) as Map<String, dynamic>?
-          : null;
+      final decoded = _decodeJsonMap(response.body);
       final id = decoded?['id'];
       if (id is int) {
         await TokenStorage.writeNotificationDeviceId(id);
+        debugPrint('$_logPrefix device token registered as backend device $id');
       } else if (id is String) {
-        await TokenStorage.writeNotificationDeviceId(int.tryParse(id));
+        final parsedId = int.tryParse(id);
+        await TokenStorage.writeNotificationDeviceId(parsedId);
+        debugPrint(
+          '$_logPrefix device token registered as backend device '
+          '${parsedId ?? id}',
+        );
+      } else {
+        debugPrint(
+          '$_logPrefix device token registered, but response had no id '
+          '(HTTP ${response.statusCode})',
+        );
       }
+    } on ApiException catch (e) {
+      debugPrint(
+        '$_logPrefix save token failed '
+        '(HTTP ${e.statusCode}) for ${e.uri}: ${e.body}',
+      );
     } catch (e) {
-      debugPrint('[PushNotifications] save token failed: $e');
+      debugPrint('$_logPrefix save token failed: $e');
     }
   }
+
+  Map<String, dynamic>? _decodeJsonMap(String body) {
+    if (body.isEmpty) return null;
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> ? decoded : null;
+  }
+
+  String _tokenSummary(String token) => 'length ${token.length}';
 
   String get _platformName {
     if (kIsWeb) return 'web';
