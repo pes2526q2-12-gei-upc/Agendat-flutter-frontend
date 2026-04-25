@@ -7,6 +7,7 @@ import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
+import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:flutter/foundation.dart';
 
@@ -106,16 +107,20 @@ class _ProfileScreenState extends State<ProfileScreen>
             )
             .catchError((_) => const <UserSession>[]);
 
+        final derivedStatus = await _resolveFriendshipStatus(
+          profile: profile,
+          forceRefresh: forceRefresh,
+        );
+
+        if (!mounted) return;
+
         setState(() {
           _profile = profile;
           _stats = stats;
           _interests = interests;
           _reviewsResponse = reviewsResponse;
           _sessions = sessions;
-          // L'estat d'amistat el dicta el backend via `friendship_status`
-          // dins del perfil. Si encara no ve informat, per defecte és null i
-          // es mostra el botó d'"Enviar sol·licitud".
-          _friendshipStatus = profile.friendshipStatus;
+          _friendshipStatus = derivedStatus;
           _isLoading = false;
         });
       case ProfileNotFound():
@@ -180,6 +185,94 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  /// Determina l'estat de la relació d'amistat entre l'usuari autenticat i
+  /// l'usuari target.
+  ///
+  /// Com que la resposta actual de `GET /api/users/{id}/` no inclou cap camp
+  /// que descrigui la relació amb l'usuari autenticat, derivem l'estat amb
+  /// dues crides extra a `/friends/` i `/friend-requests/` de l'usuari actual.
+  /// Això implica descarregar tota la llista d'amics i totes les pendents per
+  /// comprovar un sol id: funciona, però escala O(N) amb el nombre d'amics.
+  ///
+  /// TODO(backend): quan el backend afegeixi un camp `friendship_status` a la
+  /// resposta de `GET /api/users/{id}/` (valors: `none`, `request_sent`,
+  /// `request_received`, `friends`, `blocked`), aquest mètode quedarà reduït
+  /// a retornar `profile.friendshipStatus` i podrem eliminar les crides extra.
+  /// El mapeig ja està llest a `friendshipStatusFromString` (user_profile.dart).
+  Future<FriendshipStatus?> _resolveFriendshipStatus({
+    required UserProfile profile,
+    required bool forceRefresh,
+  }) async {
+    if (_isOwnProfile) return null;
+    if (profile.friendshipStatus != null) return profile.friendshipStatus;
+
+    final myId = _currentUserId;
+    if (myId == null || myId == profile.id) {
+      debugPrint(
+        '[profile] skip friendship derivation (myId=$myId, targetId=${profile.id})',
+      );
+      return null;
+    }
+
+    final friendsFuture = _profileQuery
+        .getFriends(myId, forceRefresh: forceRefresh)
+        .catchError((error) {
+          debugPrint('[profile] getFriends($myId) failed: $error');
+          return const <UserSummary>[];
+        });
+    final requestsFuture = _profileQuery
+        .getFriendRequests(myId, forceRefresh: forceRefresh)
+        .catchError((error) {
+          debugPrint('[profile] getFriendRequests($myId) failed: $error');
+          return FriendRequestsData.empty;
+        });
+
+    final friends = await friendsFuture;
+    if (friends.any((u) => u.id == profile.id)) {
+      debugPrint('[profile] target ${profile.id} is a friend of $myId');
+      return FriendshipStatus.friends;
+    }
+
+    final requests = await requestsFuture;
+
+    // `counterpart` és l'altre usuari (destinatari a `sent`, remitent a
+    // `received`). Comprovem també `requested_by` / `blocked_by` per si algun
+    // dia el backend canvia la serialització.
+    bool involves(PendingFriendRequest request) {
+      final counterpart = request.counterpart;
+      if (counterpart != null) {
+        if (counterpart.id == profile.id) return true;
+        if (counterpart.username == profile.username) return true;
+      }
+
+      final requestedBy = request.requestedBy;
+      if (requestedBy != null && requestedBy.id == profile.id) {
+        return true;
+      }
+
+      final blockedBy = request.blockedBy;
+      if (blockedBy != null && blockedBy.id == profile.id) {
+        return true;
+      }
+
+      return false;
+    }
+
+    final sentMatch = requests.sent.any(involves);
+    final receivedMatch = !sentMatch && requests.received.any(involves);
+
+    debugPrint(
+      '[profile] derived friendship with ${profile.id}: '
+      'friends=${friends.length}, sent=${requests.sent.length}, '
+      'received=${requests.received.length}, '
+      'sentMatch=$sentMatch, receivedMatch=$receivedMatch',
+    );
+
+    if (sentMatch) return FriendshipStatus.requestSent;
+    if (receivedMatch) return FriendshipStatus.requestReceived;
+    return FriendshipStatus.none;
+  }
+
   Future<void> _runFriendshipAction({
     required Future<FriendActionResult> Function() action,
     required FriendshipStatus successStatus,
@@ -208,6 +301,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         final otherId = widget.userId;
         if (otherId != null) {
           _profileQuery.setCachedFriendshipStatus(otherId, successStatus);
+        }
+        // Invalidem també les llistes d'amistat del meu usuari: així, si
+        // tanco l'app o recarrego la pantalla, la pròxima derivació consultarà
+        // el backend i l'estat del botó serà coherent amb la veritat.
+        final myId = _currentUserId;
+        if (myId != null) {
+          _profileQuery.invalidateFriendshipLists(myId);
         }
         ScaffoldMessenger.of(
           context,

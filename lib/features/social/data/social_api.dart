@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 
@@ -131,6 +133,119 @@ Future<FriendActionResult> _postFriendAction(String path) async {
   } catch (e) {
     return FriendActionFailure(statusCode: -1, error: e);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Friend requests / friends listing
+// ---------------------------------------------------------------------------
+
+/// Sol·licitud d'amistat pendent, endpoint `GET /api/users/{id}/friend-requests/`.
+///
+/// `counterpart` arriba com un objecte d'usuari complet (no com un string,
+/// tot i que el Swagger l'etiqueti genèricament). Representa "l'altre"
+/// usuari: el destinatari dins de `sent[]` i el remitent dins de `received[]`.
+class PendingFriendRequest {
+  const PendingFriendRequest({
+    required this.id,
+    required this.status,
+    this.counterpart,
+    this.requestedBy,
+    this.blockedBy,
+    this.createdAt,
+  });
+
+  final int id;
+  final String status;
+  final UserSummary? counterpart;
+  final UserSummary? requestedBy;
+  final UserSummary? blockedBy;
+  final DateTime? createdAt;
+
+  factory PendingFriendRequest.fromJson(Map<String, dynamic> json) {
+    UserSummary? parseUser(dynamic raw) {
+      if (raw is Map<String, dynamic>) return UserSummary.fromJson(raw);
+      return null;
+    }
+
+    DateTime? parseDate(dynamic raw) {
+      if (raw is String && raw.isNotEmpty) {
+        return DateTime.tryParse(raw);
+      }
+      return null;
+    }
+
+    return PendingFriendRequest(
+      id: (json['id'] as num).toInt(),
+      status: (json['status'] as String?) ?? 'pending',
+      counterpart: parseUser(json['counterpart']),
+      requestedBy: parseUser(json['requested_by']),
+      blockedBy: parseUser(json['blocked_by']),
+      createdAt: parseDate(json['created_at']),
+    );
+  }
+}
+
+/// Resposta de `GET /api/users/{id}/friend-requests/`.
+class FriendRequestsData {
+  const FriendRequestsData({required this.sent, required this.received});
+
+  final List<PendingFriendRequest> sent;
+  final List<PendingFriendRequest> received;
+
+  static const FriendRequestsData empty = FriendRequestsData(
+    sent: [],
+    received: [],
+  );
+
+  factory FriendRequestsData.fromJson(Map<String, dynamic> json) {
+    List<PendingFriendRequest> parseList(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw
+          .whereType<Map<String, dynamic>>()
+          .map(PendingFriendRequest.fromJson)
+          .toList();
+    }
+
+    return FriendRequestsData(
+      sent: parseList(json['sent']),
+      received: parseList(json['received']),
+    );
+  }
+}
+
+/// GET /api/users/{userId}/friend-requests/
+Future<FriendRequestsData> fetchFriendRequests(int userId) async {
+  final response = await ApiClient.get('/api/users/$userId/friend-requests/');
+  if (kDebugMode) {
+    debugPrint('[social] GET /friend-requests/ for $userId → ${response.body}');
+  }
+  final decoded = jsonDecode(response.body);
+  if (decoded is Map<String, dynamic>) {
+    return FriendRequestsData.fromJson(decoded);
+  }
+  return FriendRequestsData.empty;
+}
+
+/// GET /api/users/{userId}/friends/
+Future<List<UserSummary>> fetchFriends(int userId) async {
+  final response = await ApiClient.get('/api/users/$userId/friends/');
+  if (kDebugMode) {
+    debugPrint('[social] GET /friends/ for $userId → ${response.body}');
+  }
+  final decoded = jsonDecode(response.body);
+  if (decoded is List) {
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(UserSummary.fromJson)
+        .toList();
+  }
+  if (decoded is Map<String, dynamic> && decoded['results'] is List) {
+    return (decoded['results'] as List)
+        .whereType<Map<String, dynamic>>()
+        .map(UserSummary.fromJson)
+        .toList();
+  }
+  return const [];
 }
 
 String? _extractErrorMessage(String body) {
