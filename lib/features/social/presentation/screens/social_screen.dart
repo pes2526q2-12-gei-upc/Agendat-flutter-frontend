@@ -101,8 +101,12 @@ class _SocialScreenState extends State<SocialScreen> {
 
     switch (result) {
       case SearchUsersSuccess(:final users):
+        final currentUserId = (currentLoggedInUser?['id'] as num?)?.toInt();
+        final filtered = currentUserId == null
+            ? users
+            : users.where((u) => u.id != currentUserId).toList();
         setState(() {
-          _results = users;
+          _results = filtered;
           _isLoading = false;
           _errorMessage = null;
         });
