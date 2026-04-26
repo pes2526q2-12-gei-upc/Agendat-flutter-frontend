@@ -8,6 +8,8 @@ import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
+import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/features/social/data/social_api.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -36,7 +38,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   String? _errorMessage;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
 
+  FriendshipStatus? _friendshipStatus;
+  bool _isFriendshipActionInProgress = false;
+
   bool get _isOwnProfile => widget.userId == null;
+
+  int? get _currentUserId => currentLoggedInUser?['id'] as int?;
 
   @override
   void initState() {
@@ -101,12 +108,20 @@ class _ProfileScreenState extends State<ProfileScreen>
             )
             .catchError((_) => const <Session>[]);
 
+        final derivedStatus = await _resolveFriendshipStatus(
+          profile: profile,
+          forceRefresh: forceRefresh,
+        );
+
+        if (!mounted) return;
+
         setState(() {
           _profile = profile;
           _stats = stats;
           _interests = interests;
           _reviewsResponse = reviewsResponse;
           _sessions = sessions;
+          _friendshipStatus = derivedStatus;
           _isLoading = false;
         });
       case ProfileNotFound():
@@ -168,6 +183,197 @@ class _ProfileScreenState extends State<ProfileScreen>
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  /// Determina l'estat de la relació d'amistat entre l'usuari autenticat i
+  /// l'usuari target.
+  ///
+  /// Com que la resposta actual de `GET /api/users/{id}/` no inclou cap camp
+  /// que descrigui la relació amb l'usuari autenticat, derivem l'estat amb
+  /// dues crides extra a `/friends/` i `/friend-requests/` de l'usuari actual.
+  /// Això implica descarregar tota la llista d'amics i totes les pendents per
+  /// comprovar un sol id: funciona, però escala O(N) amb el nombre d'amics.
+  ///
+  /// TODO(backend): quan el backend afegeixi un camp `friendship_status` a la
+  /// resposta de `GET /api/users/{id}/` (valors: `none`, `request_sent`,
+  /// `request_received`, `friends`, `blocked`), aquest mètode quedarà reduït
+  /// a retornar `profile.friendshipStatus` i podrem eliminar les crides extra.
+  /// El mapeig ja està llest a `friendshipStatusFromString` (user_profile.dart).
+  Future<FriendshipStatus?> _resolveFriendshipStatus({
+    required UserProfile profile,
+    required bool forceRefresh,
+  }) async {
+    if (_isOwnProfile) return null;
+    if (profile.friendshipStatus != null) return profile.friendshipStatus;
+
+    final myId = _currentUserId;
+    if (myId == null || myId == profile.id) {
+      debugPrint(
+        '[profile] skip friendship derivation (myId=$myId, targetId=${profile.id})',
+      );
+      return null;
+    }
+
+    final friendsFuture = _profileQuery
+        .getFriends(myId, forceRefresh: forceRefresh)
+        .catchError((error) {
+          debugPrint('[profile] getFriends($myId) failed: $error');
+          return const <UserSummary>[];
+        });
+    final requestsFuture = _profileQuery
+        .getFriendRequests(myId, forceRefresh: forceRefresh)
+        .catchError((error) {
+          debugPrint('[profile] getFriendRequests($myId) failed: $error');
+          return FriendRequestsData.empty;
+        });
+
+    final friends = await friendsFuture;
+    if (friends.any((u) => u.id == profile.id)) {
+      debugPrint('[profile] target ${profile.id} is a friend of $myId');
+      return FriendshipStatus.friends;
+    }
+
+    final requests = await requestsFuture;
+
+    // `counterpart` és l'altre usuari (destinatari a `sent`, remitent a
+    // `received`). Comprovem també `requested_by` / `blocked_by` per si algun
+    // dia el backend canvia la serialització.
+    bool involves(PendingFriendRequest request) {
+      final counterpart = request.counterpart;
+      if (counterpart != null) {
+        if (counterpart.id == profile.id) return true;
+        if (counterpart.username == profile.username) return true;
+      }
+
+      final requestedBy = request.requestedBy;
+      if (requestedBy != null && requestedBy.id == profile.id) {
+        return true;
+      }
+
+      final blockedBy = request.blockedBy;
+      if (blockedBy != null && blockedBy.id == profile.id) {
+        return true;
+      }
+
+      return false;
+    }
+
+    final sentMatch = requests.sent.any(involves);
+    final receivedMatch = !sentMatch && requests.received.any(involves);
+
+    debugPrint(
+      '[profile] derived friendship with ${profile.id}: '
+      'friends=${friends.length}, sent=${requests.sent.length}, '
+      'received=${requests.received.length}, '
+      'sentMatch=$sentMatch, receivedMatch=$receivedMatch',
+    );
+
+    if (sentMatch) return FriendshipStatus.requestSent;
+    if (receivedMatch) return FriendshipStatus.requestReceived;
+    return FriendshipStatus.none;
+  }
+
+  Future<void> _runFriendshipAction({
+    required Future<FriendActionResult> Function() action,
+    required FriendshipStatus successStatus,
+    required String successMessage,
+    required String genericErrorMessage,
+  }) async {
+    if (_isFriendshipActionInProgress) return;
+
+    setState(() => _isFriendshipActionInProgress = true);
+
+    final result = await action();
+
+    if (!mounted) return;
+
+    switch (result) {
+      case FriendActionSuccess():
+        setState(() {
+          _friendshipStatus = successStatus;
+          if (_profile != null) {
+            _profile = _profile!.copyWithFriendshipStatus(successStatus);
+          }
+          _isFriendshipActionInProgress = false;
+        });
+        // Actualitzem la caché del QueryClient per mantenir l'estat entre
+        // navegacions, fins que expiri el staleTime o el backend el refresqui.
+        final otherId = widget.userId;
+        if (otherId != null) {
+          _profileQuery.setCachedFriendshipStatus(otherId, successStatus);
+        }
+        // Invalidem també les llistes d'amistat del meu usuari: així, si
+        // tanco l'app o recarrego la pantalla, la pròxima derivació consultarà
+        // el backend i l'estat del botó serà coherent amb la veritat.
+        final myId = _currentUserId;
+        if (myId != null) {
+          _profileQuery.invalidateFriendshipLists(myId);
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
+      case FriendActionUnauthorized():
+        setState(() => _isFriendshipActionInProgress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cal iniciar sessió per fer aquesta acció.'),
+          ),
+        );
+      case FriendActionFailure(:final statusCode, :final message, :final error):
+        setState(() => _isFriendshipActionInProgress = false);
+        final text =
+            message ??
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : genericErrorMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
+    }
+  }
+
+  Future<void> _sendFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => sendFriendRequest(userId),
+      successStatus: FriendshipStatus.requestSent,
+      successMessage: 'Sol·licitud d\'amistat enviada.',
+      genericErrorMessage: 'No s\'ha pogut enviar la sol·licitud.',
+    );
+  }
+
+  Future<void> _cancelFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => cancelFriendRequest(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Sol·licitud d\'amistat cancel·lada.',
+      genericErrorMessage: 'No s\'ha pogut cancel·lar la sol·licitud.',
+    );
+  }
+
+  Future<void> _acceptFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => acceptFriendRequest(userId),
+      successStatus: FriendshipStatus.friends,
+      successMessage: 'Sol·licitud acceptada. Ara sou amics!',
+      genericErrorMessage: 'No s\'ha pogut acceptar la sol·licitud.',
+    );
+  }
+
+  Future<void> _rejectFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => rejectFriendRequest(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Sol·licitud rebutjada.',
+      genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
     );
   }
 
@@ -355,7 +561,182 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: 20),
           _buildStatsRow(_stats),
+          if (!_isOwnProfile) ...[
+            const SizedBox(height: 16),
+            _buildFriendshipSection(),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildFriendshipSection() {
+    if (_currentUserId == null || widget.userId == _currentUserId) {
+      return const SizedBox.shrink();
+    }
+
+    final status = _friendshipStatus ?? FriendshipStatus.none;
+    final busy = _isFriendshipActionInProgress;
+
+    switch (status) {
+      case FriendshipStatus.none:
+        return _buildFriendshipPrimaryButton(
+          onPressed: busy ? null : _sendFriendRequest,
+          icon: Icons.person_add_alt_1,
+          label: 'Enviar sol·licitud d\'amistat',
+          busy: busy,
+        );
+      case FriendshipStatus.requestSent:
+        return _buildFriendshipOutlinedButton(
+          onPressed: busy ? null : _cancelFriendRequest,
+          icon: Icons.hourglass_top,
+          label: 'Sol·licitud enviada · Cancel·lar',
+          busy: busy,
+        );
+      case FriendshipStatus.requestReceived:
+        return Row(
+          children: [
+            Expanded(
+              child: _buildFriendshipPrimaryButton(
+                onPressed: busy ? null : _acceptFriendRequest,
+                icon: Icons.check,
+                label: 'Acceptar',
+                busy: busy,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildFriendshipOutlinedButton(
+                onPressed: busy ? null : _rejectFriendRequest,
+                icon: Icons.close,
+                label: 'Rebutjar',
+                busy: false,
+              ),
+            ),
+          ],
+        );
+      case FriendshipStatus.friends:
+        return _buildFriendshipBadge(
+          icon: Icons.check_circle,
+          text: 'Ja sou amics',
+          background: Colors.green.shade50,
+          borderColor: Colors.green.shade200,
+          iconColor: Colors.green.shade700,
+          textColor: Colors.green.shade800,
+        );
+      case FriendshipStatus.blocked:
+        return _buildFriendshipBadge(
+          icon: Icons.block,
+          text: 'Usuari bloquejat',
+          background: Colors.grey.shade100,
+          borderColor: Colors.grey.shade300,
+          iconColor: Colors.grey.shade700,
+          textColor: Colors.grey.shade800,
+        );
+    }
+  }
+
+  Widget _buildFriendshipBadge({
+    required IconData icon,
+    required String text,
+    required Color background,
+    required Color borderColor,
+    required Color iconColor,
+    required Color textColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFriendshipPrimaryButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required bool busy,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kPrimaryRed,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _kPrimaryRed.withValues(alpha: 0.6),
+          disabledForegroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFriendshipOutlinedButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required bool busy,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kPrimaryRed,
+          side: const BorderSide(color: _kPrimaryRed),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }

@@ -9,18 +9,19 @@ appId: com.example.agendat
 
 # Happy path
 - tapOn: Nom d'usuari únic
-- inputText: Casteller98
+- inputText: Casteller12
 - tapOn: El teu nom
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
-- inputText: Casteller98@gmail.com
+- inputText: Casteller12@gmail.com
 - tapOn: Mínim 8 caràcters
 - inputText: k.87_oP[
 - tapOn: Repeteix la contrasenya
 - inputText: k.87_oP[
 - tapOn: Crear compte
-# - assertVisible: Benvingut/da! comprovat el primer cop
-- tapOn: Enrere
+- waitForAnimationToEnd
+- assertVisible: Benvingut/da! #comprovat el primer cop
+#- tapOn: Enrere
 - waitForAnimationToEnd
 
 # Error 1: falten camps (username buit)
