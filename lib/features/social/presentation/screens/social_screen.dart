@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -32,11 +34,14 @@ class _SocialScreenState extends State<SocialScreen> {
   List<UserSummary> _results = const [];
   String? _errorMessage;
 
+  int _pendingRequestsCount = 0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardAuthenticated();
+      _loadPendingRequestsCount();
     });
   }
 
@@ -141,6 +146,43 @@ class _SocialScreenState extends State<SocialScreen> {
     ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
   }
 
+  /// Llegeix el nombre de sol·licituds rebudes pendents per mostrar un badge
+  /// a l'icona d'accés a la pantalla de gestió de sol·licituds. Si falla, no
+  /// mostra cap badge — la llista és accessible igualment.
+  Future<void> _loadPendingRequestsCount({bool forceRefresh = false}) async {
+    if (!_isAuthenticated) return;
+    final myId = currentLoggedInUser?['id'];
+    if (myId is! int) return;
+
+    try {
+      final data = await ProfileQuery.instance.getFriendRequests(
+        myId,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) return;
+      final pending = data.received
+          .where((r) => r.status.toLowerCase() == 'pending')
+          .length;
+      setState(() => _pendingRequestsCount = pending);
+    } catch (_) {
+      // Silenciós: el badge és informatiu i no crític.
+    }
+  }
+
+  Future<void> _openFriendRequests() async {
+    if (!_isAuthenticated) {
+      _guardAuthenticated();
+      return;
+    }
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FriendRequestsScreen()));
+    if (!mounted) return;
+    // Refresquem el comptador en tornar perquè l'usuari pot haver acceptat o
+    // rebutjat sol·licituds des de la pantalla.
+    _loadPendingRequestsCount(forceRefresh: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
@@ -161,6 +203,14 @@ class _SocialScreenState extends State<SocialScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          _FriendRequestsAction(
+            pendingCount: _pendingRequestsCount,
+            onPressed: _openFriendRequests,
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: Column(
         children: [
@@ -362,6 +412,69 @@ class _UserResultTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FriendRequestsAction extends StatelessWidget {
+  const _FriendRequestsAction({
+    required this.pendingCount,
+    required this.onPressed,
+  });
+
+  final int pendingCount;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasBadge = pendingCount > 0;
+    final badgeLabel = pendingCount > 99 ? '99+' : '$pendingCount';
+
+    return Tooltip(
+      message: 'Sol·licituds d\'amistat',
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            onPressed: onPressed,
+            icon: const Icon(
+              Icons.person_add_alt_1_outlined,
+              color: Colors.black87,
+            ),
+          ),
+          if (hasBadge)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFB71C1C),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    badgeLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
