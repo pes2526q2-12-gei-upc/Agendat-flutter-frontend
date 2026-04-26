@@ -4,6 +4,7 @@ class EventListDto {
   final String code;
   final String? denomination;
   final String? subtitle;
+  final String? description;
   final bool? free;
   final List<CategoryDto> categories;
   final String? provincia;
@@ -18,6 +19,7 @@ class EventListDto {
     required this.code,
     this.denomination,
     this.subtitle,
+    this.description,
     this.free,
     this.categories = const [],
     this.provincia,
@@ -34,6 +36,7 @@ class EventListDto {
       code: (json['code'] ?? '').toString().trim(),
       denomination: _trimOrNull(json['denomination'] ?? json['title']),
       subtitle: _trimOrNull(json['subtitle']),
+      description: _trimOrNull(json['description']),
       free: _parseBool(json['free']),
       categories: _parseCategories(json['categories']),
       provincia: _trimOrNull(json['provincia']),

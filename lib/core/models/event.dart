@@ -4,6 +4,7 @@ class Event {
   final String code;
   final String title;
   final String? subtitle;
+  final String? description;
   final bool free;
   final List<String> categories;
   final String? provincia;
@@ -18,6 +19,7 @@ class Event {
     required this.code,
     required this.title,
     this.subtitle,
+    this.description,
     this.free = false,
     this.categories = const [],
     this.provincia,
@@ -68,7 +70,6 @@ class Event {
 }
 
 class EventExtended extends Event {
-  final String? description;
   final String? url_activity;
   final String? url_ticket;
   final String? schedule;
@@ -87,6 +88,7 @@ class EventExtended extends Event {
     required super.code,
     required super.title,
     super.subtitle,
+    super.description,
     super.free = false,
     super.categories = const [],
     super.provincia,
@@ -96,7 +98,6 @@ class EventExtended extends Event {
     super.endDate,
     super.latitude,
     super.longitude,
-    this.description,
     this.url_activity,
     this.url_ticket,
     this.schedule,

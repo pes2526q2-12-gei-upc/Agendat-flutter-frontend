@@ -23,7 +23,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   @override
   void initState() {
     super.initState();
-    _eventsFuture = _eventsQuery.getEvents();
+    _eventsFuture = _eventsQuery.getEvents(forceRefresh: true);
   }
 
   void _refresh() {
@@ -49,9 +49,12 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     if (q.isEmpty) return events;
 
     return events.where((event) {
+      final subtitle = event.subtitle?.toLowerCase() ?? '';
+      final description = event.description?.toLowerCase() ?? '';
       return event.code.toLowerCase().contains(q) ||
           event.title.toLowerCase().contains(q) ||
-          event.displaySubtitle.toLowerCase().contains(q) ||
+          subtitle.contains(q) ||
+          description.contains(q) ||
           event.displayCategory.toLowerCase().contains(q) ||
           event.location.toLowerCase().contains(q);
     }).toList();
