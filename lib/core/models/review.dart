@@ -1,8 +1,3 @@
-/// Model d'una valoració (ressenya) d'un esdeveniment.
-///
-/// És el model de domini que consumeix la UI. La serialització HTTP es fa
-/// a `ReviewDto` (veure `lib/core/dto/review_dto.dart`) i es converteix a
-/// aquest model mitjançant `ReviewDto.toModel()`.
 class Review {
   const Review({
     required this.author,
@@ -12,6 +7,7 @@ class Review {
     required this.accessibilitat,
     required this.date,
     this.id,
+    this.authorId,
     this.authorAvatarUrl,
     this.comment,
     this.imageUrls = const [],
@@ -22,6 +18,11 @@ class Review {
   /// Identificador a la BBDD. És `null` per a valoracions encara no
   /// persistides (p. ex. dades mock o formularis de creació).
   final int? id;
+
+  /// Id del reviewer. Serveix per saber si la review és de l'usuari loggejat.
+  final String? authorId;
+
+  /// Nom que es mostra a la targeta de la review.
   final String author;
 
   /// URL de la foto de perfil de l'autor (si el backend la proporciona).
@@ -39,6 +40,7 @@ class Review {
 
   Review copyWith({
     int? id,
+    String? authorId,
     String? author,
     String? authorAvatarUrl,
     int? general,
@@ -53,6 +55,7 @@ class Review {
   }) {
     return Review(
       id: id ?? this.id,
+      authorId: authorId ?? this.authorId,
       author: author ?? this.author,
       authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
       general: general ?? this.general,

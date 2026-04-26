@@ -46,7 +46,7 @@ class ReviewsApi {
       response = await ApiClient.postJson(
         _eventReviewsPath(eventCode),
         body: review.toCreateJson(),
-        acceptedStatusCodes: const {200, 201},
+        acceptedStatusCodes: const {200, 201, 202},
       );
     } on ApiException catch (e) {
       final attendance = _attendanceErrorFrom(e);
@@ -55,6 +55,12 @@ class ReviewsApi {
       if (duplicate != null) throw duplicate;
       rethrow;
     }
+    if (response.statusCode == 202) {
+      // El backend ha acceptat la review per moderació, però encara no
+      // retorna la review final publicada.
+      return review.copyWith(acceptedForModeration: true);
+    }
+
     final decoded = ApiClient.decodeBody(response);
     if (decoded is Map<String, dynamic>) {
       return ReviewDto.fromJson(decoded);
@@ -85,6 +91,10 @@ class ReviewsApi {
       if (attendance != null) throw attendance;
       rethrow;
     }
+    if (response.statusCode == 202) {
+      return review.copyWith(acceptedForModeration: true);
+    }
+
     final decoded = ApiClient.decodeBody(response);
     if (decoded is Map<String, dynamic>) {
       return ReviewDto.fromJson(decoded);
@@ -119,25 +129,25 @@ class ReviewsApi {
     );
   }
 
-  /// Parser tolerant del llistat de valoracions. Accepta tant una llista
-  /// directa com els wrappers `results`/`reviews` habituals a DRF.
+  /// Parser del format real del backend:
+  /// `{ review_count, average_*, reviews: [...] }`.
   List<ReviewDto> _parseReviewList(http.Response response) {
     final body = response.body.trim();
     if (body.isEmpty) return const [];
     final decoded = jsonDecode(body);
 
-    List<dynamic>? raw;
-    if (decoded is List) {
-      raw = decoded;
-    } else if (decoded is Map<String, dynamic>) {
-      final candidate = decoded['results'] ?? decoded['reviews'];
-      if (candidate is List) raw = candidate;
-    }
-    if (raw == null) {
+    if (decoded is! Map<String, dynamic>) {
       debugPrint('ReviewsApi: format de resposta inesperat → ${response.body}');
       return const [];
     }
-    return raw
+
+    final reviews = decoded['reviews'];
+    if (reviews is! List) {
+      debugPrint('ReviewsApi: falta el camp reviews → ${response.body}');
+      return const [];
+    }
+
+    return reviews
         .whereType<Map<String, dynamic>>()
         .map(ReviewDto.fromJson)
         .toList(growable: false);

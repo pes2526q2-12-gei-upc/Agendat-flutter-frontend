@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/review.dart';
+import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 
 /// Targeta que pinta una única [Review] en mode lectura.
@@ -55,7 +56,7 @@ class ReviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           const SizedBox(height: 10),
           ReviewRatingRow(label: 'Valoració general', rating: review.general),
           if (_hasComment) ...[
@@ -85,18 +86,27 @@ class ReviewCard extends StatelessWidget {
 
   /// Capçalera: avatar (foto de perfil o inicial), nom, data i botons
   /// d'edició/esborrat (aquests últims només per valoracions pròpies).
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        _buildAuthorAvatar(),
+        _buildAuthorAvatar(context),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            review.author,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: Colors.black87,
+          child: InkWell(
+            onTap: _canOpenAuthorProfile
+                ? () => _openAuthorProfile(context)
+                : null,
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                review.author,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
             ),
           ),
         ),
@@ -118,29 +128,46 @@ class ReviewCard extends StatelessWidget {
 
   /// Avatar circular. Si hi ha foto de perfil la pintem; altrament mostrem
   /// la inicial del nom com a fallback.
-  Widget _buildAuthorAvatar() {
+  Widget _buildAuthorAvatar(BuildContext context) {
     final avatarUrl = review.authorAvatarUrl;
     final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
     final initial = review.author.isNotEmpty
         ? review.author[0].toUpperCase()
         : '?';
 
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: _brandRed,
-      backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
-      onBackgroundImageError: hasAvatar ? (_, __) {} : null,
-      child: hasAvatar
-          ? null
-          : Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+    return InkWell(
+      onTap: _canOpenAuthorProfile ? () => _openAuthorProfile(context) : null,
+      borderRadius: BorderRadius.circular(18),
+      child: CircleAvatar(
+        radius: 16,
+        backgroundColor: _brandRed,
+        backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+        onBackgroundImageError: hasAvatar ? (_, __) {} : null,
+        child: hasAvatar
+            ? null
+            : Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
-            ),
+      ),
     );
+  }
+
+  int? get _authorUserId => int.tryParse(review.authorId ?? '');
+
+  bool get _canOpenAuthorProfile => _authorUserId != null;
+
+  void _openAuthorProfile(BuildContext context) {
+    // El backend envia reviewer_id; el fem servir per obrir el perfil.
+    final userId = _authorUserId;
+    if (userId == null) return;
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: userId)));
   }
 
   /// Formata una data ISO (com la que retorna el backend) a

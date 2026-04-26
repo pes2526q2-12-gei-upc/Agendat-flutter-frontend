@@ -9,7 +9,6 @@ class ReviewDto {
   final String eventCode;
   final String? userId;
   final String? authorName;
-  final String? authorAvatarUrl;
   final int general;
   final int preu;
   final int ambient;
@@ -19,13 +18,13 @@ class ReviewDto {
   final String? createdAt;
   final int likesCount;
   final bool isLikedByMe;
+  final bool acceptedForModeration;
 
   const ReviewDto({
     this.id,
     required this.eventCode,
     this.userId,
     this.authorName,
-    this.authorAvatarUrl,
     required this.general,
     required this.preu,
     required this.ambient,
@@ -35,66 +34,46 @@ class ReviewDto {
     this.createdAt,
     this.likesCount = 0,
     this.isLikedByMe = false,
+    this.acceptedForModeration = false,
   });
 
-  factory ReviewDto.fromJson(Map<String, dynamic> json) {
-    // El backend pot retornar l'usuari com a objecte anidat (`user`) amb
-    // `id`/`username`, com a id pla, o com a `authorName`/`userId`
-    // separats. Ho cobrim tot.
-    final rawUser = json['user'];
-    String? userFromNested;
-    String? nameFromNested;
-    String? avatarFromNested;
-    if (rawUser is Map<String, dynamic>) {
-      userFromNested = _asNullableString(rawUser['id']);
-      nameFromNested = _asNullableString(
-        rawUser['username'] ?? rawUser['name'],
-      );
-      avatarFromNested = _asNullableString(
-        rawUser['profile_image'] ??
-            rawUser['profileImage'] ??
-            rawUser['avatar'] ??
-            rawUser['avatar_url'],
-      );
-    } else if (rawUser != null) {
-      userFromNested = _asNullableString(rawUser);
-    }
+  ReviewDto copyWith({bool? acceptedForModeration}) {
+    return ReviewDto(
+      id: id,
+      eventCode: eventCode,
+      userId: userId,
+      authorName: authorName,
+      general: general,
+      preu: preu,
+      ambient: ambient,
+      accessibilitat: accessibilitat,
+      comment: comment,
+      imageUrls: imageUrls,
+      createdAt: createdAt,
+      likesCount: likesCount,
+      isLikedByMe: isLikedByMe,
+      acceptedForModeration:
+          acceptedForModeration ?? this.acceptedForModeration,
+    );
+  }
 
+  factory ReviewDto.fromJson(Map<String, dynamic> json) {
+    // Format real del backend:
+    // reviewer_id / reviewer_username / created_at / likes_count / liked_by_me.
     return ReviewDto(
       id: json['id'] as int?,
-      eventCode: (json['eventCode'] ?? json['event_code'] ?? '') as String,
-      userId:
-          _asNullableString(json['userId'] ?? json['user_id']) ??
-          userFromNested,
-      authorName:
-          _asNullableString(
-            json['authorName'] ?? json['author_name'] ?? json['author'],
-          ) ??
-          nameFromNested,
-      authorAvatarUrl:
-          _asNullableString(
-            json['authorAvatarUrl'] ??
-                json['author_avatar_url'] ??
-                json['profile_image'] ??
-                json['profileImage'] ??
-                json['avatar'] ??
-                json['avatar_url'],
-          ) ??
-          avatarFromNested,
-      general: ((json['rating'] ?? json['general'] ?? 0) as num).toInt(),
-      preu: ((json['price_rating'] ?? json['preu'] ?? 0) as num).toInt(),
-      ambient: ((json['atmosphere_rating'] ?? json['ambient'] ?? 0) as num)
-          .toInt(),
-      accessibilitat:
-          ((json['accessibility_rating'] ?? json['accessibilitat'] ?? 0) as num)
-              .toInt(),
+      eventCode: '',
+      userId: _asNullableString(json['reviewer_id']),
+      authorName: _asNullableString(json['reviewer_username']),
+      general: _asInt(json['rating']),
+      preu: _asInt(json['price_rating']),
+      ambient: _asInt(json['atmosphere_rating']),
+      accessibilitat: _asInt(json['accessibility_rating']),
       comment: json['comment'] as String?,
-      imageUrls: _parseImageUrls(json['imageUrls'] ?? json['image_urls']),
-      createdAt: (json['createdAt'] ?? json['created_at']) as String?,
-      likesCount: ((json['likesCount'] ?? json['likes_count'] ?? 0) as num)
-          .toInt(),
-      isLikedByMe:
-          (json['isLikedByMe'] ?? json['is_liked_by_me'] ?? false) as bool,
+      imageUrls: _parseImageUrls(json['images']),
+      createdAt: json['created_at'] as String?,
+      likesCount: _asInt(json['likes_count']),
+      isLikedByMe: _asBool(json['liked_by_me']),
     );
   }
 
@@ -103,7 +82,30 @@ class ReviewDto {
     return raw.toString();
   }
 
+  static bool _asBool(dynamic raw) {
+    if (raw is bool) return raw;
+    if (raw is num) return raw != 0;
+    if (raw is String) {
+      switch (raw.trim().toLowerCase()) {
+        case 'true':
+        case '1':
+          return true;
+      }
+    }
+    return false;
+  }
+
+  static int _asInt(dynamic raw) {
+    if (raw is num) return raw.toInt();
+    if (raw is List) return raw.length;
+    if (raw is String) return int.tryParse(raw.trim()) ?? 0;
+    return 0;
+  }
+
   static List<String> _parseImageUrls(dynamic raw) {
+    if (raw is String && raw.trim().isNotEmpty) {
+      return [raw.trim()];
+    }
     if (raw is List) {
       return raw.map((e) => e.toString()).toList(growable: false);
     }
@@ -119,31 +121,24 @@ class ReviewDto {
       'atmosphere_rating': ambient,
       'accessibility_rating': accessibilitat,
       'comment': comment ?? '',
+      'clear_images': false,
     };
   }
 
-  /// Cos per crear una ressenya nova (sense `id`). Només inclou `image_urls`
-  /// si realment n'hi ha per no enviar-ho buit en la majoria de casos.
+  /// Cos per crear una ressenya nova.
   Map<String, dynamic> toCreateJson() {
-    return <String, dynamic>{
-      ..._editableFields(),
-      if (imageUrls.isNotEmpty) 'image_urls': imageUrls,
-    };
+    return _editableFields();
   }
 
   /// Cos per actualitzar una ressenya existent.
-  /// S'envia `image_urls` sempre per poder reemplaçar la galeria (fins i
-  /// tot quan l'usuari les ha tret totes).
-  Map<String, dynamic> toUpdateJson() {
-    return <String, dynamic>{..._editableFields(), 'image_urls': imageUrls};
-  }
+  Map<String, dynamic> toUpdateJson() => _editableFields();
 
   /// Converteix el DTO al model de domini que fa servir la UI.
   Review toModel() {
     return Review(
       id: id,
+      authorId: userId,
       author: authorName ?? userId ?? '',
-      authorAvatarUrl: authorAvatarUrl,
       general: general,
       preu: preu,
       ambient: ambient,
