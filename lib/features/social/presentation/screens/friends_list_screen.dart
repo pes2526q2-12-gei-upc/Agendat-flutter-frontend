@@ -120,10 +120,23 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     return sorted;
   }
 
+  /// Amics actius: tot el que ve del backend menys els que estan a la caché
+  /// local d'usuaris bloquejats. Garanteix que un usuari acabat de bloquejar
+  /// desapareixi a l'instant, encara que el backend no hagi cascadat la
+  /// ruptura de l'amistat o `getFriends` encara retorni la versió antiga
+  /// des de la caché.
+  List<UserSummary> get _unblockedFriends {
+    final blockedIds = _profileQuery.locallyBlockedUserIds;
+    if (blockedIds.isEmpty) return _friends;
+    return _friends.where((u) => !blockedIds.contains(u.id)).toList();
+  }
+
+  /// Llistat finalment visible: amics actius + filtre de text si està actiu.
   List<UserSummary> get _visibleFriends {
-    if (_filter.isEmpty) return _friends;
+    final unblocked = _unblockedFriends;
+    if (_filter.isEmpty) return unblocked;
     final lowered = _filter.toLowerCase();
-    return _friends.where((u) {
+    return unblocked.where((u) {
       return u.username.toLowerCase().contains(lowered) ||
           u.displayName.toLowerCase().contains(lowered);
     }).toList();
@@ -139,10 +152,18 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     setState(() => _filter = '');
   }
 
-  void _openProfile(UserSummary user) {
-    Navigator.of(
+  Future<void> _openProfile(UserSummary user) async {
+    await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+    if (!mounted) return;
+
+    // En tornar del perfil, l'estat local de bloquejats pot haver canviat
+    // (l'usuari ha bloquejat o desbloquejat algú). Forcem una reconstrucció
+    // perquè `_visibleFriends` reapliqui el filtre local, sense haver de
+    // refetchar de xarxa ni mostrar un spinner. Si l'usuari vol dades fresques
+    // del backend, té el RefreshIndicator a la part superior.
+    setState(() {});
   }
 
   @override
@@ -169,7 +190,9 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       ),
       body: Column(
         children: [
-          if (!_isLoading && _errorMessage == null && _friends.isNotEmpty)
+          if (!_isLoading &&
+              _errorMessage == null &&
+              _unblockedFriends.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: _buildFilterField(),
@@ -242,7 +265,11 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       );
     }
 
-    if (_friends.isEmpty) {
+    // Considerem la llista buida si no hi ha cap amic actiu (ja descomptats
+    // els bloquejats localment): així si l'únic amic que tenia ha estat
+    // bloquejat, mostrem el missatge buit en comptes de "Cap amic coincideix
+    // amb el filtre".
+    if (_unblockedFriends.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [

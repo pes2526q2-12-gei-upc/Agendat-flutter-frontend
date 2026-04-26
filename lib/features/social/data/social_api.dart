@@ -248,6 +248,99 @@ Future<List<UserSummary>> fetchFriends(int userId) async {
   return const [];
 }
 
+// ---------------------------------------------------------------------------
+// Block / Unblock API
+// ---------------------------------------------------------------------------
+
+/// Resultat d'una acció de bloquejar/desbloquejar un usuari.
+sealed class BlockActionResult {}
+
+class BlockActionSuccess extends BlockActionResult {}
+
+/// L'usuari no està autenticat o el token ja no és vàlid.
+class BlockActionUnauthorized extends BlockActionResult {}
+
+/// El perfil destinatari no existeix (HTTP 404). El backend interpreta el
+/// destinatari com a invàlid (eliminat o mai existent).
+class BlockActionUserNotFound extends BlockActionResult {}
+
+/// El bloqueig (o desbloqueig) ja estava aplicat al backend. Útil per mantenir
+/// la UI coherent en cas de doble click o desincronització de la caché.
+class BlockActionConflict extends BlockActionResult {
+  BlockActionConflict({this.message});
+  final String? message;
+}
+
+class BlockActionFailure extends BlockActionResult {
+  BlockActionFailure({required this.statusCode, this.message, this.error});
+  final int statusCode;
+  final String? message;
+  final Object? error;
+}
+
+/// POST /api/users/{id}/block/ — bloqueja un usuari. El backend és l'encarregat
+/// d'eliminar la relació d'amistat (si existia) i les sol·licituds pendents.
+Future<BlockActionResult> blockUser(int userId) =>
+    _postBlockAction('/api/users/$userId/block/');
+
+/// POST /api/users/{id}/unblock/ — desbloqueja un usuari prèviament bloquejat.
+/// No restableix l'amistat: si l'usuari vol tornar a ser amic, ha de tornar a
+/// passar pel flux de sol·licitud.
+Future<BlockActionResult> unblockUser(int userId) =>
+    _postBlockAction('/api/users/$userId/unblock/');
+
+Future<BlockActionResult> _postBlockAction(String path) async {
+  try {
+    await ApiClient.postJson(
+      path,
+      body: const <String, dynamic>{},
+      acceptedStatusCodes: const {200, 201, 202, 204},
+    );
+    return BlockActionSuccess();
+  } on ApiException catch (e) {
+    if (e.statusCode == 401 || e.statusCode == 403) {
+      return BlockActionUnauthorized();
+    }
+    if (e.statusCode == 404) {
+      return BlockActionUserNotFound();
+    }
+    if (e.statusCode == 409) {
+      return BlockActionConflict(message: _extractErrorMessage(e.body));
+    }
+    return BlockActionFailure(
+      statusCode: e.statusCode,
+      message: _extractErrorMessage(e.body),
+      error: e,
+    );
+  } catch (e) {
+    return BlockActionFailure(statusCode: -1, error: e);
+  }
+}
+
+/// GET /api/users/{userId}/blocked/ — llista d'usuaris que jo he bloquejat.
+/// Es fa servir per derivar si un perfil concret està bloquejat (mentre el
+/// backend no exposi `friendship_status` a `GET /api/users/{id}/`).
+Future<List<UserSummary>> fetchBlockedUsers(int userId) async {
+  final response = await ApiClient.get('/api/users/$userId/blocked/');
+  if (kDebugMode) {
+    debugPrint('[social] GET /blocked/ for $userId → ${response.body}');
+  }
+  final decoded = jsonDecode(response.body);
+  if (decoded is List) {
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(UserSummary.fromJson)
+        .toList();
+  }
+  if (decoded is Map<String, dynamic> && decoded['results'] is List) {
+    return (decoded['results'] as List)
+        .whereType<Map<String, dynamic>>()
+        .map(UserSummary.fromJson)
+        .toList();
+  }
+  return const [];
+}
+
 String? _extractErrorMessage(String body) {
   if (body.isEmpty) return null;
   try {
