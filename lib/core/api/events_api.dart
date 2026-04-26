@@ -33,18 +33,24 @@ class EventsApi {
   Map<String, String> _buildQueryParams(EventFilters? filters) {
     final now = DateTime.now();
     final defaultFrom = _subtractMonths(now, 6);
+    final defaultTo = _addMonths(now, 6);
 
     final params = <String, String>{
       'date_from': _formatDate(filters?.dateFrom ?? defaultFrom),
+      'date_to': _formatDate(filters?.dateTo ?? defaultTo),
     };
 
     if (filters != null) {
       final filterParams = filters.toQueryParams();
-      // date_from already set above (with fallback); override if explicit
+      // date range already set above (with fallback); override if explicit
       if (filters.dateFrom != null) {
         params['date_from'] = filterParams['date_from']!;
       }
+      if (filters.dateTo != null) {
+        params['date_to'] = filterParams['date_to']!;
+      }
       filterParams.remove('date_from');
+      filterParams.remove('date_to');
       params.addAll(filterParams);
     }
 
@@ -53,6 +59,15 @@ class EventsApi {
 
   static DateTime _subtractMonths(DateTime date, int months) {
     final totalMonths = date.year * 12 + (date.month - 1) - months;
+    final year = totalMonths ~/ 12;
+    final month = (totalMonths % 12) + 1;
+    final lastDay = DateTime(year, month + 1, 0).day;
+    final day = date.day > lastDay ? lastDay : date.day;
+    return DateTime(year, month, day);
+  }
+
+  static DateTime _addMonths(DateTime date, int months) {
+    final totalMonths = date.year * 12 + (date.month - 1) + months;
     final year = totalMonths ~/ 12;
     final month = (totalMonths % 12) + 1;
     final lastDay = DateTime(year, month + 1, 0).day;
