@@ -14,10 +14,11 @@ class CreateSessionRequest {
   final DateTime endTime;
 
   Map<String, dynamic> toJson() {
+    // Send UTC timestamps to avoid timezone ambiguity across web/mobile.
     return <String, dynamic>{
       'event': event,
-      'start_time': startTime.toIso8601String(),
-      'end_time': endTime.toIso8601String(),
+      'start_time': startTime.toUtc().toIso8601String(),
+      'end_time': endTime.toUtc().toIso8601String(),
     };
   }
 }
