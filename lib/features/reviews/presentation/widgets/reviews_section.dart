@@ -140,6 +140,15 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     return (sum / _reviews.length).clamp(0, 5);
   }
 
+  /// Mostra fins a un decimal, sense ".0" si és un enter.
+  String _formatAverageLabel(double value) {
+    final roundedToOneDecimal = (value * 10).round() / 10;
+    final oneDecimal = roundedToOneDecimal.toStringAsFixed(1);
+    return oneDecimal.endsWith('.0')
+        ? oneDecimal.substring(0, oneDecimal.length - 2)
+        : oneDecimal;
+  }
+
   /// Username de l'usuari loggejat.
   String? get _currentUsername {
     final raw = currentLoggedInUser?['username'];
@@ -638,9 +647,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'VALORACIONS',
+                    'VALORACIONS (${_reviews.length})',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -685,40 +694,40 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       color: Colors.black87,
       fontWeight: FontWeight.w500,
     );
-    final general = _averageOf((r) => r.general).round();
-    final preu = _averageOf((r) => r.preu).round();
-    final ambient = _averageOf((r) => r.ambient).round();
-    final access = _averageOf((r) => r.accessibilitat).round();
+    final generalAvg = _averageOf((r) => r.general);
+    final preuAvg = _averageOf((r) => r.preu);
+    final ambientAvg = _averageOf((r) => r.ambient);
+    final accessAvg = _averageOf((r) => r.accessibilitat);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ReviewRatingRow(
-          label: 'General ($general)',
-          rating: general,
+          label: 'General (${_formatAverageLabel(generalAvg)})',
+          rating: generalAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Preu ($preu)',
-          rating: preu,
+          label: 'Preu (${_formatAverageLabel(preuAvg)})',
+          rating: preuAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Ambient ($ambient)',
-          rating: ambient,
+          label: 'Ambient (${_formatAverageLabel(ambientAvg)})',
+          rating: ambientAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Accessibilitat ($access)',
-          rating: access,
+          label: 'Accessibilitat (${_formatAverageLabel(accessAvg)})',
+          rating: accessAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
           starSize: 20,

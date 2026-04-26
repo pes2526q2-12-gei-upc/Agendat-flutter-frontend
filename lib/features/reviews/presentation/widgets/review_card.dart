@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/review.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
+import 'package:agendat/main.dart' show RootNavigationScreen;
 
 /// Targeta que pinta una única [Review] en mode lectura.
 ///
@@ -159,9 +161,23 @@ class ReviewCard extends StatelessWidget {
 
   int? get _authorUserId => int.tryParse(review.authorId ?? '');
 
-  bool get _canOpenAuthorProfile => _authorUserId != null;
+  int? get _currentUserId => (currentLoggedInUser?['id'] as num?)?.toInt();
+
+  bool get _isOwnReview =>
+      _authorUserId != null && _currentUserId == _authorUserId;
+
+  bool get _canOpenAuthorProfile => _isOwnReview || _authorUserId != null;
 
   void _openAuthorProfile(BuildContext context) {
+    if (_isOwnReview) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => const RootNavigationScreen(initialIndex: 4),
+        ),
+      );
+      return;
+    }
+
     // El backend envia reviewer_id; el fem servir per obrir el perfil.
     final userId = _authorUserId;
     if (userId == null) return;
