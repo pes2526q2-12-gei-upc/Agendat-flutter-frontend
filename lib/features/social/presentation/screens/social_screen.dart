@@ -11,6 +11,7 @@ import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
+import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -183,6 +184,16 @@ class _SocialScreenState extends State<SocialScreen> {
     _loadPendingRequestsCount(forceRefresh: true);
   }
 
+  Future<void> _openFriendsList() async {
+    if (!_isAuthenticated) {
+      _guardAuthenticated();
+      return;
+    }
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FriendsListScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
@@ -205,6 +216,11 @@ class _SocialScreenState extends State<SocialScreen> {
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
+          IconButton(
+            tooltip: 'Els meus amics',
+            onPressed: _openFriendsList,
+            icon: const Icon(Icons.group_outlined, color: Colors.black87),
+          ),
           _FriendRequestsAction(
             pendingCount: _pendingRequestsCount,
             onPressed: _openFriendRequests,
