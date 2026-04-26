@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/api/sessions_api.dart';
+import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
@@ -21,6 +22,7 @@ class EventScreen extends StatefulWidget {
 
 class _EventScreenState extends State<EventScreen> {
   final EventsQuery _eventsQuery = EventsQuery.instance;
+  final SessionsQuery _sessionsQuery = SessionsQuery.instance;
   final SessionsApi _sessionsApi = SessionsApi();
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
@@ -79,6 +81,46 @@ class _EventScreenState extends State<EventScreen> {
       return;
     }
 
+    if (selectedDateTimes.end.isBefore(selectedDateTimes.start)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La data de final ha de ser posterior a la d\'inici.'),
+        ),
+      );
+      return;
+    }
+
+    final selectedStartDate = DateUtils.dateOnly(selectedDateTimes.start);
+    final selectedEndDate = DateUtils.dateOnly(selectedDateTimes.end);
+    final eventStartDate = event.startDate == null
+        ? null
+        : DateUtils.dateOnly(event.startDate!);
+    final eventEndDate = event.endDate == null
+        ? eventStartDate
+        : DateUtils.dateOnly(event.endDate!);
+
+    if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessio seleccionada es anterior a l\'inici de l\'esdeveniment.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (eventEndDate != null && selectedEndDate.isAfter(eventEndDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessio seleccionada es posterior al final de l\'esdeveniment.',
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isCreatingSession = true;
     });
@@ -91,6 +133,7 @@ class _EventScreenState extends State<EventScreen> {
           endTime: selectedDateTimes.end,
         ),
       );
+      _sessionsQuery.invalidateAll();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,10 +141,13 @@ class _EventScreenState extends State<EventScreen> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
+      final detail = e.body.trim();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'No s\'ha pogut registrar l\'assistència (${e.statusCode}).',
+            detail.isEmpty
+                ? 'No s\'ha pogut registrar l\'assistencia (${e.statusCode}).'
+                : 'No s\'ha pogut registrar l\'assistencia (${e.statusCode}): $detail',
           ),
         ),
       );

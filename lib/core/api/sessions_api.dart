@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/dto/session_dto.dart';
 
@@ -13,10 +14,11 @@ class CreateSessionRequest {
   final DateTime endTime;
 
   Map<String, dynamic> toJson() {
+    // Send UTC timestamps to avoid timezone ambiguity across web/mobile.
     return <String, dynamic>{
       'event': event,
-      'start_time': startTime.toIso8601String(),
-      'end_time': endTime.toIso8601String(),
+      'start_time': startTime.toUtc().toIso8601String(),
+      'end_time': endTime.toUtc().toIso8601String(),
     };
   }
 }
@@ -37,5 +39,21 @@ class SessionsApi {
     }
 
     return SessionDto.fromJson(decoded);
+  }
+
+  Future<List<SessionDto>> fetchSessions() async {
+    final response = await ApiClient.get(_path);
+    final decoded = jsonDecode(response.body) as dynamic;
+
+    if (decoded is List) {
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(SessionDto.fromJson)
+          .toList();
+    }
+
+    throw const FormatException(
+      'Expected a list of sessions in the API response',
+    );
   }
 }
