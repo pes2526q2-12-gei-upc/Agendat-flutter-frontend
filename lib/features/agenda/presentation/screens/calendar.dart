@@ -1,5 +1,5 @@
-import 'package:agendat/core/models/event.dart';
-import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/models/session.dart';
+import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaDetail.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaList.dart';
@@ -17,20 +17,20 @@ enum _AgendaView { calendar, list }
 class _CalendarScreenState extends State<CalendarScreen> {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
 
-  final EventsQuery _eventsQuery = EventsQuery.instance;
+  final SessionsQuery _sessionsQuery = SessionsQuery.instance;
 
-  late Future<List<Event>> _eventsFuture;
+  late Future<List<Session>> _sessionsFuture;
 
   @override
   void initState() {
     super.initState();
-    _eventsFuture = _eventsQuery.getEvents();
+    _sessionsFuture = _sessionsQuery.getSessions();
   }
 
   void _refresh() {
-    _eventsQuery.invalidateLists();
+    _sessionsQuery.invalidateAll();
     setState(() {
-      _eventsFuture = _eventsQuery.getEvents();
+      _sessionsFuture = _sessionsQuery.getSessions();
     });
   }
 
@@ -40,8 +40,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: const MainAppBar(title: "Agenda't"),
       backgroundColor: const Color(0xFFF7F4F2),
       body: SafeArea(
-        child: FutureBuilder<List<Event>>(
-          future: _eventsFuture,
+        child: FutureBuilder<List<Session>>(
+          future: _sessionsFuture,
           builder: (context, snapshot) {
             return Column(
               children: [
@@ -125,7 +125,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildBody(BuildContext context, AsyncSnapshot<List<Event>> snapshot) {
+  Widget _buildBody(
+    BuildContext context,
+    AsyncSnapshot<List<Session>> snapshot,
+  ) {
     if (snapshot.connectionState == ConnectionState.waiting) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -134,12 +137,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return _buildErrorState(snapshot.error);
     }
 
-    final events = _sortedEvents(snapshot.data ?? const []);
-    if (events.isEmpty) {
+    final sessions = _sortedSessions(snapshot.data ?? const []);
+    if (sessions.isEmpty) {
       return _buildEmptyState();
     }
 
-    return _buildCalendarView(context, events);
+    return _buildCalendarView(context, sessions);
   }
 
   Widget _buildErrorState(Object? error) {
@@ -194,16 +197,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildCalendarView(BuildContext context, List<Event> events) {
+  Widget _buildCalendarView(BuildContext context, List<Session> sessions) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-        child: _buildMonthGrid(context, events),
+        child: _buildMonthGrid(context, sessions),
       ),
     );
   }
 
-  Widget _buildMonthGrid(BuildContext context, List<Event> events) {
+  Widget _buildMonthGrid(BuildContext context, List<Session> sessions) {
     final now = DateTime.now();
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
     final lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
@@ -268,8 +271,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               final date = DateUtils.dateOnly(
                 DateTime(now.year, now.month, dayNumber),
               );
-              final dayEvents = _eventsForDate(events, date);
-              final hasEvents = dayEvents.isNotEmpty;
+              final daySessions = _sessionsForDate(sessions, date);
+              final hasEvents = daySessions.isNotEmpty;
               final isToday = DateUtils.isSameDay(DateTime.now(), date);
 
               return Material(
@@ -279,8 +282,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            AgendaDetailScreen(date: date, events: events),
+                        builder: (_) => AgendaDetailScreen(
+                          date: date,
+                          sessions: daySessions,
+                        ),
                       ),
                     );
                   },
@@ -335,43 +340,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  List<Event> _sortedEvents(List<Event> events) {
-    final sorted = [...events];
+  List<Session> _sortedSessions(List<Session> sessions) {
+    final sorted = [...sessions];
     sorted.sort((left, right) {
-      final leftDate =
-          left.startDate ??
-          left.endDate ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      final rightDate =
-          right.startDate ??
-          right.endDate ??
-          DateTime.fromMillisecondsSinceEpoch(0);
+      final leftDate = left.startTime;
+      final rightDate = right.startTime;
       final byDate = leftDate.compareTo(rightDate);
       if (byDate != 0) return byDate;
-      return left.title.toLowerCase().compareTo(right.title.toLowerCase());
+      return left.event.compareTo(right.event);
     });
     return sorted;
   }
 
-  List<Event> _eventsForDate(List<Event> events, DateTime date) {
-    return events.where((event) => _eventMatchesDate(event, date)).toList();
+  List<Session> _sessionsForDate(List<Session> sessions, DateTime date) {
+    return sessions
+        .where((session) => _sessionMatchesDate(session, date))
+        .toList();
   }
 
-  bool _eventMatchesDate(Event event, DateTime date) {
+  bool _sessionMatchesDate(Session session, DateTime date) {
     final selected = DateUtils.dateOnly(date.toLocal());
-    final start = event.startDate == null
-        ? null
-        : DateUtils.dateOnly(event.startDate!.toLocal());
-    final end = event.endDate == null
-        ? start
-        : DateUtils.dateOnly(event.endDate!.toLocal());
-
-    if (start == null && end == null) {
-      return false;
-    }
-
-    final rangeStart = start ?? end!;
-    final rangeEnd = end ?? rangeStart;
-    return !selected.isBefore(rangeStart) && !selected.isAfter(rangeEnd);
+    final sessionDate = DateUtils.dateOnly(session.startTime.toLocal());
+    return DateUtils.isSameDay(selected, sessionDate);
   }
 }

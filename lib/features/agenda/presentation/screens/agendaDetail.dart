@@ -1,4 +1,4 @@
-import 'package:agendat/core/models/event.dart';
+import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:flutter/material.dart';
@@ -7,30 +7,22 @@ class AgendaDetailScreen extends StatelessWidget {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
 
   final DateTime date;
-  final List<Event> events;
+  final List<Session> sessions;
 
   const AgendaDetailScreen({
     super.key,
     required this.date,
-    required this.events,
+    required this.sessions,
   });
 
   @override
   Widget build(BuildContext context) {
     final normalizedDate = DateUtils.dateOnly(date);
-    final dayEvents = events
-        .where((event) => _eventMatchesDate(event, normalizedDate))
+    final daySessions = sessions
+        .where((session) => _sessionMatchesDate(session, normalizedDate))
         .toList();
-    dayEvents.sort((left, right) {
-      final leftDate =
-          left.startDate ??
-          left.endDate ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      final rightDate =
-          right.startDate ??
-          right.endDate ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      return leftDate.compareTo(rightDate);
+    daySessions.sort((left, right) {
+      return left.startTime.compareTo(right.startTime);
     });
 
     return Scaffold(
@@ -50,7 +42,7 @@ class AgendaDetailScreen extends StatelessWidget {
       ),
       backgroundColor: const Color(0xFFF7F4F2),
       body: SafeArea(
-        child: dayEvents.isEmpty
+        child: daySessions.isEmpty
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -64,7 +56,7 @@ class AgendaDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'No hi ha esdeveniments per a aquest dia.',
+                        'No hi ha sessions per a aquest dia.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
@@ -77,7 +69,7 @@ class AgendaDetailScreen extends StatelessWidget {
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                itemCount: dayEvents.length + 1,
+                itemCount: daySessions.length + 1,
                 separatorBuilder: (_, index) => index == 0
                     ? const SizedBox(height: 16)
                     : const SizedBox(height: 12),
@@ -87,7 +79,7 @@ class AgendaDetailScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Esdeveniments',
+                            'Sessions',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -104,7 +96,7 @@ class AgendaDetailScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '${dayEvents.length}',
+                            '${daySessions.length}',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -116,15 +108,15 @@ class AgendaDetailScreen extends StatelessWidget {
                     );
                   }
 
-                  final event = dayEvents[index - 1];
-                  return _buildEventCard(context, event);
+                  final session = daySessions[index - 1];
+                  return _buildSessionCard(context, session);
                 },
               ),
       ),
     );
   }
 
-  Widget _buildEventCard(BuildContext context, Event event) {
+  Widget _buildSessionCard(BuildContext context, Session session) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -136,7 +128,7 @@ class AgendaDetailScreen extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => EventScreen(eventCode: event.code),
+                builder: (_) => EventScreen(eventCode: session.event),
               ),
             );
           },
@@ -176,7 +168,7 @@ class AgendaDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _formatDateTimeLabel(event.startDate),
+                        _formatDateTimeLabel(session.startTime),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -185,7 +177,7 @@ class AgendaDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        event.title,
+                        session.event,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -198,14 +190,14 @@ class AgendaDetailScreen extends StatelessWidget {
                       Row(
                         children: [
                           Icon(
-                            Icons.place_rounded,
+                            Icons.person_rounded,
                             size: 16,
                             color: Colors.grey.shade600,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              event.location,
+                              session.user,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -228,15 +220,10 @@ class AgendaDetailScreen extends StatelessWidget {
     );
   }
 
-  bool _eventMatchesDate(Event event, DateTime date) {
+  bool _sessionMatchesDate(Session session, DateTime date) {
     final selected = DateUtils.dateOnly(date.toLocal());
-    final eventDate = event.startDate ?? event.endDate;
-
-    if (eventDate == null) {
-      return false;
-    }
-
-    return DateUtils.isSameDay(eventDate.toLocal(), selected);
+    final sessionDate = DateUtils.dateOnly(session.startTime.toLocal());
+    return DateUtils.isSameDay(sessionDate, selected);
   }
 
   String _formatSelectedDate(DateTime date) {
