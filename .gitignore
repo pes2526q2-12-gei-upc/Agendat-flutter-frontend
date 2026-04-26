@@ -49,7 +49,6 @@ app.*.symbols
 app.*.map.json
 
 # Local accidental files to ignore
-lib/features/map/presentation/widgets/map_controls.dart
 linux/flutter/generated_plugins.cmake
 windows/flutter/generated_plugins.cmake
 windows/flutter/generated_plugins 2.cmake
