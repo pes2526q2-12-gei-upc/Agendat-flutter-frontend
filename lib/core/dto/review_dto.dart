@@ -121,6 +121,7 @@ class ReviewDto {
       'atmosphere_rating': ambient,
       'accessibility_rating': accessibilitat,
       'comment': comment ?? '',
+      'clear_images': false,
     };
   }
 

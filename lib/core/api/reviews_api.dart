@@ -129,25 +129,25 @@ class ReviewsApi {
     );
   }
 
-  /// Parser tolerant del llistat de valoracions. Accepta tant una llista
-  /// directa com els wrappers `results`/`reviews` habituals a DRF.
+  /// Parser del format real del backend:
+  /// `{ review_count, average_*, reviews: [...] }`.
   List<ReviewDto> _parseReviewList(http.Response response) {
     final body = response.body.trim();
     if (body.isEmpty) return const [];
     final decoded = jsonDecode(body);
 
-    List<dynamic>? raw;
-    if (decoded is List) {
-      raw = decoded;
-    } else if (decoded is Map<String, dynamic>) {
-      final candidate = decoded['results'] ?? decoded['reviews'];
-      if (candidate is List) raw = candidate;
-    }
-    if (raw == null) {
+    if (decoded is! Map<String, dynamic>) {
       debugPrint('ReviewsApi: format de resposta inesperat → ${response.body}');
       return const [];
     }
-    return raw
+
+    final reviews = decoded['reviews'];
+    if (reviews is! List) {
+      debugPrint('ReviewsApi: falta el camp reviews → ${response.body}');
+      return const [];
+    }
+
+    return reviews
         .whereType<Map<String, dynamic>>()
         .map(ReviewDto.fromJson)
         .toList(growable: false);
