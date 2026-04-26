@@ -163,7 +163,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       final now = DateTime.now();
       return sessions.any(
         (s) =>
-            s.eventCode == widget.eventCode &&
+            s.event == widget.eventCode &&
             s.endTime != null &&
             s.endTime!.isBefore(now),
       );

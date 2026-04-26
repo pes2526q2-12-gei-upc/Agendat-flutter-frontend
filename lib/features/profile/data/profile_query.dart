@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-
+import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
@@ -66,11 +66,11 @@ class ProfileQuery {
     );
   }
 
-  Future<List<UserSession>> getUserSessions({
+  Future<List<Session>> getUserSessions({
     required String username,
     bool forceRefresh = false,
   }) {
-    return _client.query<List<UserSession>>(
+    return _client.query<List<Session>>(
       key: '$_prefix:sessions:$username',
       staleTime: _sessionsStaleTime,
       forceRefresh: forceRefresh,
