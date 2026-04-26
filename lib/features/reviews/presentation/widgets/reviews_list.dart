@@ -9,15 +9,13 @@ import 'package:agendat/features/reviews/presentation/widgets/review_card.dart';
 /// Un cop l'usuari n'ha desplegat alguna, apareix també "Mostrar menys"
 /// per tornar a l'estat inicial.
 ///
-/// Si [currentUsername] coincideix amb l'autor d'alguna valoració i es
-/// passen els callbacks d'edició/esborrat, a aquella valoració s'hi
-/// mostren els botons corresponents.
+/// Si la valoració és de l'usuari actual, es mostren editar i eliminar.
 class ReviewsList extends StatefulWidget {
   const ReviewsList({
     super.key,
     required this.reviews,
     this.initialLimit = 3,
-    this.currentUsername,
+    this.currentUserId,
     this.onEditReview,
     this.onDeleteReview,
     this.onToggleLike,
@@ -26,7 +24,7 @@ class ReviewsList extends StatefulWidget {
 
   final List<Review> reviews;
   final int initialLimit;
-  final String? currentUsername;
+  final String? currentUserId;
 
   /// Es crida quan l'usuari prem el llapis d'una valoració seva.
   /// Rep l'índex dins de [reviews] per localitzar-la.
@@ -95,10 +93,12 @@ class _ReviewsListState extends State<ReviewsList> {
     );
   }
 
-  /// Una valoració només es pot editar/esborrar si és de l'usuari loggejat.
+  /// Comparem l'id de l'usuari loggejat amb `reviewer_id`.
   bool _canMutate(Review review) {
-    return widget.currentUsername != null &&
-        review.author == widget.currentUsername;
+    final currentUserId = widget.currentUserId;
+    return currentUserId != null &&
+        currentUserId.isNotEmpty &&
+        review.authorId == currentUserId;
   }
 
   Widget _buildEmptyState() {

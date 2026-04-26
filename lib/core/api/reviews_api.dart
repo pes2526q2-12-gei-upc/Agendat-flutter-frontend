@@ -46,7 +46,7 @@ class ReviewsApi {
       response = await ApiClient.postJson(
         _eventReviewsPath(eventCode),
         body: review.toCreateJson(),
-        acceptedStatusCodes: const {200, 201},
+        acceptedStatusCodes: const {200, 201, 202},
       );
     } on ApiException catch (e) {
       final attendance = _attendanceErrorFrom(e);
@@ -55,6 +55,12 @@ class ReviewsApi {
       if (duplicate != null) throw duplicate;
       rethrow;
     }
+    if (response.statusCode == 202) {
+      // El backend ha acceptat la review per moderació, però encara no
+      // retorna la review final publicada.
+      return review.copyWith(acceptedForModeration: true);
+    }
+
     final decoded = ApiClient.decodeBody(response);
     if (decoded is Map<String, dynamic>) {
       return ReviewDto.fromJson(decoded);
@@ -85,6 +91,10 @@ class ReviewsApi {
       if (attendance != null) throw attendance;
       rethrow;
     }
+    if (response.statusCode == 202) {
+      return review.copyWith(acceptedForModeration: true);
+    }
+
     final decoded = ApiClient.decodeBody(response);
     if (decoded is Map<String, dynamic>) {
       return ReviewDto.fromJson(decoded);

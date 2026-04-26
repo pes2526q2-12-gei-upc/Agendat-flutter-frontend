@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
@@ -50,7 +48,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   /// o si no hi ha formulari obert.
   int? _editingIndex;
 
-  /// Ids de valoracions amb una petició de like/unlike en curs.
+  /// Evita que l'usuari premi el cor dues vegades mentre la petició és viva.
   final Set<int> _busyLikeIds = <int>{};
 
   List<Review> _reviews = [];
@@ -63,15 +61,27 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   // ─────────────────────────── Carrega dades ───────────────────────────
 
-  Future<void> _fetchReviews() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<void> _fetchReviews({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final dtos = await _reviewsApi.fetchReviewsByEventCode(widget.eventCode);
       if (!mounted) return;
-      final reviews = dtos.map((dto) => dto.toModel()).toList(growable: true);
+      final reviews = dtos
+          .map((dto) => dto.toModel())
+          .map(
+            (review) => _isOwnReview(review)
+                ? _withCurrentUserDefaults(review)
+                : review,
+          )
+          .toList(growable: true);
+      if (silent) {
+        _keepLocalPendingReview(reviews);
+      }
       _pinOwnReviewFirst(reviews);
       setState(() {
         _reviews = reviews;
@@ -81,6 +91,8 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       debugPrint('ReviewsSection._fetchReviews failed: $e');
       debugPrintStack(stackTrace: stack);
       if (!mounted) return;
+      // En mode silenciós no mostrem error: només era un refresc de fons.
+      if (silent) return;
       setState(() {
         _error = 'No s\'han pogut carregar les valoracions.';
         _isLoading = false;
@@ -91,13 +103,33 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   /// Si l'usuari té una valoració dins [reviews] i no està ja al principi,
   /// la mou a la posició 0. Muta la llista rebuda.
   void _pinOwnReviewFirst(List<Review> reviews) {
-    final username = _currentUsername;
-    if (username == null) return;
-    final idx = reviews.indexWhere((r) => r.author == username);
+    final idx = reviews.indexWhere(_isOwnReview);
     if (idx > 0) {
       final mine = reviews.removeAt(idx);
       reviews.insert(0, mine);
     }
+  }
+
+  /// Si el POST ha tornat 202, la review encara no té id i pot no sortir al GET.
+  void _keepLocalPendingReview(List<Review> serverReviews) {
+    final pending = _reviews.where((r) => _isOwnReview(r) && r.id == null);
+    for (final review in pending) {
+      final alreadyPublished = serverReviews.any(
+        (serverReview) => _isSameReviewByRatings(serverReview, review),
+      );
+      if (!alreadyPublished) {
+        serverReviews.insert(0, review);
+      }
+    }
+  }
+
+  bool _isSameReviewByRatings(Review a, Review b) {
+    return _isOwnReview(a) &&
+        _isOwnReview(b) &&
+        a.general == b.general &&
+        a.preu == b.preu &&
+        a.ambient == b.ambient &&
+        a.accessibilitat == b.accessibilitat;
   }
 
   /// Mitjana d'una puntuació concreta per a totes les valoracions carregades.
@@ -108,15 +140,104 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     return (sum / _reviews.length).clamp(0, 5);
   }
 
-  /// Username de l'usuari que ha iniciat sessió, o `null` si no n'hi ha cap.
-  String? get _currentUsername => currentLoggedInUser?['username'] as String?;
+  /// Username de l'usuari loggejat.
+  String? get _currentUsername {
+    final raw = currentLoggedInUser?['username'];
+    if (raw is String && raw.trim().isNotEmpty) return raw.trim();
+    return null;
+  }
+
+  /// Id de l'usuari loggejat. El passem a String per comparar fàcilment.
+  String? get _currentUserId {
+    final raw = currentLoggedInUser?['id'];
+    if (raw == null) return null;
+    final id = raw.toString().trim();
+    return id.isEmpty ? null : id;
+  }
+
+  /// Foto de perfil de l'usuari loggejat.
+  String? get _currentUserAvatarUrl {
+    final raw = currentLoggedInUser?['profile_image'];
+    if (raw is String && raw.trim().isNotEmpty) return raw.trim();
+    return null;
+  }
+
+  /// Una review és meva si coincideix el reviewer_id.
+  bool _isOwnReview(Review review) {
+    final currentUserId = _currentUserId;
+    return currentUserId != null && review.authorId == currentUserId;
+  }
+
+  bool get _isLoggedIn => _currentUserId != null;
+
+  /// Completa una review meva quan el backend torna una resposta parcial.
+  Review _withCurrentUserDefaults(
+    Review saved, {
+    Review? existing,
+    String? submittedComment,
+    bool hideSubmittedComment = false,
+  }) {
+    final username = _currentUsername;
+    String author;
+    if (username != null && username.isNotEmpty) {
+      author = username;
+    } else if (saved.author.trim().isNotEmpty) {
+      author = saved.author;
+    } else {
+      author = existing?.author ?? '';
+    }
+
+    final fromServerAvatar = saved.authorAvatarUrl?.trim();
+    final hasServerAvatar =
+        fromServerAvatar != null && fromServerAvatar.isNotEmpty;
+    final avatarUrl = hasServerAvatar
+        ? saved.authorAvatarUrl
+        : (existing?.authorAvatarUrl ?? _currentUserAvatarUrl);
+
+    String? comment = hideSubmittedComment ? null : saved.comment;
+    if (!hideSubmittedComment && (comment == null || comment.trim().isEmpty)) {
+      final fallbackComment = submittedComment?.trim();
+      if (fallbackComment != null && fallbackComment.isNotEmpty) {
+        comment = fallbackComment;
+      } else if (existing?.comment != null &&
+          existing!.comment!.trim().isNotEmpty) {
+        comment = existing.comment;
+      } else {
+        comment = null;
+      }
+    }
+
+    final imageUrls = saved.imageUrls.isNotEmpty
+        ? saved.imageUrls
+        : (existing?.imageUrls ?? const <String>[]);
+
+    final date = saved.date.trim().isNotEmpty
+        ? saved.date
+        : (existing != null && existing.date.trim().isNotEmpty
+              ? existing.date
+              : DateTime.now().toUtc().toIso8601String());
+
+    return Review(
+      id: saved.id ?? existing?.id,
+      authorId: saved.authorId ?? existing?.authorId ?? _currentUserId,
+      author: author,
+      authorAvatarUrl: avatarUrl,
+      general: saved.general,
+      preu: saved.preu,
+      ambient: saved.ambient,
+      accessibilitat: saved.accessibilitat,
+      comment: comment,
+      imageUrls: imageUrls,
+      date: date,
+      likesCount: saved.likesCount,
+      isLikedByMe: saved.isLikedByMe,
+    );
+  }
 
   /// Índex dins [_reviews] de la valoració de l'usuari loggejat,
   /// o `null` si encara no n'ha fet cap.
   int? get _userReviewIndex {
-    final username = _currentUsername;
-    if (username == null) return null;
-    final idx = _reviews.indexWhere((r) => r.author == username);
+    final idx = _reviews.indexWhere(_isOwnReview);
     return idx >= 0 ? idx : null;
   }
 
@@ -131,11 +252,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   }
 
   Future<void> _openAddForm() async {
-    // Abans d'obrir el formulari confirmem que l'usuari té alguna sessió
-    // ja finalitzada per aquest esdeveniment (condició que imposa el
-    // backend). Si la comprovació falla per xarxa deixem continuar: el
-    // POST ja es rebutjarà i ho capturarem com a
-    // `ReviewAttendanceRequiredException`.
+    // Només pot valorar qui té una sessió finalitzada d'aquest esdeveniment.
     final attended = await _hasConfirmedAttendance();
     if (!mounted) return;
     if (!attended) {
@@ -148,13 +265,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     });
   }
 
-  /// Comprova si l'usuari té almenys una sessió ja finalitzada per
-  /// l'esdeveniment actual. És la condició que el backend exigeix per
-  /// poder deixar una valoració.
-  ///
-  /// Si la petició falla (xarxa, etc.) retornem `true` per no bloquejar
-  /// l'usuari: en cas que no hi hagi assistit, el POST posterior ho
-  /// acabarà detectant igualment.
+  /// Retorna true si l'usuari ha assistit a alguna sessió ja acabada.
   Future<bool> _hasConfirmedAttendance() async {
     final username = _currentUsername;
     if (username == null) return false;
@@ -274,13 +385,16 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         saved = await _reviewsApi.createReview(widget.eventCode, dto);
       }
       if (!mounted) return;
-      // Forcem `author` a l'username actual (quan el tenim) perquè la UI
-      // reconegui la valoració com a pròpia —botons d'editar/eliminar—
-      // sense dependre del format exacte de l'autor que torni el backend.
-      final username = _currentUsername;
-      final savedReview = (username != null && username.isNotEmpty)
-          ? saved.toModel().copyWith(author: username)
-          : saved.toModel();
+      final hasSubmittedComment = dto.comment?.trim().isNotEmpty == true;
+      final commentNeedsModeration =
+          saved.acceptedForModeration && hasSubmittedComment;
+      // Algunes respostes del backend no inclouen autor, foto o comentari.
+      final savedReview = _withCurrentUserDefaults(
+        saved.toModel(),
+        existing: existing,
+        submittedComment: dto.comment,
+        hideSubmittedComment: commentNeedsModeration,
+      );
       setState(() {
         if (editingIndex != null) {
           _reviews[editingIndex] = savedReview;
@@ -291,10 +405,15 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _isSubmitting = false;
       });
       _showSnack(
-        existing != null
-            ? 'Valoració actualitzada correctament.'
-            : 'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.',
+        commentNeedsModeration
+            ? 'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.'
+            : (existing != null
+                  ? 'Valoració actualitzada correctament.'
+                  : 'Valoració publicada correctament.'),
       );
+      // Refresc silenciós per sincronitzar id real, likes i data del backend.
+      // ignore: unawaited_futures
+      _fetchReviews(silent: true);
     } on ReviewAttendanceRequiredException catch (e) {
       debugPrint('ReviewsSection._submitReview attendance required: $e');
       if (!mounted) return;
@@ -308,8 +427,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _isSubmitting = false;
       });
       _showAlreadyReviewedDialog();
-      // Recarreguem per poder ensenyar la valoració existent i permetre
-      // editar-la enlloc d'intentar crear-ne una altra.
+      // Recarreguem per ensenyar la valoració existent.
       _fetchReviews();
     } catch (e, stack) {
       debugPrint('ReviewsSection._submitReview failed: $e');
@@ -372,7 +490,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   Future<void> _toggleLike(Review review) async {
     final reviewId = review.id;
     if (reviewId == null) return;
-    if (_currentUsername == null) {
+    if (!_isLoggedIn) {
       _showSnack('Cal iniciar sessió per fer like.');
       return;
     }
@@ -382,10 +500,12 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     if (idx < 0) return;
 
     final original = _reviews[idx];
+    final wasLiked = original.isLikedByMe;
+
     final optimistic = original.copyWith(
-      isLikedByMe: !original.isLikedByMe,
-      likesCount: original.isLikedByMe
-          ? math.max(0, original.likesCount - 1)
+      isLikedByMe: !wasLiked,
+      likesCount: wasLiked
+          ? (original.likesCount > 0 ? original.likesCount - 1 : 0)
           : original.likesCount + 1,
     );
 
@@ -395,7 +515,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     });
 
     try {
-      if (original.isLikedByMe) {
+      if (wasLiked) {
         await _reviewsApi.unlikeReview(widget.eventCode, reviewId);
       } else {
         await _reviewsApi.likeReview(widget.eventCode, reviewId);
@@ -443,11 +563,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       if (_isFormOpen) _buildReviewForm(),
       ReviewsList(
         reviews: _reviews,
-        currentUsername: _currentUsername,
+        currentUserId: _currentUserId,
         // Mentre hi ha un formulari obert no deixem editar/eliminar una altra.
         onEditReview: _isFormOpen ? null : _openEditForm,
         onDeleteReview: _isFormOpen ? null : _deleteReview,
-        onToggleLike: _currentUsername == null ? null : _toggleLike,
+        onToggleLike: _isLoggedIn ? _toggleLike : null,
         busyLikeIds: _busyLikeIds,
       ),
     ];
@@ -620,7 +740,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          onPressed: _currentUsername == null
+          onPressed: !_isLoggedIn
               ? null
               : (isEditing
                     ? () => _openEditForm(userIdx)
