@@ -1,5 +1,7 @@
 import 'package:agendat/core/models/event.dart';
+import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
@@ -18,19 +20,20 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
 
   final EventsQuery _eventsQuery = EventsQuery.instance;
-  late Future<List<Event>> _eventsFuture;
+  final SessionsQuery _sessionsQuery = SessionsQuery.instance;
+  late Future<List<Session>> _sessionsFuture;
   int _selectedIndex = 2; // Calendari tab in navigation bar
 
   @override
   void initState() {
     super.initState();
-    _eventsFuture = _eventsQuery.getEvents();
+    _sessionsFuture = _sessionsQuery.getSessions();
   }
 
   void _refresh() {
-    _eventsQuery.invalidateLists();
+    _sessionsQuery.invalidateAll();
     setState(() {
-      _eventsFuture = _eventsQuery.getEvents();
+      _sessionsFuture = _sessionsQuery.getSessions();
     });
   }
 
@@ -46,8 +49,8 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
       appBar: const MainAppBar(title: "Agenda't"),
       backgroundColor: const Color(0xFFF7F4F2),
       body: SafeArea(
-        child: FutureBuilder<List<Event>>(
-          future: _eventsFuture,
+        child: FutureBuilder<List<Session>>(
+          future: _sessionsFuture,
           builder: (context, snapshot) {
             return Column(
               children: [
@@ -132,7 +135,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
     );
   }
 
-  Widget _buildBody(AsyncSnapshot<List<Event>> snapshot) {
+  Widget _buildBody(AsyncSnapshot<List<Session>> snapshot) {
     if (snapshot.connectionState == ConnectionState.waiting) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -165,8 +168,8 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
       );
     }
 
-    final events = _sortedEvents(snapshot.data ?? const []);
-    if (events.isEmpty) {
+    final sessions = _sortedSessions(snapshot.data ?? const []);
+    if (sessions.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -176,7 +179,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
               Icon(Icons.view_agenda_outlined, size: 52, color: _kAccentRed),
               SizedBox(height: 12),
               Text(
-                'No hi ha esdeveniments per mostrar a la llista.',
+                'No tens cap esdeveniment programat pròximament.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
@@ -188,14 +191,14 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      itemCount: events.length + 1,
+      itemCount: sessions.length + 1,
       separatorBuilder: (_, index) =>
           index == 0 ? const SizedBox(height: 16) : const SizedBox(height: 12),
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _buildSectionTitle('Esdeveniments', events.length);
+          return _buildSectionTitle('Sessions', sessions.length);
         }
-        return _buildListEventCard(events[index - 1]);
+        return _buildListSessionCard(sessions[index - 1]);
       },
     );
   }
@@ -227,7 +230,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
     );
   }
 
-  Widget _buildListEventCard(Event event) {
+  Widget _buildListSessionCard(Session session) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -239,7 +242,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => EventScreen(eventCode: event.code),
+                builder: (_) => EventScreen(eventCode: session.event),
               ),
             );
           },
@@ -279,7 +282,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _formatDateTimeLabel(event.startDate),
+                        _formatDateTimeLabel(session.startTime),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -287,39 +290,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        event.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.place_rounded,
-                            size: 16,
-                            color: Colors.grey.shade600,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              event.location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildEventTitle(session.event),
                     ],
                   ),
                 ),
@@ -331,29 +302,40 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
     );
   }
 
-  List<Event> _sortedEvents(List<Event> events) {
-    final sorted = [...events];
+  List<Session> _sortedSessions(List<Session> sessions) {
+    final sorted = [...sessions];
     sorted.sort((left, right) {
-      final leftDate =
-          left.startDate ??
-          left.endDate ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-      final rightDate =
-          right.startDate ??
-          right.endDate ??
-          DateTime.fromMillisecondsSinceEpoch(0);
+      final leftDate = left.startTime;
+      final rightDate = right.startTime;
       final byDate = leftDate.compareTo(rightDate);
       if (byDate != 0) return byDate;
-      return left.title.toLowerCase().compareTo(right.title.toLowerCase());
+      return left.event.toLowerCase().compareTo(right.event.toLowerCase());
     });
     return sorted;
   }
 
-  String _formatDateTimeLabel(DateTime? dateTime) {
-    if (dateTime == null) {
-      return 'Data i hora per determinar';
-    }
+  Widget _buildEventTitle(String eventCode) {
+    return FutureBuilder<EventExtended>(
+      future: _eventsQuery.getEventByCode(eventCode),
+      builder: (context, snapshot) {
+        final title = snapshot.data?.title.trim();
+        final display = (title == null || title.isEmpty) ? eventCode : title;
 
+        return Text(
+          display,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w800,
+            height: 1.1,
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDateTimeLabel(DateTime dateTime) {
     final localDateTime = dateTime.toLocal();
 
     final day = localDateTime.day.toString().padLeft(2, '0');

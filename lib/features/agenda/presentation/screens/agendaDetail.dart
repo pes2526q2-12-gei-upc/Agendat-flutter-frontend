@@ -1,10 +1,13 @@
+import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
+import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:flutter/material.dart';
 
 class AgendaDetailScreen extends StatelessWidget {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
+  static final EventsQuery _eventsQuery = EventsQuery.instance;
 
   final DateTime date;
   final List<Session> sessions;
@@ -56,7 +59,7 @@ class AgendaDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'No hi ha sessions per a aquest dia.',
+                        'No tens cap esdeveniment programat per aquets dia.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
@@ -176,39 +179,7 @@ class AgendaDetailScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        session.event,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.person_rounded,
-                            size: 16,
-                            color: Colors.grey.shade600,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              session.user,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildEventTitle(session.event),
                     ],
                   ),
                 ),
@@ -224,6 +195,27 @@ class AgendaDetailScreen extends StatelessWidget {
     final selected = DateUtils.dateOnly(date.toLocal());
     final sessionDate = DateUtils.dateOnly(session.startTime.toLocal());
     return DateUtils.isSameDay(sessionDate, selected);
+  }
+
+  Widget _buildEventTitle(String eventCode) {
+    return FutureBuilder<EventExtended>(
+      future: _eventsQuery.getEventByCode(eventCode),
+      builder: (context, snapshot) {
+        final title = snapshot.data?.title.trim();
+        final display = (title == null || title.isEmpty) ? eventCode : title;
+
+        return Text(
+          display,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w800,
+            height: 1.1,
+          ),
+        );
+      },
+    );
   }
 
   String _formatSelectedDate(DateTime date) {
