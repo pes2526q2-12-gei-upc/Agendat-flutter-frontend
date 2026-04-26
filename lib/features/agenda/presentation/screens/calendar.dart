@@ -24,7 +24,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _sessionsFuture = _sessionsQuery.getSessions();
+    _sessionsFuture = _sessionsQuery.getSessions(forceRefresh: true);
   }
 
   void _refresh() {
@@ -138,10 +138,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     final sessions = _sortedSessions(snapshot.data ?? const []);
-    if (sessions.isEmpty) {
-      return _buildEmptyState();
-    }
-
     return _buildCalendarView(context, sessions);
   }
 
@@ -166,30 +162,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 foregroundColor: Colors.white,
               ),
               child: const Text('Reintentar'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.calendar_month_outlined,
-              size: 52,
-              color: _kAccentRed,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No hi ha esdeveniments per mostrar al calendari.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ],
         ),
