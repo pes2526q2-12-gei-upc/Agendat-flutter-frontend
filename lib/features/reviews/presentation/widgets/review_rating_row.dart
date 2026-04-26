@@ -25,8 +25,8 @@ class ReviewRatingRow extends StatelessWidget {
   /// Text que s'escriu al costat de les estrelles (ex: "General", "Preu").
   final String label;
 
-  /// Puntuació actual (de 0 a 5).
-  final int rating;
+  /// Puntuació actual (de 0 a 5). Pot incloure decimals en mode lectura.
+  final num rating;
 
   /// Callback quan l'usuari toca una estrella. Si és `null`, la fila no es
   /// pot editar i es pinta només de lectura.
@@ -64,7 +64,7 @@ class ReviewRatingRow extends StatelessWidget {
             ),
           ),
           RatingStars(
-            rating: rating,
+            rating: rating.toDouble(),
             onRatingChanged: onRatingChanged ?? (_) {},
             isEnabled: isEditable,
             size: starSize,

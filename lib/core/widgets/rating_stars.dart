@@ -21,7 +21,7 @@ class RatingStars extends StatelessWidget {
        assert(maxStars > 0),
        assert(rating <= maxStars);
 
-  final int rating;
+  final double rating;
   final ValueChanged<int> onRatingChanged;
   final int maxStars;
   final Color activeColor;
@@ -36,7 +36,10 @@ class RatingStars extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: List.generate(maxStars, (index) {
         final starValue = index + 1;
-        final isActive = starValue <= rating;
+        final fullThreshold = starValue.toDouble();
+        final halfThreshold = index + 0.5;
+        final isFull = rating >= fullThreshold;
+        final isHalf = !isFull && rating >= halfThreshold;
 
         return Padding(
           padding: EdgeInsets.only(right: index == maxStars - 1 ? 0 : spacing),
@@ -44,8 +47,12 @@ class RatingStars extends StatelessWidget {
             borderRadius: BorderRadius.circular(size),
             onTap: isEnabled ? () => onRatingChanged(starValue) : null,
             child: Icon(
-              isActive ? Icons.star_rounded : Icons.star_border_rounded,
-              color: isActive ? activeColor : inactiveColor,
+              isFull
+                  ? Icons.star_rounded
+                  : (isHalf
+                        ? Icons.star_half_rounded
+                        : Icons.star_border_rounded),
+              color: (isFull || isHalf) ? activeColor : inactiveColor,
               size: size,
             ),
           ),
