@@ -21,6 +21,22 @@ class ProfileQuery {
 
   final QueryClient _client = QueryClient.instance;
 
+  /// Conjunt local d'ids d'usuaris que jo he bloquejat. Sobreviu a la
+  /// invalidació de la query `'$_prefix:blocked:...'` i té tres usos:
+  ///
+  /// 1. Marcar un usuari com a bloquejat instantàniament després d'una crida
+  ///    POST `/api/users/{id}/block/` exitosa, sense haver d'esperar el
+  ///    refetch de `/blocked/`.
+  /// 2. Filtrar les llistes d'amics, sol·licituds i resultats de cerca quan
+  ///    el backend encara no ha cascadat la ruptura de l'amistat.
+  /// 3. Donar immediatesa entre pantalles mentre la UI espera el refetch del
+  ///    perfil (que ja porta `friendship_status`) o de la llista `/blocked/`.
+  ///
+  /// Només s'esborra un id mitjançant [markUserUnblocked] (mai per la
+  /// resposta del backend) per no perdre estat optimista en cas de
+  /// resposta parcial o intermitent.
+  final Set<int> _localBlockedIds = <int>{};
+
   Future<ProfileResult> getUserProfile(
     int userId, {
     bool forceRefresh = false,
@@ -29,7 +45,19 @@ class ProfileQuery {
       key: '$_prefix:user:$userId',
       staleTime: _profileStaleTime,
       forceRefresh: forceRefresh,
-      queryFn: () => fetchUserProfile(userId),
+      queryFn: () async {
+        final result = await fetchUserProfile(userId);
+        if (result is ProfileSuccess) {
+          // Amb `friendship_status` al perfil, podem mantenir la caché local
+          // de bloquejats sincronitzada amb la resposta autoritativa.
+          if (result.profile.friendshipStatus == FriendshipStatus.blocked) {
+            _localBlockedIds.add(userId);
+          } else {
+            _localBlockedIds.remove(userId);
+          }
+        }
+        return result;
+      },
     );
   }
 
@@ -194,6 +222,60 @@ class ProfileQuery {
     _client.invalidate('$_prefix:friend-requests:$userId');
     _client.invalidate('$_prefix:friends:$userId');
   }
+
+  /// GET /api/users/{userId}/blocked/ — llistat d'usuaris que jo he bloquejat.
+  /// Es fa servir per derivar l'estat de bloqueig amb un perfil concret.
+  ///
+  /// La resposta del backend s'integra dins de [_localBlockedIds] (només per
+  /// afegir, mai per esborrar) per assegurar que l'estat optimista local no
+  /// es perdi davant respostes parcials o errors esporàdics.
+  Future<List<UserSummary>> getBlockedUsers(
+    int userId, {
+    bool forceRefresh = false,
+  }) {
+    return _client.query<List<UserSummary>>(
+      key: '$_prefix:blocked:$userId',
+      staleTime: _friendshipStaleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () async {
+        final users = await fetchBlockedUsers(userId);
+        for (final u in users) {
+          _localBlockedIds.add(u.id);
+        }
+        return users;
+      },
+    );
+  }
+
+  /// Invalida la llista de bloquejats d'un usuari per forçar un refetch
+  /// la propera vegada que es consulti. No toca [_localBlockedIds].
+  void invalidateBlockedUsers(int userId) {
+    _client.invalidate('$_prefix:blocked:$userId');
+  }
+
+  /// Marca [targetId] com a bloquejat localment. Cal cridar-lo després d'una
+  /// crida POST `/api/users/{id}/block/` exitosa per actualitzar la UI sense
+  /// esperar el refetch de `/blocked/`.
+  void markUserBlocked(int targetId) {
+    _localBlockedIds.add(targetId);
+  }
+
+  /// Esborra [targetId] de la caché local de bloquejats. Cal cridar-lo
+  /// després d'una crida POST `/api/users/{id}/unblock/` exitosa.
+  void markUserUnblocked(int targetId) {
+    _localBlockedIds.remove(targetId);
+  }
+
+  /// `true` si [targetId] consta com a bloquejat localment. La consulta es
+  /// fa a memòria, sense crides de xarxa.
+  bool isUserLocallyBlocked(int targetId) {
+    return _localBlockedIds.contains(targetId);
+  }
+
+  /// Vista immutable del conjunt local de bloquejats. Útil per filtrar
+  /// llistes (amics, resultats de cerca, sol·licituds) sense exposar el
+  /// `Set` mutable subjacent.
+  Set<int> get locallyBlockedUserIds => Set.unmodifiable(_localBlockedIds);
 
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 }
