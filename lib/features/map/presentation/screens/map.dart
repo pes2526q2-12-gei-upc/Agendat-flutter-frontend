@@ -5,10 +5,14 @@ import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:agendat/features/map/presentation/widgets/map_widgets.dart';
-import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
+import 'package:agendat/core/widgets/app_search_bar.dart';
+import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
+import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
+import 'package:agendat/features/map/presentation/widgets/map_selected_event_card.dart';
+import 'dart:math' as math;
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -23,8 +27,6 @@ class _MapScreenState extends State<MapScreen> {
   final EventsQuery _eventsQuery = EventsQuery.instance;
   final DeviceLocationService _deviceLocationService = DeviceLocationService();
   final MapNavigationService _mapNavigationService = MapNavigationService();
-
-  final GlobalKey _flutterMapKey = GlobalKey();
 
   final LatLng _center = const LatLng(41.3851, 2.1734);
   LatLng? _currentUserLocation;
@@ -82,16 +84,25 @@ class _MapScreenState extends State<MapScreen> {
     setState(() => _currentUserLocation = location);
   }
 
-  Future<void> _zoomIn() async {
+  void _zoomIn() {
     final currentZoom = _mapController.camera.zoom;
     final newZoom = (currentZoom + 1).clamp(_minZoom, _maxZoom).toDouble();
     _mapController.move(_mapController.camera.center, newZoom);
   }
 
-  Future<void> _zoomOut() async {
+  void _zoomOut() {
     final currentZoom = _mapController.camera.zoom;
     final newZoom = (currentZoom - 1).clamp(_minZoom, _maxZoom).toDouble();
     _mapController.move(_mapController.camera.center, newZoom);
+  }
+
+  void _centerOnCurrentLocation() {
+    final location = _currentUserLocation;
+    if (location == null) return;
+    final targetZoom = _mapController.camera.zoom
+        .clamp(12.0, _maxZoom)
+        .toDouble();
+    _mapController.move(location, targetZoom);
   }
 
   Future<void> _openNavigationToEvent(MapEventMarkerData event) async {
@@ -147,12 +158,7 @@ class _MapScreenState extends State<MapScreen> {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
-    final isCompactWidth = screenWidth < 380;
-    final horizontalPadding = isCompactWidth
-        ? 12.0
-        : screenWidth < 720
-        ? 20.0
-        : 28.0;
+    final mapContentWidth = math.min(screenWidth, 900.0);
     // L'alçada de la card ha de ser suficient per encabir títols llargs
     // (amb ellipsis) i els dos botons.
     final selectedCardHeight = (screenHeight * 0.22).clamp(220.0, 320.0);
@@ -208,13 +214,13 @@ class _MapScreenState extends State<MapScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            bar.AppSearchBar(
-              onChanged: _onSearchChanged,
-              margin: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                6,
-                horizontalPadding,
-                5,
+            Center(
+              child: SizedBox(
+                width: mapContentWidth,
+                child: AppSearchBar(
+                  onChanged: _onSearchChanged,
+                  margin: const EdgeInsets.fromLTRB(6, 6, 6, 5),
+                ),
               ),
             ),
             Expanded(
@@ -245,9 +251,10 @@ class _MapScreenState extends State<MapScreen> {
                     );
                   }
 
-                  final maxMapWidth = constraints.maxWidth > 900
-                      ? 900.0
-                      : constraints.maxWidth;
+                  final maxMapWidth = math.min(
+                    constraints.maxWidth,
+                    mapContentWidth,
+                  );
 
                   return Center(
                     child: SizedBox(
@@ -272,7 +279,6 @@ class _MapScreenState extends State<MapScreen> {
                               AbsorbPointer(
                                 absorbing: _isFiltersOpen,
                                 child: FlutterMap(
-                                  key: _flutterMapKey,
                                   mapController: _mapController,
                                   options: MapOptions(
                                     initialCenter: _center,
@@ -302,9 +308,13 @@ class _MapScreenState extends State<MapScreen> {
                               Positioned(
                                 top: 12,
                                 left: 12,
-                                child: MapZoomControls(
+                                child: MapControls(
                                   onZoomIn: _zoomIn,
                                   onZoomOut: _zoomOut,
+                                  onCenterOnUserLocation:
+                                      _currentUserLocation != null
+                                      ? _centerOnCurrentLocation
+                                      : null,
                                   radius: _radius,
                                 ),
                               ),
