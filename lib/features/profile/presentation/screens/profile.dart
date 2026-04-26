@@ -195,6 +195,18 @@ class _ProfileScreenState extends State<ProfileScreen>
   /// Això implica descarregar tota la llista d'amics i totes les pendents per
   /// comprovar un sol id: funciona, però escala O(N) amb el nombre d'amics.
   ///
+  /// IMPORTANT: l'estat d'amistat depèn d'accions de l'altre usuari (acceptar
+  /// o rebutjar), així que no podem confiar en la caché entre navegacions: si
+  /// l'usuari A envia una sol·licitud i B l'accepta, A no veuria el canvi fins
+  /// passat l'`staleTime`. Per això forcem sempre un fetch fresc de les llistes
+  /// d'amistat en entrar al perfil. La caché encara és útil dins de la
+  /// `FriendRequestsScreen`, on les dades es consulten en ràfega.
+  ///
+  /// Tampoc retornem `profile.friendshipStatus` de la caché del perfil: el
+  /// backend encara no l'envia, i quan és present prové d'una actualització
+  /// optimista (`setCachedFriendshipStatus`) que pot quedar obsoleta si l'altre
+  /// usuari ha acceptat o rebutjat la sol·licitud des de l'última visita.
+  ///
   /// TODO(backend): quan el backend afegeixi un camp `friendship_status` a la
   /// resposta de `GET /api/users/{id}/` (valors: `none`, `request_sent`,
   /// `request_received`, `friends`, `blocked`), aquest mètode quedarà reduït
@@ -205,7 +217,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     required bool forceRefresh,
   }) async {
     if (_isOwnProfile) return null;
-    if (profile.friendshipStatus != null) return profile.friendshipStatus;
 
     final myId = _currentUserId;
     if (myId == null || myId == profile.id) {
@@ -216,13 +227,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     final friendsFuture = _profileQuery
-        .getFriends(myId, forceRefresh: forceRefresh)
+        .getFriends(myId, forceRefresh: true)
         .catchError((error) {
           debugPrint('[profile] getFriends($myId) failed: $error');
           return const <UserSummary>[];
         });
     final requestsFuture = _profileQuery
-        .getFriendRequests(myId, forceRefresh: forceRefresh)
+        .getFriendRequests(myId, forceRefresh: true)
         .catchError((error) {
           debugPrint('[profile] getFriendRequests($myId) failed: $error');
           return FriendRequestsData.empty;
@@ -617,12 +628,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       case FriendshipStatus.friends:
         return _buildFriendshipBadge(
-          icon: Icons.check_circle,
-          text: 'Ja sou amics',
-          background: Colors.green.shade50,
-          borderColor: Colors.green.shade200,
-          iconColor: Colors.green.shade700,
-          textColor: Colors.green.shade800,
+          icon: Icons.people_alt,
+          text: 'Amic',
+          background: Colors.blue.shade50,
+          borderColor: Colors.blue.shade200,
+          iconColor: Colors.blue.shade700,
+          textColor: Colors.blue.shade800,
         );
       case FriendshipStatus.blocked:
         return _buildFriendshipBadge(
