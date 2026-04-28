@@ -6,6 +6,7 @@ import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:agendat/features/social/data/social_api.dart';
@@ -401,6 +402,31 @@ class _ProfileScreenState extends State<ProfileScreen>
         'event_updates_allowed': updatedProfile.eventUpdatesAllowed,
         'social_alerts_allowed': updatedProfile.socialAlertsAllowed,
       });
+    }
+  }
+
+  Future<void> _navigateToEditInterests() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final updatedInterests = await Navigator.push<List<UserInterest>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditInterestsScreen(
+          userId: profile.id,
+          currentInterests: _interests,
+        ),
+      ),
+    );
+
+    if (updatedInterests != null && mounted) {
+      setState(() => _interests = updatedInterests);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Preferències actualitzades correctament'),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
     }
   }
 
@@ -1130,13 +1156,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               if (_isOwnProfile)
                 GestureDetector(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Editar interessos pendent'),
-                      ),
-                    );
-                  },
+                  onTap: _navigateToEditInterests,
                   child: const Text(
                     'Editar',
                     style: TextStyle(
