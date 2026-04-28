@@ -81,6 +81,35 @@ class _AddReviewFormState extends State<AddReviewForm> {
   // o n'afegeixi de nous.
   final List<XFile> _selectedMedia = [];
 
+  static const _ratingInputStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: Colors.black87,
+  );
+
+  List<_RatingInputConfig> get _ratingConfigs => [
+    _RatingInputConfig(
+      label: 'General',
+      rating: _generalRating,
+      onChanged: (v) => setState(() => _generalRating = v),
+    ),
+    _RatingInputConfig(
+      label: 'Preu',
+      rating: _preuRating,
+      onChanged: (v) => setState(() => _preuRating = v),
+    ),
+    _RatingInputConfig(
+      label: 'Ambient',
+      rating: _ambientRating,
+      onChanged: (v) => setState(() => _ambientRating = v),
+    ),
+    _RatingInputConfig(
+      label: 'Accessibilitat',
+      rating: _accessibilitatRating,
+      onChanged: (v) => setState(() => _accessibilitatRating = v),
+    ),
+  ];
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -199,53 +228,19 @@ class _AddReviewFormState extends State<AddReviewForm> {
 
   /// Les 4 files de puntuació en mode edició (estrelles clicables).
   Widget _buildRatingInputs() {
-    const labelStyle = TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: Colors.black87,
-    );
     return Column(
       children: [
-        ReviewRatingRow(
-          label: 'General',
-          rating: _generalRating,
-          onRatingChanged: (v) => setState(() => _generalRating = v),
-          labelWidth: 110,
-          labelStyle: labelStyle,
-          starSize: 30,
-          starSpacing: 4,
-          bottomSpacing: 10,
-        ),
-        ReviewRatingRow(
-          label: 'Preu',
-          rating: _preuRating,
-          onRatingChanged: (v) => setState(() => _preuRating = v),
-          labelWidth: 110,
-          labelStyle: labelStyle,
-          starSize: 30,
-          starSpacing: 4,
-          bottomSpacing: 10,
-        ),
-        ReviewRatingRow(
-          label: 'Ambient',
-          rating: _ambientRating,
-          onRatingChanged: (v) => setState(() => _ambientRating = v),
-          labelWidth: 110,
-          labelStyle: labelStyle,
-          starSize: 30,
-          starSpacing: 4,
-          bottomSpacing: 10,
-        ),
-        ReviewRatingRow(
-          label: 'Accessibilitat',
-          rating: _accessibilitatRating,
-          onRatingChanged: (v) => setState(() => _accessibilitatRating = v),
-          labelWidth: 110,
-          labelStyle: labelStyle,
-          starSize: 30,
-          starSpacing: 4,
-          bottomSpacing: 10,
-        ),
+        for (final config in _ratingConfigs)
+          ReviewRatingRow(
+            label: config.label,
+            rating: config.rating,
+            onRatingChanged: config.onChanged,
+            labelWidth: 110,
+            labelStyle: _ratingInputStyle,
+            starSize: 30,
+            starSpacing: 4,
+            bottomSpacing: 10,
+          ),
       ],
     );
   }
@@ -371,4 +366,16 @@ class _AddReviewFormState extends State<AddReviewForm> {
       ],
     );
   }
+}
+
+class _RatingInputConfig {
+  const _RatingInputConfig({
+    required this.label,
+    required this.rating,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int rating;
+  final ValueChanged<int> onChanged;
 }

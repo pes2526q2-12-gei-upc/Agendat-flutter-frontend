@@ -9,6 +9,7 @@ class ReviewDto {
   final String eventCode;
   final String? userId;
   final String? authorName;
+  final String? authorAvatarUrl;
   final int general;
   final int preu;
   final int ambient;
@@ -25,6 +26,7 @@ class ReviewDto {
     required this.eventCode,
     this.userId,
     this.authorName,
+    this.authorAvatarUrl,
     required this.general,
     required this.preu,
     required this.ambient,
@@ -37,12 +39,13 @@ class ReviewDto {
     this.acceptedForModeration = false,
   });
 
-  ReviewDto copyWith({bool? acceptedForModeration}) {
+  ReviewDto copyWith({String? authorAvatarUrl, bool? acceptedForModeration}) {
     return ReviewDto(
       id: id,
       eventCode: eventCode,
       userId: userId,
       authorName: authorName,
+      authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
       general: general,
       preu: preu,
       ambient: ambient,
@@ -58,13 +61,22 @@ class ReviewDto {
   }
 
   factory ReviewDto.fromJson(Map<String, dynamic> json) {
-    // Format real del backend:
-    // reviewer_id / reviewer_username / created_at / likes_count / liked_by_me.
+    final nestedReviewer = json['reviewer'];
+    final reviewer = nestedReviewer is Map<String, dynamic>
+        ? nestedReviewer
+        : null;
+
     return ReviewDto(
       id: json['id'] as int?,
       eventCode: '',
-      userId: _asNullableString(json['reviewer_id']),
-      authorName: _asNullableString(json['reviewer_username']),
+      userId: _asNullableString(json['reviewer_id'] ?? reviewer?['id']),
+      authorName:
+          _nonEmptyString(json['reviewer_username']) ??
+          _nonEmptyString(reviewer?['username']),
+      authorAvatarUrl:
+          _nonEmptyString(json['profile_image']) ??
+          _nonEmptyString(json['reviewer_profile_image']) ??
+          _nonEmptyString(reviewer?['profile_image']),
       general: _asInt(json['rating']),
       preu: _asInt(json['price_rating']),
       ambient: _asInt(json['atmosphere_rating']),
@@ -80,6 +92,12 @@ class ReviewDto {
   static String? _asNullableString(dynamic raw) {
     if (raw == null) return null;
     return raw.toString();
+  }
+
+  static String? _nonEmptyString(dynamic raw) {
+    final value = _asNullableString(raw)?.trim();
+    if (value == null || value.isEmpty) return null;
+    return value;
   }
 
   static bool _asBool(dynamic raw) {
@@ -139,6 +157,7 @@ class ReviewDto {
       id: id,
       authorId: userId,
       author: authorName ?? userId ?? '',
+      authorAvatarUrl: authorAvatarUrl,
       general: general,
       preu: preu,
       ambient: ambient,
