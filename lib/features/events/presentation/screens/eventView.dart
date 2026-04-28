@@ -372,10 +372,7 @@ class _EventScreenState extends State<EventScreen> {
           }
 
           final event = snapshot.data!;
-          final String startDate =
-              EventTextUtils.formatDisplayDate(event.startDate) ?? '';
-          final String endDate =
-              EventTextUtils.formatDisplayDate(event.endDate) ?? '';
+          final String displayDateRange = event.displayDateRange;
           final List<String> formattedCategories = event.categories
               .map(EventTextUtils.labelOrNull)
               .whereType<String>()
@@ -461,9 +458,7 @@ class _EventScreenState extends State<EventScreen> {
                       InfoRow(
                         icon: Icons.calendar_today_rounded,
                         label: 'Data',
-                        value: (startDate == endDate)
-                            ? startDate
-                            : '$startDate - $endDate',
+                        value: displayDateRange,
                       ),
                       if (_hasText(event.schedule))
                         InfoRow(

@@ -44,9 +44,16 @@ class Event {
   }
 
   String get displayDateRange {
+    final startDay = startDate == null
+        ? null
+        : DateTime(startDate!.year, startDate!.month, startDate!.day);
+    final endDay = endDate == null
+        ? null
+        : DateTime(endDate!.year, endDate!.month, endDate!.day);
     final start = EventTextUtils.formatDisplayDate(startDate);
     final end = EventTextUtils.formatDisplayDate(endDate);
     if (start == null && end == null) return 'Per determinar';
+    if (start != null && end != null && startDay == endDay) return start;
     if (start != null && end != null) return '$start - $end';
     if (start != null) return '$start - Per determinar';
     return 'Per determinar - $end';
