@@ -372,7 +372,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      keyboardType: keyboardType,
+      keyboardType: maxLines == 1 ? keyboardType : TextInputType.multiline,
       obscureText: obscureText,
       maxLines: maxLines,
       textInputAction: maxLines == 1
