@@ -90,6 +90,13 @@ class FriendActionSuccess extends FriendActionResult {}
 
 class FriendActionUnauthorized extends FriendActionResult {}
 
+class FriendActionUserNotFound extends FriendActionResult {}
+
+class FriendActionConflict extends FriendActionResult {
+  FriendActionConflict({this.message});
+  final String? message;
+}
+
 class FriendActionFailure extends FriendActionResult {
   FriendActionFailure({required this.statusCode, this.message, this.error});
   final int statusCode;
@@ -113,6 +120,10 @@ Future<FriendActionResult> acceptFriendRequest(int userId) =>
 Future<FriendActionResult> rejectFriendRequest(int userId) =>
     _postFriendAction('/api/users/$userId/reject-friend-request/');
 
+/// DELETE /api/users/{id}/unfriend/
+Future<FriendActionResult> unfriendUser(int userId) =>
+    _deleteFriendAction('/api/users/$userId/unfriend/');
+
 Future<FriendActionResult> _postFriendAction(String path) async {
   try {
     await ApiClient.postJson(
@@ -122,17 +133,38 @@ Future<FriendActionResult> _postFriendAction(String path) async {
     );
     return FriendActionSuccess();
   } on ApiException catch (e) {
-    if (e.statusCode == 401 || e.statusCode == 403) {
-      return FriendActionUnauthorized();
-    }
-    return FriendActionFailure(
-      statusCode: e.statusCode,
-      message: _extractErrorMessage(e.body),
-      error: e,
-    );
+    return _mapFriendActionApiException(e);
   } catch (e) {
     return FriendActionFailure(statusCode: -1, error: e);
   }
+}
+
+Future<FriendActionResult> _deleteFriendAction(String path) async {
+  try {
+    await ApiClient.delete(path, acceptedStatusCodes: const {200, 202, 204});
+    return FriendActionSuccess();
+  } on ApiException catch (e) {
+    return _mapFriendActionApiException(e);
+  } catch (e) {
+    return FriendActionFailure(statusCode: -1, error: e);
+  }
+}
+
+FriendActionResult _mapFriendActionApiException(ApiException e) {
+  if (e.statusCode == 401 || e.statusCode == 403) {
+    return FriendActionUnauthorized();
+  }
+  if (e.statusCode == 404) {
+    return FriendActionUserNotFound();
+  }
+  if (e.statusCode == 409) {
+    return FriendActionConflict(message: _extractErrorMessage(e.body));
+  }
+  return FriendActionFailure(
+    statusCode: e.statusCode,
+    message: _extractErrorMessage(e.body),
+    error: e,
+  );
 }
 
 // ---------------------------------------------------------------------------

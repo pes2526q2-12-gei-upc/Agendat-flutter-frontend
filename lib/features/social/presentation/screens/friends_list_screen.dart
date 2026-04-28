@@ -121,15 +121,20 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     return sorted;
   }
 
-  /// Amics actius: tot el que ve del backend menys els que estan a la caché
-  /// local d'usuaris bloquejats. Garanteix que un usuari acabat de bloquejar
-  /// desapareixi a l'instant, encara que el backend no hagi cascadat la
-  /// ruptura de l'amistat o `getFriends` encara retorni la versió antiga
-  /// des de la caché.
+  /// Amics actius: tot el que ve del backend menys els usuaris que la sessió
+  /// actual ja sap que no han d'aparèixer (`blocked` o `unfriended`).
+  /// Garanteix que un usuari acabat de bloquejar o d'eliminar com a amic
+  /// desapareixi a l'instant, encara que `getFriends` encara retorni la
+  /// versió antiga des de la caché.
   List<UserSummary> get _unblockedFriends {
     final blockedIds = _profileQuery.locallyBlockedUserIds;
-    if (blockedIds.isEmpty) return _friends;
-    return _friends.where((u) => !blockedIds.contains(u.id)).toList();
+    final unfriendedIds = _profileQuery.locallyUnfriendedUserIds;
+    if (blockedIds.isEmpty && unfriendedIds.isEmpty) return _friends;
+    return _friends
+        .where(
+          (u) => !blockedIds.contains(u.id) && !unfriendedIds.contains(u.id),
+        )
+        .toList();
   }
 
   /// Llistat finalment visible: amics actius + filtre de text si està actiu.
@@ -159,11 +164,10 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
     if (!mounted) return;
 
-    // En tornar del perfil, l'estat local de bloquejats pot haver canviat
-    // (l'usuari ha bloquejat o desbloquejat algú). Forcem una reconstrucció
-    // perquè `_visibleFriends` reapliqui el filtre local, sense haver de
-    // refetchar de xarxa ni mostrar un spinner. Si l'usuari vol dades fresques
-    // del backend, té el RefreshIndicator a la part superior.
+    // En tornar del perfil, l'estat local pot haver canviat (bloqueig,
+    // desbloqueig o amistat eliminada). Forcem una reconstrucció perquè
+    // `_visibleFriends` reapliqui els filtres locals sense haver de refetchar
+    // de xarxa ni mostrar un spinner.
     setState(() {});
   }
 

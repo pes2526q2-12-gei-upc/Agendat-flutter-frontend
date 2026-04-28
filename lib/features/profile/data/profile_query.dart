@@ -37,6 +37,12 @@ class ProfileQuery {
   /// resposta parcial o intermitent.
   final Set<int> _localBlockedIds = <int>{};
 
+  /// Conjunt local d'ids d'usuaris que han deixat de ser amics meus durant
+  /// aquesta sessió. Serveix per amagar-los immediatament del llistat
+  /// d'amics quan torno enrere des del perfil, sense esperar un refetch de
+  /// `/friends/`.
+  final Set<int> _localUnfriendedIds = <int>{};
+
   Future<ProfileResult> getUserProfile(
     int userId, {
     bool forceRefresh = false,
@@ -266,6 +272,20 @@ class ProfileQuery {
     _localBlockedIds.remove(targetId);
   }
 
+  /// Marca [targetId] com a amistat eliminada localment. La llista d'amics el
+  /// filtrarà encara que la query cachejada de `/friends/` segueixi retornant
+  /// la versió anterior fins al següent refetch.
+  void markUserUnfriended(int targetId) {
+    _localUnfriendedIds.add(targetId);
+  }
+
+  /// Esborra [targetId] del conjunt local d'amistats eliminades. Cal cridar-lo
+  /// quan una relació torna a existir (p. ex. després d'acceptar una nova
+  /// sol·licitud d'amistat).
+  void markUserRefriended(int targetId) {
+    _localUnfriendedIds.remove(targetId);
+  }
+
   /// `true` si [targetId] consta com a bloquejat localment. La consulta es
   /// fa a memòria, sense crides de xarxa.
   bool isUserLocallyBlocked(int targetId) {
@@ -276,6 +296,11 @@ class ProfileQuery {
   /// llistes (amics, resultats de cerca, sol·licituds) sense exposar el
   /// `Set` mutable subjacent.
   Set<int> get locallyBlockedUserIds => Set.unmodifiable(_localBlockedIds);
+
+  /// Vista immutable de les amistats eliminades localment. Permet filtrar
+  /// llistes sense exposar el `Set` mutable subjacent.
+  Set<int> get locallyUnfriendedUserIds =>
+      Set.unmodifiable(_localUnfriendedIds);
 
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 }
