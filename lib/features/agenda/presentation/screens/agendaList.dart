@@ -6,6 +6,7 @@ import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/main.dart';
 import 'package:flutter/material.dart';
 
 enum _AgendaView { calendar, list }
@@ -39,9 +40,16 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
   }
 
   void _onDestinationSelected(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 2) {
+      Navigator.pop(context);
+      return;
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => RootNavigationScreen(initialIndex: index),
+      ),
+    );
   }
 
   @override
