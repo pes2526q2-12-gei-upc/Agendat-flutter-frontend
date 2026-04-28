@@ -88,6 +88,20 @@ class ProfileQuery {
     );
   }
 
+  Future<UpdateUserInterestsResult> updateInterests(
+    int userId,
+    List<int> categoryIds,
+  ) async {
+    final result = await updateUserInterests(userId, categoryIds);
+    if (result is UpdateUserInterestsSuccess) {
+      _client.setQueryData<List<UserInterest>>(
+        '$_prefix:interests:$userId',
+        result.interests,
+      );
+    }
+    return result;
+  }
+
   Future<UserReviewsResponse> getUserReviews(
     int userId, {
     bool forceRefresh = false,

@@ -54,6 +54,22 @@ class UpdateProfileFailure extends UpdateProfileResult {
   final Object? error;
 }
 
+sealed class UpdateUserInterestsResult {}
+
+class UpdateUserInterestsSuccess extends UpdateUserInterestsResult {
+  UpdateUserInterestsSuccess({required this.message, required this.interests});
+
+  final String message;
+  final List<UserInterest> interests;
+}
+
+class UpdateUserInterestsFailure extends UpdateUserInterestsResult {
+  UpdateUserInterestsFailure({required this.statusCode, this.error});
+
+  final int statusCode;
+  final Object? error;
+}
+
 ///Crida GET /api/users/{id}/ per obtenir les dades del perfil.
 Future<ProfileResult> fetchUserProfile(int userId) async {
   try {
@@ -83,6 +99,35 @@ Future<List<UserInterest>> fetchUserInterests(int userId) async {
       .whereType<Map<String, dynamic>>()
       .map(UserInterest.fromJson)
       .toList();
+}
+
+Future<UpdateUserInterestsResult> updateUserInterests(
+  int userId,
+  List<int> categoryIds,
+) async {
+  try {
+    final response = await ApiClient.putJson(
+      '/api/users/$userId/interests/',
+      body: {'category_ids': categoryIds},
+    );
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawInterests = decoded['interests'] as List<dynamic>? ?? const [];
+    final interests = rawInterests
+        .whereType<Map<String, dynamic>>()
+        .map(UserInterest.fromJson)
+        .toList();
+
+    return UpdateUserInterestsSuccess(
+      message:
+          decoded['message'] as String? ??
+          'Preferències actualitzades correctament',
+      interests: interests,
+    );
+  } on ApiException catch (e) {
+    return UpdateUserInterestsFailure(statusCode: e.statusCode, error: e);
+  } catch (e) {
+    return UpdateUserInterestsFailure(statusCode: -1, error: e);
+  }
 }
 
 Future<UserReviewsResponse> fetchUserReviews(int userId) async {

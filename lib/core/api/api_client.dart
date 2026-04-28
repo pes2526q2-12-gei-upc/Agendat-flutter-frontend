@@ -110,6 +110,31 @@ class ApiClient {
     return response;
   }
 
+  static Future<http.Response> putJson(
+    String path, {
+    Map<String, String>? queryParams,
+    Object? body,
+    int expectedStatusCode = 200,
+    Set<int>? acceptedStatusCodes,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path').replace(
+      queryParameters: queryParams != null && queryParams.isNotEmpty
+          ? queryParams
+          : null,
+    );
+
+    final response = await http
+        .put(
+          uri,
+          headers: _headers(jsonContentType: true),
+          body: jsonEncode(body),
+        )
+        .timeout(timeout);
+
+    _ensureStatus(response, uri, expectedStatusCode, acceptedStatusCodes);
+    return response;
+  }
+
   static void _ensureStatus(
     http.Response response,
     Uri uri,
