@@ -90,6 +90,7 @@ class PushNotificationsService {
     _tokenRefreshSubscription = _messaging!.onTokenRefresh.listen(
       (token) async {
         debugPrint('$_logPrefix FCM token refreshed (${_tokenSummary(token)})');
+        _debugLogFullFcmToken(token);
         final authToken = await TokenStorage.read();
         if (authToken == null || authToken.isEmpty) {
           debugPrint(
@@ -139,6 +140,7 @@ class PushNotificationsService {
       }
 
       debugPrint('$_logPrefix FCM token obtained (${_tokenSummary(token)})');
+      _debugLogFullFcmToken(token);
       await _saveToken(token);
     } catch (e) {
       debugPrint('$_logPrefix register device failed: $e');
@@ -211,6 +213,11 @@ class PushNotificationsService {
   }
 
   String _tokenSummary(String token) => 'length ${token.length}';
+
+  void _debugLogFullFcmToken(String token) {
+    if (!kDebugMode) return;
+    debugPrint('$_logPrefix DEBUG FCM token for Swagger/curl: $token');
+  }
 
   String get _platformName {
     if (kIsWeb) return 'web';
