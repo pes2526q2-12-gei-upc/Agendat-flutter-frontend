@@ -53,3 +53,7 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Local accidental files to ignore
+linux/flutter/generated_plugins.cmake
+windows/flutter/generated_plugins.cmake
+windows/flutter/generated_plugins 2.cmake

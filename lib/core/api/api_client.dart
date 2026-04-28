@@ -69,6 +69,7 @@ class ApiClient {
     Map<String, String>? queryParams,
     Object? body,
     int expectedStatusCode = 200,
+    Set<int>? acceptedStatusCodes,
   }) async {
     final uri = Uri.parse('$baseUrl$path').replace(
       queryParameters: queryParams != null && queryParams.isNotEmpty
@@ -84,13 +85,7 @@ class ApiClient {
         )
         .timeout(timeout);
 
-    if (response.statusCode != expectedStatusCode) {
-      final snippet = response.body.length > 200
-          ? '${response.body.substring(0, 200)}...'
-          : response.body;
-      throw ApiException(response.statusCode, snippet, uri);
-    }
-
+    _ensureStatus(response, uri, expectedStatusCode, acceptedStatusCodes);
     return response;
   }
 
@@ -99,6 +94,7 @@ class ApiClient {
     Map<String, String>? queryParams,
     Object? body,
     int expectedStatusCode = 200,
+    Set<int>? acceptedStatusCodes,
   }) async {
     final uri = Uri.parse('$baseUrl$path').replace(
       queryParameters: queryParams != null && queryParams.isNotEmpty
@@ -114,14 +110,25 @@ class ApiClient {
         )
         .timeout(timeout);
 
-    if (response.statusCode != expectedStatusCode) {
+    _ensureStatus(response, uri, expectedStatusCode, acceptedStatusCodes);
+    return response;
+  }
+
+  static void _ensureStatus(
+    http.Response response,
+    Uri uri,
+    int expectedStatusCode,
+    Set<int>? acceptedStatusCodes,
+  ) {
+    final ok = acceptedStatusCodes != null
+        ? acceptedStatusCodes.contains(response.statusCode)
+        : response.statusCode == expectedStatusCode;
+    if (!ok) {
       final snippet = response.body.length > 200
           ? '${response.body.substring(0, 200)}...'
           : response.body;
       throw ApiException(response.statusCode, snippet, uri);
     }
-
-    return response;
   }
 
   static Future<http.Response> patchMultipart(
@@ -204,6 +211,7 @@ class ApiClient {
     String path, {
     Map<String, String>? queryParams,
     int expectedStatusCode = 204,
+    Set<int>? acceptedStatusCodes,
   }) async {
     final uri = Uri.parse('$baseUrl$path').replace(
       queryParameters: queryParams != null && queryParams.isNotEmpty
@@ -215,13 +223,7 @@ class ApiClient {
         .delete(uri, headers: _headers())
         .timeout(timeout);
 
-    if (response.statusCode != expectedStatusCode) {
-      final snippet = response.body.length > 200
-          ? '${response.body.substring(0, 200)}...'
-          : response.body;
-      throw ApiException(response.statusCode, snippet, uri);
-    }
-
+    _ensureStatus(response, uri, expectedStatusCode, acceptedStatusCodes);
     return response;
   }
 

@@ -9,8 +9,8 @@ import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
-import 'package:agendat/features/profile/presentation/screens/deleteAccount.dart';
-import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
+import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
+import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,8 +73,8 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   static const List<Widget> _screens = [
     VisualizeScreen(),
     MapScreen(),
-    DeleteAccountScreen(),
-    LogOutScreen(),
+    CalendarScreen(),
+    SocialScreen(),
     ProfileScreen(),
   ];
 

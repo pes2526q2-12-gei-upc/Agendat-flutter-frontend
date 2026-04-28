@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/models/session.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/logOut/presentation/screens/logOut.dart';
+import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
+import 'package:agendat/features/social/data/social_api.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -25,15 +28,22 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   late TabController _tabController;
   bool _isLoading = true;
+  bool _isLoggingOut = false;
   UserProfile? _profile;
   UserStats? _stats;
   List<UserInterest> _interests = const [];
-  List<UserSession> _sessions = const [];
+  List<Session> _sessions = const [];
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
 
+  FriendshipStatus? _friendshipStatus;
+  bool _isFriendshipActionInProgress = false;
+  bool _isBlockActionInProgress = false;
+
   bool get _isOwnProfile => widget.userId == null;
+
+  int? get _currentUserId => currentLoggedInUser?['id'] as int?;
 
   @override
   void initState() {
@@ -96,7 +106,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               username: profile.username,
               forceRefresh: forceRefresh,
             )
-            .catchError((_) => const <UserSession>[]);
+            .catchError((_) => const <Session>[]);
+
+        final derivedStatus = _resolveFriendshipStatus(profile: profile);
+
+        if (!mounted) return;
 
         setState(() {
           _profile = profile;
@@ -104,6 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           _interests = interests;
           _reviewsResponse = reviewsResponse;
           _sessions = sessions;
+          _friendshipStatus = derivedStatus;
           _isLoading = false;
         });
       case ProfileNotFound():
@@ -126,6 +141,173 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _requestLogOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirma'),
+          content: const Text('Estàs segur/a que vols tancar la sessió?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Tancar sessió'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoggingOut = true);
+    try {
+      await logout();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No s\'ha pogut tancar la sessio.')),
+      );
+      setState(() => _isLoggingOut = false);
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  /// Determina l'estat de relació amb el perfil visualitzat.
+  ///
+  /// Ara que el backend ja retorna `friendship_status` dins de
+  /// `GET /api/users/{id}/`, aquesta font és la veritat principal i ja no cal
+  /// derivar l'estat descarregant `/friends/` i `/friend-requests/`.
+  ///
+  /// Mantenim un fallback local a `blocked` per donar resposta immediata just
+  /// després d'una acció optimista de bloqueig, fins i tot abans del següent
+  /// refetch de perfil.
+  FriendshipStatus? _resolveFriendshipStatus({required UserProfile profile}) {
+    if (_isOwnProfile) return null;
+
+    final myId = _currentUserId;
+    if (myId == null || myId == profile.id) {
+      return null;
+    }
+
+    final isBlockedLocally = _profileQuery.isUserLocallyBlocked(profile.id);
+    if (isBlockedLocally) return FriendshipStatus.blocked;
+    return profile.friendshipStatus ?? FriendshipStatus.none;
+  }
+
+  Future<void> _runFriendshipAction({
+    required Future<FriendActionResult> Function() action,
+    required FriendshipStatus successStatus,
+    required String successMessage,
+    required String genericErrorMessage,
+  }) async {
+    if (_isFriendshipActionInProgress) return;
+
+    setState(() => _isFriendshipActionInProgress = true);
+
+    final result = await action();
+
+    if (!mounted) return;
+
+    switch (result) {
+      case FriendActionSuccess():
+        setState(() {
+          _friendshipStatus = successStatus;
+          if (_profile != null) {
+            _profile = _profile!.copyWithFriendshipStatus(successStatus);
+          }
+          _isFriendshipActionInProgress = false;
+        });
+        // Actualitzem la caché del QueryClient per mantenir l'estat entre
+        // navegacions, fins que expiri el staleTime o el backend el refresqui.
+        final otherId = widget.userId;
+        if (otherId != null) {
+          _profileQuery.setCachedFriendshipStatus(otherId, successStatus);
+        }
+        // Invalidem també les llistes d'amistat del meu usuari: així, si
+        // tanco l'app o recarrego la pantalla, la pròxima derivació consultarà
+        // el backend i l'estat del botó serà coherent amb la veritat.
+        final myId = _currentUserId;
+        if (myId != null) {
+          _profileQuery.invalidateFriendshipLists(myId);
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
+      case FriendActionUnauthorized():
+        setState(() => _isFriendshipActionInProgress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cal iniciar sessió per fer aquesta acció.'),
+          ),
+        );
+      case FriendActionFailure(:final statusCode, :final message, :final error):
+        setState(() => _isFriendshipActionInProgress = false);
+        final text =
+            message ??
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : genericErrorMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
+    }
+  }
+
+  Future<void> _sendFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => sendFriendRequest(userId),
+      successStatus: FriendshipStatus.requestSent,
+      successMessage: 'Sol·licitud d\'amistat enviada.',
+      genericErrorMessage: 'No s\'ha pogut enviar la sol·licitud.',
+    );
+  }
+
+  Future<void> _cancelFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => cancelFriendRequest(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Sol·licitud d\'amistat cancel·lada.',
+      genericErrorMessage: 'No s\'ha pogut cancel·lar la sol·licitud.',
+    );
+  }
+
+  Future<void> _acceptFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => acceptFriendRequest(userId),
+      successStatus: FriendshipStatus.friends,
+      successMessage: 'Sol·licitud acceptada. Ara sou amics!',
+      genericErrorMessage: 'No s\'ha pogut acceptar la sol·licitud.',
+    );
+  }
+
+  Future<void> _rejectFriendRequest() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => rejectFriendRequest(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Sol·licitud rebutjada.',
+      genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
+    );
+  }
+
   Future<void> _navigateToEditProfile() async {
     if (_profile == null) return;
 
@@ -140,13 +322,42 @@ class _ProfileScreenState extends State<ProfileScreen>
       setState(() => _profile = updatedProfile);
       await setCurrentLoggedInUser({
         ...currentLoggedInUser ?? {},
+        'id': updatedProfile.id,
         'username': updatedProfile.username,
         'email': updatedProfile.email,
         'first_name': updatedProfile.firstName,
         'last_name': updatedProfile.lastName,
         'description': updatedProfile.description,
         'profile_image': updatedProfile.profileImage,
+        'notifications_allowed': updatedProfile.notificationsAllowed,
+        'event_reminders_allowed': updatedProfile.eventRemindersAllowed,
+        'event_updates_allowed': updatedProfile.eventUpdatesAllowed,
+        'social_alerts_allowed': updatedProfile.socialAlertsAllowed,
       });
+    }
+  }
+
+  Future<void> _navigateToNotificationPreferences() async {
+    if (currentLoggedInUser == null || currentAuthToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cal iniciar sessió per configurar alertes.'),
+        ),
+      );
+      return;
+    }
+
+    if (_profile == null) return;
+
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(currentProfile: _profile!),
+      ),
+    );
+
+    if (mounted) {
+      await _loadProfile();
     }
   }
 
@@ -181,15 +392,281 @@ class _ProfileScreenState extends State<ProfileScreen>
                   Icons.settings_outlined,
                   color: Colors.black54,
                 ),
-                onPressed: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('pendent')));
-                },
+                onPressed: _navigateToNotificationPreferences,
               ),
             ]
-          : null,
+          : _buildOtherProfileActions(),
     );
+  }
+
+  /// Accions disponibles a l'AppBar quan veiem el perfil d'un altre usuari.
+  /// El menú només es mostra si tenim un perfil carregat (cal saber l'estat
+  /// de bloqueig per decidir l'etiqueta) i si no estem visitant el nostre
+  /// propi perfil.
+  List<Widget>? _buildOtherProfileActions() {
+    final profile = _profile;
+    if (profile == null) return null;
+    if (_currentUserId == null || profile.id == _currentUserId) return null;
+
+    final isBlocked = _friendshipStatus == FriendshipStatus.blocked;
+    final actionLabel = isBlocked ? 'Desbloquejar' : 'Bloquejar';
+    final actionIcon = isBlocked ? Icons.lock_open : Icons.block;
+
+    return [
+      PopupMenuButton<_ProfileMenuAction>(
+        tooltip: 'Més opcions',
+        icon: const Icon(Icons.more_vert, color: Colors.black87),
+        enabled: !_isBlockActionInProgress,
+        onSelected: (action) {
+          switch (action) {
+            case _ProfileMenuAction.toggleBlock:
+              _toggleBlockStatus();
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem<_ProfileMenuAction>(
+            value: _ProfileMenuAction.toggleBlock,
+            child: Row(
+              children: [
+                Icon(
+                  actionIcon,
+                  size: 20,
+                  color: isBlocked ? Colors.green.shade700 : _kPrimaryRed,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  actionLabel,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isBlocked ? Colors.green.shade800 : _kPrimaryRed,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  /// Punt d'entrada únic des del menú de perfil. Decideix entre bloquejar o
+  /// desbloquejar segons l'estat actual:
+  /// - Si el perfil està a la meva llista de bloquejats → desbloquejar.
+  /// - Si no, bloquejar.
+  /// Si l'estat encara no s'ha derivat (`null`), per defecte tractem com a
+  /// "no bloquejat" perquè és la situació més habitual.
+  Future<void> _toggleBlockStatus() async {
+    if (_isBlockActionInProgress) return;
+    if (!_ensureAuthenticatedForBlocking()) return;
+
+    if (_friendshipStatus == FriendshipStatus.blocked) {
+      await _confirmAndUnblockUser();
+    } else {
+      await _confirmAndBlockUser();
+    }
+  }
+
+  /// Comprova que existeixi una sessió iniciada vàlida abans d'invocar
+  /// l'API de bloqueig. Si no n'hi ha, mostra el missatge prescrit per
+  /// la user story i avorta l'acció.
+  bool _ensureAuthenticatedForBlocking() {
+    final hasToken =
+        currentAuthToken != null && currentAuthToken!.trim().isNotEmpty;
+    final hasUser = _currentUserId != null;
+    if (hasToken && hasUser) return true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cal iniciar sessió per bloquejar usuaris.'),
+      ),
+    );
+    return false;
+  }
+
+  /// Demana confirmació i, si l'usuari accepta, executa la crida POST
+  /// `/api/users/{id}/block/`. En cas d'èxit:
+  /// - Marca el perfil com a `FriendshipStatus.blocked` localment.
+  /// - Invalida les llistes d'amistat (l'amistat es trenca al backend) i la
+  ///   llista de bloquejats per refrescar la propera consulta.
+  Future<void> _confirmAndBlockUser() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Bloquejar usuari'),
+          content: Text(
+            'Estàs segur/a que vols bloquejar @${profile.username}? '
+            'Si ja sou amics, perdreu l\'amistat. No podrà enviar-te missatges, '
+            'sol·licituds ni interactuar amb el teu contingut.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel·lar'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _kPrimaryRed),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Bloquejar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+    await _runBlockAction(
+      action: () => blockUser(profile.id),
+      successStatus: FriendshipStatus.blocked,
+      successMessage: 'Has bloquejat aquest usuari.',
+      genericErrorMessage: 'No s\'ha pogut bloquejar l\'usuari.',
+      isUnblock: false,
+    );
+  }
+
+  /// Demana confirmació i, si l'usuari accepta, executa la crida POST
+  /// `/api/users/{id}/unblock/`. En cas d'èxit, l'estat passa a
+  /// `FriendshipStatus.none` (no es restableix l'amistat: cal tornar a
+  /// passar pel flux de sol·licitud).
+  Future<void> _confirmAndUnblockUser() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Desbloquejar usuari'),
+          content: Text(
+            'Vols desbloquejar @${profile.username}? Podrà veure el teu perfil '
+            'i tornar a enviar-te missatges i sol·licituds d\'amistat. '
+            'L\'amistat anterior no es restableix automàticament.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel·lar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Desbloquejar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+    await _runBlockAction(
+      action: () => unblockUser(profile.id),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Has desbloquejat aquest usuari.',
+      genericErrorMessage: 'No s\'ha pogut desbloquejar l\'usuari.',
+      isUnblock: true,
+    );
+  }
+
+  /// Executa una acció de bloqueig/desbloqueig i unifica la gestió d'errors,
+  /// la sincronització de la caché del perfil i la invalidació de llistes.
+  Future<void> _runBlockAction({
+    required Future<BlockActionResult> Function() action,
+    required FriendshipStatus successStatus,
+    required String successMessage,
+    required String genericErrorMessage,
+    required bool isUnblock,
+  }) async {
+    setState(() => _isBlockActionInProgress = true);
+
+    final result = await action();
+
+    if (!mounted) return;
+
+    switch (result) {
+      case BlockActionSuccess():
+        _applyBlockStateChange(
+          newStatus: successStatus,
+          message: successMessage,
+        );
+      case BlockActionUnauthorized():
+        setState(() => _isBlockActionInProgress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cal iniciar sessió per bloquejar usuaris.'),
+          ),
+        );
+      case BlockActionUserNotFound():
+        setState(() => _isBlockActionInProgress = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Perfil no vàlid.')));
+      case BlockActionConflict(:final message):
+        // El backend ja considera l'acció aplicada (ja estava bloquejat o
+        // desbloquejat). Sincronitzem la UI amb l'estat real.
+        _applyBlockStateChange(
+          newStatus: successStatus,
+          message:
+              message ??
+              (isUnblock
+                  ? 'Aquest usuari ja no estava bloquejat.'
+                  : 'Aquest usuari ja estava bloquejat.'),
+        );
+      case BlockActionFailure(:final statusCode, :final message, :final error):
+        setState(() => _isBlockActionInProgress = false);
+        final text =
+            message ??
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : genericErrorMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
+    }
+  }
+
+  /// Aplica un canvi d'estat de bloqueig a la UI i a la caché compartida.
+  void _applyBlockStateChange({
+    required FriendshipStatus newStatus,
+    required String message,
+  }) {
+    setState(() {
+      _friendshipStatus = newStatus;
+      if (_profile != null) {
+        _profile = _profile!.copyWithFriendshipStatus(newStatus);
+      }
+      _isBlockActionInProgress = false;
+    });
+
+    final otherId = widget.userId;
+    if (otherId != null) {
+      _profileQuery.setCachedFriendshipStatus(otherId, newStatus);
+      // Mantenim la caché local d'IDs bloquejats coherent amb la nova UI.
+      // Si el backend trigarà a propagar el canvi (o encara no implementa
+      // `/blocked/`), aquesta caché basta perquè el botó de "Desbloquejar"
+      // aparegui en re-visitar el perfil dins de la mateixa sessió.
+      if (newStatus == FriendshipStatus.blocked) {
+        _profileQuery.markUserBlocked(otherId);
+      } else {
+        _profileQuery.markUserUnblocked(otherId);
+      }
+    }
+
+    // Bloquejar trenca l'amistat al backend i amaga l'usuari de les llistes
+    // d'amics i sol·licituds. Desbloquejar deixa l'usuari fora de la llista
+    // de bloquejats. En els dos casos cal invalidar les caches per evitar
+    // mostrar dades obsoletes.
+    final myId = _currentUserId;
+    if (myId != null) {
+      _profileQuery.invalidateFriendshipLists(myId);
+      _profileQuery.invalidateBlockedUsers(myId);
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildBody() {
@@ -285,7 +762,186 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: 20),
           _buildStatsRow(_stats),
+          if (!_isOwnProfile) ...[
+            const SizedBox(height: 16),
+            _buildFriendshipSection(),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildFriendshipSection() {
+    if (_currentUserId == null || widget.userId == _currentUserId) {
+      return const SizedBox.shrink();
+    }
+
+    final status = _friendshipStatus ?? FriendshipStatus.none;
+    final busy = _isFriendshipActionInProgress;
+
+    switch (status) {
+      case FriendshipStatus.none:
+        return _buildFriendshipPrimaryButton(
+          onPressed: busy ? null : _sendFriendRequest,
+          icon: Icons.person_add_alt_1,
+          label: 'Enviar sol·licitud d\'amistat',
+          busy: busy,
+        );
+      case FriendshipStatus.requestSent:
+        return _buildFriendshipOutlinedButton(
+          onPressed: busy ? null : _cancelFriendRequest,
+          icon: Icons.hourglass_top,
+          label: 'Sol·licitud enviada · Cancel·lar',
+          busy: busy,
+        );
+      case FriendshipStatus.requestReceived:
+        return Row(
+          children: [
+            Expanded(
+              child: _buildFriendshipPrimaryButton(
+                onPressed: busy ? null : _acceptFriendRequest,
+                icon: Icons.check,
+                label: 'Acceptar',
+                busy: busy,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildFriendshipOutlinedButton(
+                onPressed: busy ? null : _rejectFriendRequest,
+                icon: Icons.close,
+                label: 'Rebutjar',
+                busy: false,
+              ),
+            ),
+          ],
+        );
+      case FriendshipStatus.friends:
+        return _buildFriendshipBadge(
+          icon: Icons.people_alt,
+          text: 'Amic',
+          background: Colors.blue.shade50,
+          borderColor: Colors.blue.shade200,
+          iconColor: Colors.blue.shade700,
+          textColor: Colors.blue.shade800,
+        );
+      case FriendshipStatus.blocked:
+        // Substituïm la badge informativa per un botó d'acció: l'única
+        // operació útil sobre un usuari bloquejat és tornar-lo a desbloquejar,
+        // i així evitem haver d'obrir el menú de tres punts. La confirmació
+        // continua sent obligatòria abans de fer la crida POST `/unblock/`.
+        // Fem servir `_isBlockActionInProgress` (no el d'amistat) com a
+        // indicador d'ocupació, perquè correspon a l'acció subjacent.
+        return _buildFriendshipOutlinedButton(
+          onPressed: _isBlockActionInProgress ? null : _confirmAndUnblockUser,
+          icon: Icons.lock_open,
+          label: 'Desbloquejar',
+          busy: _isBlockActionInProgress,
+        );
+    }
+  }
+
+  Widget _buildFriendshipBadge({
+    required IconData icon,
+    required String text,
+    required Color background,
+    required Color borderColor,
+    required Color iconColor,
+    required Color textColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFriendshipPrimaryButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required bool busy,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kPrimaryRed,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _kPrimaryRed.withValues(alpha: 0.6),
+          disabledForegroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFriendshipOutlinedButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required bool busy,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kPrimaryRed,
+          side: const BorderSide(color: _kPrimaryRed),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }
@@ -491,7 +1147,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildTabSection({
-    required List<UserSession> attendedSessions,
+    required List<Session> attendedSessions,
     required UserReviewsResponse? reviewsResponse,
   }) {
     return Container(
@@ -567,7 +1223,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildAttendedSessionsTab(List<UserSession> sessions) {
+  Widget _buildAttendedSessionsTab(List<Session> sessions) {
     if (sessions.isEmpty) {
       return _buildEmptyTabContent(
         'No hi ha esdeveniments',
@@ -590,7 +1246,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.event, color: Colors.grey.shade600),
           title: Text(
-            s.eventCode.isEmpty ? 'Event' : s.eventCode,
+            s.event.isEmpty ? 'Event' : s.event,
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text(startLabel),
@@ -660,12 +1316,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       width: double.infinity,
       height: 50,
       child: OutlinedButton.icon(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const LogOutScreen()));
-        },
-        icon: const Icon(Icons.logout_outlined),
+        onPressed: _isLoggingOut ? null : _requestLogOut,
+        icon: _isLoggingOut
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.logout_outlined),
         style: OutlinedButton.styleFrom(
           foregroundColor: _kPrimaryRed,
           side: const BorderSide(color: _kPrimaryRed),
@@ -681,3 +1339,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 }
+
+/// Accions disponibles al menú contextual del perfil d'un altre usuari.
+/// Es deixa com a `enum` privat al fitxer perquè el menú només té sentit
+/// dins del flux d'aquesta pantalla.
+enum _ProfileMenuAction { toggleBlock }

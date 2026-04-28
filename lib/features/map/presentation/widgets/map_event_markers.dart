@@ -19,10 +19,23 @@ class MapEventMarkerData {
   final LatLng point;
 }
 
+bool _isEventActiveOrUpcoming(Event event, DateTime now) {
+  final endDate = event.endDate;
+  if (endDate == null) {
+    return true;
+  }
+
+  // Compare only by calendar day so events ending "today" are still shown.
+  final today = DateTime(now.year, now.month, now.day);
+  final eventEndDay = DateTime(endDate.year, endDate.month, endDate.day);
+  return !eventEndDay.isBefore(today);
+}
+
 /// Maps domain [Event] list to map marker data, dropping events without coords.
 List<MapEventMarkerData> buildMarkersFromEvents(List<Event> events) {
+  final now = DateTime.now();
   return events
-      .where((e) => e.hasCoordinates)
+      .where((e) => e.hasCoordinates && _isEventActiveOrUpcoming(e, now))
       .map(
         (e) => MapEventMarkerData(
           id: e.code,

@@ -7,6 +7,7 @@ extension EventListDtoMapper on EventListDto {
       code: code,
       title: denomination?.trim() ?? '',
       subtitle: subtitle,
+      description: description,
       free: free ?? false,
       categories: categories.map((c) => c.name).toList(),
       provincia: provincia,
@@ -26,6 +27,7 @@ extension EventDtoMapper on EventDto {
       code: code,
       title: denomination?.trim() ?? '',
       subtitle: subtitle,
+      description: description,
       free: free ?? false,
       categories: categories.map((c) => c.name).toList(),
       provincia: provincia,
@@ -35,7 +37,6 @@ extension EventDtoMapper on EventDto {
       endDate: _parseDate(endDate),
       latitude: latitude,
       longitude: longitude,
-      description: description,
       url_activity: url_activity,
       url_ticket: url_ticket,
       schedule: schedule,
@@ -59,5 +60,6 @@ extension EventDtoMapper on EventDto {
 
 DateTime? _parseDate(String? raw) {
   if (raw == null) return null;
-  return DateTime.tryParse(raw);
+  final parsed = DateTime.tryParse(raw);
+  return parsed?.toLocal();
 }

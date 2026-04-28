@@ -1,9 +1,11 @@
 import 'dart:typed_data';
-
+import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/features/social/data/social_api.dart';
 
 class ProfileQuery {
   static final ProfileQuery instance = ProfileQuery._();
@@ -15,8 +17,25 @@ class ProfileQuery {
   static const Duration _interestsStaleTime = Duration(minutes: 30);
   static const Duration _reviewsStaleTime = Duration(minutes: 5);
   static const Duration _sessionsStaleTime = Duration(minutes: 5);
+  static const Duration _friendshipStaleTime = Duration(minutes: 2);
 
   final QueryClient _client = QueryClient.instance;
+
+  /// Conjunt local d'ids d'usuaris que jo he bloquejat. Sobreviu a la
+  /// invalidació de la query `'$_prefix:blocked:...'` i té tres usos:
+  ///
+  /// 1. Marcar un usuari com a bloquejat instantàniament després d'una crida
+  ///    POST `/api/users/{id}/block/` exitosa, sense haver d'esperar el
+  ///    refetch de `/blocked/`.
+  /// 2. Filtrar les llistes d'amics, sol·licituds i resultats de cerca quan
+  ///    el backend encara no ha cascadat la ruptura de l'amistat.
+  /// 3. Donar immediatesa entre pantalles mentre la UI espera el refetch del
+  ///    perfil (que ja porta `friendship_status`) o de la llista `/blocked/`.
+  ///
+  /// Només s'esborra un id mitjançant [markUserUnblocked] (mai per la
+  /// resposta del backend) per no perdre estat optimista en cas de
+  /// resposta parcial o intermitent.
+  final Set<int> _localBlockedIds = <int>{};
 
   Future<ProfileResult> getUserProfile(
     int userId, {
@@ -26,7 +45,19 @@ class ProfileQuery {
       key: '$_prefix:user:$userId',
       staleTime: _profileStaleTime,
       forceRefresh: forceRefresh,
-      queryFn: () => fetchUserProfile(userId),
+      queryFn: () async {
+        final result = await fetchUserProfile(userId);
+        if (result is ProfileSuccess) {
+          // Amb `friendship_status` al perfil, podem mantenir la caché local
+          // de bloquejats sincronitzada amb la resposta autoritativa.
+          if (result.profile.friendshipStatus == FriendshipStatus.blocked) {
+            _localBlockedIds.add(userId);
+          } else {
+            _localBlockedIds.remove(userId);
+          }
+        }
+        return result;
+      },
     );
   }
 
@@ -63,11 +94,11 @@ class ProfileQuery {
     );
   }
 
-  Future<List<UserSession>> getUserSessions({
+  Future<List<Session>> getUserSessions({
     required String username,
     bool forceRefresh = false,
   }) {
-    return _client.query<List<UserSession>>(
+    return _client.query<List<Session>>(
       key: '$_prefix:sessions:$username',
       staleTime: _sessionsStaleTime,
       forceRefresh: forceRefresh,
@@ -136,9 +167,115 @@ class ProfileQuery {
     _client.invalidate('$_prefix:reviews:$userId');
   }
 
+  /// Actualitza optimistament el camp `friendshipStatus` del perfil
+  /// d'[userId] a la caché. Útil perquè si surts i tornes a entrar al perfil
+  /// abans que expiri la caché, l'estat del botó sigui coherent.
+  void setCachedFriendshipStatus(int userId, FriendshipStatus? status) {
+    final current = _client.getQueryData<ProfileResult>(
+      '$_prefix:user:$userId',
+    );
+    if (current is ProfileSuccess) {
+      _client.setQueryData<ProfileResult>(
+        '$_prefix:user:$userId',
+        ProfileSuccess(
+          profile: current.profile.copyWithFriendshipStatus(status),
+        ),
+      );
+    }
+  }
+
   void invalidateSessionsByUsername(String username) {
     _client.invalidate('$_prefix:sessions:$username');
   }
+
+  /// GET /api/users/{userId}/friend-requests/ — cridat amb el meu id.
+  Future<FriendRequestsData> getFriendRequests(
+    int userId, {
+    bool forceRefresh = false,
+  }) {
+    return _client.query<FriendRequestsData>(
+      key: '$_prefix:friend-requests:$userId',
+      staleTime: _friendshipStaleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () => fetchFriendRequests(userId),
+    );
+  }
+
+  /// GET /api/users/{userId}/friends/ — es pot cridar amb el meu id per saber
+  /// quins són els meus amics i derivar l'estat d'amistat amb qualsevol perfil.
+  Future<List<UserSummary>> getFriends(
+    int userId, {
+    bool forceRefresh = false,
+  }) {
+    return _client.query<List<UserSummary>>(
+      key: '$_prefix:friends:$userId',
+      staleTime: _friendshipStaleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () => fetchFriends(userId),
+    );
+  }
+
+  /// Neteja les llistes d'amistat i sol·licituds de l'usuari actual per forçar
+  /// un refetch la propera vegada. Cal cridar-lo quan envies/canceles/acceptes
+  /// una sol·licitud o quan l'estat d'amistat canvia des del backend.
+  void invalidateFriendshipLists(int userId) {
+    _client.invalidate('$_prefix:friend-requests:$userId');
+    _client.invalidate('$_prefix:friends:$userId');
+  }
+
+  /// GET /api/users/{userId}/blocked/ — llistat d'usuaris que jo he bloquejat.
+  /// Es fa servir per derivar l'estat de bloqueig amb un perfil concret.
+  ///
+  /// La resposta del backend s'integra dins de [_localBlockedIds] (només per
+  /// afegir, mai per esborrar) per assegurar que l'estat optimista local no
+  /// es perdi davant respostes parcials o errors esporàdics.
+  Future<List<UserSummary>> getBlockedUsers(
+    int userId, {
+    bool forceRefresh = false,
+  }) {
+    return _client.query<List<UserSummary>>(
+      key: '$_prefix:blocked:$userId',
+      staleTime: _friendshipStaleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () async {
+        final users = await fetchBlockedUsers(userId);
+        for (final u in users) {
+          _localBlockedIds.add(u.id);
+        }
+        return users;
+      },
+    );
+  }
+
+  /// Invalida la llista de bloquejats d'un usuari per forçar un refetch
+  /// la propera vegada que es consulti. No toca [_localBlockedIds].
+  void invalidateBlockedUsers(int userId) {
+    _client.invalidate('$_prefix:blocked:$userId');
+  }
+
+  /// Marca [targetId] com a bloquejat localment. Cal cridar-lo després d'una
+  /// crida POST `/api/users/{id}/block/` exitosa per actualitzar la UI sense
+  /// esperar el refetch de `/blocked/`.
+  void markUserBlocked(int targetId) {
+    _localBlockedIds.add(targetId);
+  }
+
+  /// Esborra [targetId] de la caché local de bloquejats. Cal cridar-lo
+  /// després d'una crida POST `/api/users/{id}/unblock/` exitosa.
+  void markUserUnblocked(int targetId) {
+    _localBlockedIds.remove(targetId);
+  }
+
+  /// `true` si [targetId] consta com a bloquejat localment. La consulta es
+  /// fa a memòria, sense crides de xarxa.
+  bool isUserLocallyBlocked(int targetId) {
+    return _localBlockedIds.contains(targetId);
+  }
+
+  /// Vista immutable del conjunt local de bloquejats. Útil per filtrar
+  /// llistes (amics, resultats de cerca, sol·licituds) sense exposar el
+  /// `Set` mutable subjacent.
+  Set<int> get locallyBlockedUserIds => Set.unmodifiable(_localBlockedIds);
 
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 }
