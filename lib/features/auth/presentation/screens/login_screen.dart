@@ -195,7 +195,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const _CalendarIcon(),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            'assets/icons/logoAgendat.png',
+                            height: 120,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       const Text(
                         'Agenda\'t',
@@ -455,52 +464,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Small calendar-style icon with "JUL 17" for the header.
-class _CalendarIcon extends StatelessWidget {
-  const _CalendarIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            EventTextUtils.calendarMonthNames[DateTime.now().month - 1],
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-          Text(
-            DateTime.now().day.toString(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ],

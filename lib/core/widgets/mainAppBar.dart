@@ -20,6 +20,20 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
         title,
         style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
       ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/icons/logoAgendat.png',
+              height: 40,
+              width: 40,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ],
       backgroundColor: Colors.white,
       elevation: 0.0,
       centerTitle: false,
