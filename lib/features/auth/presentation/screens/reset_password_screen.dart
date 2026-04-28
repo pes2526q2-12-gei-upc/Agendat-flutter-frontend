@@ -23,6 +23,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _codeFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+  final _confirmFocusNode = FocusNode();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _isLoading = false;
@@ -32,6 +35,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     _codeController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
+    _codeFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmFocusNode.dispose();
     super.dispose();
   }
 
@@ -111,6 +117,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _submit();
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
@@ -157,7 +168,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _codeController,
+              focusNode: _codeFocusNode,
               keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) {
+                FocusScope.of(context).requestFocus(_passwordFocusNode);
+              },
               decoration: InputDecoration(
                 hintText: '6 dígits',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -196,7 +212,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _passwordController,
+              focusNode: _passwordFocusNode,
               obscureText: _obscurePassword,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) {
+                FocusScope.of(context).requestFocus(_confirmFocusNode);
+              },
               decoration: InputDecoration(
                 hintText: 'Mínim 8 caràcters',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -246,7 +267,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _confirmController,
+              focusNode: _confirmFocusNode,
               obscureText: _obscureConfirm,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitWithKeyboard(),
               decoration: InputDecoration(
                 hintText: 'Repeteix la contrasenya',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -286,7 +310,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
             const SizedBox(height: 28),
             FilledButton(
-              onPressed: _isLoading ? null : _submit,
+              onPressed: _isLoading ? null : _submitWithKeyboard,
               style: FilledButton.styleFrom(
                 backgroundColor: EventTextUtils.kPrimaryRed,
                 foregroundColor: Colors.white,

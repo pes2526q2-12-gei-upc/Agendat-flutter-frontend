@@ -23,6 +23,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _usernameController;
   late final TextEditingController _emailController;
   late final TextEditingController _descriptionController;
+  final _usernameFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
+  final _descriptionFocusNode = FocusNode();
 
   bool _isLoading = false;
   final ImagePicker _imagePicker = ImagePicker();
@@ -48,6 +51,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _usernameController.dispose();
     _emailController.dispose();
     _descriptionController.dispose();
+    _usernameFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _descriptionFocusNode.dispose();
     super.dispose();
   }
 
@@ -145,6 +151,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _submitForm();
+  }
+
   Future<void> _pickProfileImage() async {
     try {
       final image = await _imagePicker.pickImage(
@@ -215,23 +226,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 8),
             _buildTextField(
               controller: _usernameController,
+              focusNode: _usernameFocusNode,
               hintText: 'El teu nom d\'usuari',
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) {
+                FocusScope.of(context).requestFocus(_emailFocusNode);
+              },
             ),
             const SizedBox(height: 20),
             _buildLabel('Correu electrònic'),
             const SizedBox(height: 8),
             _buildTextField(
               controller: _emailController,
+              focusNode: _emailFocusNode,
               hintText: 'exemple@correu.com',
               keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) {
+                FocusScope.of(context).requestFocus(_descriptionFocusNode);
+              },
             ),
             const SizedBox(height: 20),
             _buildLabel('Descripció'),
             const SizedBox(height: 8),
             _buildTextField(
               controller: _descriptionController,
+              focusNode: _descriptionFocusNode,
               hintText: 'Escriu una descripció sobre tu...',
               maxLines: 4,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitWithKeyboard(),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -290,7 +314,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _submitForm,
+                onPressed: _isLoading ? null : _submitWithKeyboard,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: EventTextUtils.kPrimaryRed,
                   foregroundColor: Colors.white,
@@ -336,17 +360,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildTextField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String hintText,
     TextInputType keyboardType = TextInputType.text,
     bool obscureText = false,
     Widget? suffixIcon,
     int maxLines = 1,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
   }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: maxLines,
+      textInputAction: maxLines == 1
+          ? textInputAction
+          : TextInputAction.newline,
+      onSubmitted: maxLines == 1 ? onSubmitted : null,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey.shade400),
