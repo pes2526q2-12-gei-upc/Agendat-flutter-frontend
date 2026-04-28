@@ -32,7 +32,8 @@ class ReviewsApi {
   Future<List<ReviewDto>> fetchReviewsByEventCode(String eventCode) async {
     try {
       final response = await ApiClient.get(_eventReviewsPath(eventCode));
-      return _parseReviewList(response);
+      final parsed = _parseReviewList(response);
+      return _hydrateMissingAvatars(parsed);
     } on ApiException catch (e) {
       if (e.statusCode == 404) return const [];
       rethrow;
@@ -151,6 +152,55 @@ class ReviewsApi {
         .whereType<Map<String, dynamic>>()
         .map(ReviewDto.fromJson)
         .toList(growable: false);
+  }
+
+  Future<List<ReviewDto>> _hydrateMissingAvatars(
+    List<ReviewDto> reviews,
+  ) async {
+    if (reviews.isEmpty) return reviews;
+
+    final missingUserIds = reviews
+        .where((r) => (r.authorAvatarUrl ?? '').trim().isEmpty)
+        .map((r) => r.userId?.trim() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+
+    if (missingUserIds.isEmpty) return reviews;
+
+    final resolved = await Future.wait(
+      missingUserIds.map((id) async {
+        final avatar = await _fetchUserProfileImage(id);
+        return MapEntry(id, avatar);
+      }),
+    );
+    final avatarByUserId = Map<String, String?>.fromEntries(resolved);
+
+    return reviews
+        .map((review) {
+          if ((review.authorAvatarUrl ?? '').trim().isNotEmpty) return review;
+          final userId = review.userId?.trim();
+          if (userId == null || userId.isEmpty) return review;
+          final hydratedAvatar = avatarByUserId[userId];
+          if (hydratedAvatar == null || hydratedAvatar.isEmpty) return review;
+          return review.copyWith(authorAvatarUrl: hydratedAvatar);
+        })
+        .toList(growable: false);
+  }
+
+  Future<String?> _fetchUserProfileImage(String userId) async {
+    try {
+      final response = await ApiClient.get('/api/users/$userId/');
+      final decoded = ApiClient.decodeBody(response);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final raw = decoded['profile_image'];
+      if (raw == null) return null;
+      final value = raw.toString().trim();
+      return value.isEmpty ? null : value;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Detecta si una `ApiException` és causada perquè l'usuari no ha

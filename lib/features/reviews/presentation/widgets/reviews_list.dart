@@ -61,30 +61,34 @@ class _ReviewsListState extends State<ReviewsList> {
   Widget build(BuildContext context) {
     if (widget.reviews.isEmpty) return _buildEmptyState();
 
-    final visibleReviews = widget.reviews.take(_visibleCount).toList();
-    final hasMore = widget.reviews.length > _visibleCount;
+    final orderedReviews = _orderedReviews();
+    final visibleReviews = orderedReviews.take(_visibleCount).toList();
+    final hasMore = orderedReviews.length > _visibleCount;
     final canCollapse =
         _visibleCount > widget.initialLimit &&
-        widget.reviews.length > widget.initialLimit;
+        orderedReviews.length > widget.initialLimit;
 
     return Column(
       children: [
         for (int i = 0; i < visibleReviews.length; i++)
           ReviewCard(
-            review: visibleReviews[i],
-            onEdit: _canMutate(visibleReviews[i]) && widget.onEditReview != null
-                ? () => widget.onEditReview!(i)
+            review: visibleReviews[i].review,
+            onEdit:
+                _isOwnReview(visibleReviews[i].review) &&
+                    widget.onEditReview != null
+                ? () => widget.onEditReview!(visibleReviews[i].originalIndex)
                 : null,
             onDelete:
-                _canMutate(visibleReviews[i]) && widget.onDeleteReview != null
-                ? () => widget.onDeleteReview!(visibleReviews[i])
+                _isOwnReview(visibleReviews[i].review) &&
+                    widget.onDeleteReview != null
+                ? () => widget.onDeleteReview!(visibleReviews[i].review)
                 : null,
             onLikeToggle: widget.onToggleLike == null
                 ? null
-                : () => widget.onToggleLike!(visibleReviews[i]),
+                : () => widget.onToggleLike!(visibleReviews[i].review),
             isLikeBusy:
-                visibleReviews[i].id != null &&
-                widget.busyLikeIds.contains(visibleReviews[i].id),
+                visibleReviews[i].review.id != null &&
+                widget.busyLikeIds.contains(visibleReviews[i].review.id),
           ),
         if (hasMore) _buildTextButton('Mostrar més', _showMore),
         if (canCollapse) _buildTextButton('Mostrar menys', _showLess),
@@ -93,12 +97,42 @@ class _ReviewsListState extends State<ReviewsList> {
     );
   }
 
+  String? get _normalizedCurrentUserId {
+    final raw = widget.currentUserId?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    return raw;
+  }
+
   /// Comparem l'id de l'usuari loggejat amb `reviewer_id`.
-  bool _canMutate(Review review) {
-    final currentUserId = widget.currentUserId;
-    return currentUserId != null &&
-        currentUserId.isNotEmpty &&
-        review.authorId == currentUserId;
+  bool _isOwnReview(Review review) {
+    final currentUserId = _normalizedCurrentUserId;
+    return currentUserId != null && review.authorId == currentUserId;
+  }
+
+  List<_IndexedReview> _orderedReviews() {
+    final indexed = widget.reviews
+        .asMap()
+        .entries
+        .map((e) => _IndexedReview(originalIndex: e.key, review: e.value))
+        .toList(growable: false);
+    final mine = indexed
+        .where((r) => _isOwnReview(r.review))
+        .toList(growable: false);
+    final others = indexed
+        .where((r) => !_isOwnReview(r.review))
+        .toList(growable: false);
+    others.sort(_sortByNewestDate);
+    return [...mine, ...others];
+  }
+
+  int _sortByNewestDate(_IndexedReview a, _IndexedReview b) {
+    return _reviewDate(b.review).compareTo(_reviewDate(a.review));
+  }
+
+  DateTime _reviewDate(Review review) {
+    final parsed = DateTime.tryParse(review.date);
+    if (parsed == null) return DateTime.fromMillisecondsSinceEpoch(0);
+    return parsed.toUtc();
   }
 
   Widget _buildEmptyState() {
@@ -131,4 +165,11 @@ class _ReviewsListState extends State<ReviewsList> {
       child: Text(label, style: const TextStyle(color: _brandRed)),
     );
   }
+}
+
+class _IndexedReview {
+  const _IndexedReview({required this.originalIndex, required this.review});
+
+  final int originalIndex;
+  final Review review;
 }
