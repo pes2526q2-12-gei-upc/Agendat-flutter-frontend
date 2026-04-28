@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
@@ -165,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildBody() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: AppScreenSpacing.content,
       children: [
         _buildIntroText(),
         const SizedBox(height: 24),

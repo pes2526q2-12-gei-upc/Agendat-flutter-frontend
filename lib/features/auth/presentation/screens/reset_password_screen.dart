@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/models/reset_password_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
@@ -122,7 +123,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         title: const Text('Nova contrasenya'),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + padding.bottom),
+        padding: EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          24,
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.bottom + padding.bottom,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

@@ -12,6 +12,7 @@ import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -231,7 +232,12 @@ class _SocialScreenState extends State<SocialScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              8,
+              AppScreenSpacing.horizontal,
+              8,
+            ),
             child: _buildSearchField(),
           ),
           Expanded(child: _buildBody()),
@@ -308,7 +314,12 @@ class _SocialScreenState extends State<SocialScreen> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppScreenSpacing.horizontal,
+        4,
+        AppScreenSpacing.horizontal,
+        AppScreenSpacing.bottom,
+      ),
       itemBuilder: (context, index) => _UserResultTile(
         user: _results[index],
         onTap: () => _openProfile(_results[index]),

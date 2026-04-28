@@ -4,6 +4,7 @@ import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/api/sessions_api.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -381,7 +382,7 @@ class _EventScreenState extends State<EventScreen> {
               .toList();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: AppScreenSpacing.content,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -4,6 +4,7 @@ import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:flutter/material.dart';
 
@@ -55,7 +56,12 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppScreenSpacing.horizontal,
+                    AppScreenSpacing.top,
+                    AppScreenSpacing.horizontal,
+                    0,
+                  ),
                   child: _buildViewSwitch(),
                 ),
                 Expanded(child: _buildBody(snapshot)),
@@ -190,7 +196,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: AppScreenSpacing.content,
       itemCount: sessions.length + 1,
       separatorBuilder: (_, index) =>
           index == 0 ? const SizedBox(height: 16) : const SizedBox(height: 12),
