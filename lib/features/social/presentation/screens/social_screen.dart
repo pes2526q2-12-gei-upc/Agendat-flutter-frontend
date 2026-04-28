@@ -12,6 +12,7 @@ import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
+import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 
 class SocialScreen extends StatefulWidget {
@@ -247,40 +248,20 @@ class _SocialScreenState extends State<SocialScreen> {
   }
 
   Widget _buildSearchField() {
-    return TextField(
+    return AppSearchBar(
       controller: _controller,
       focusNode: _focusNode,
-      textInputAction: TextInputAction.search,
       onChanged: _onQueryChanged,
-      decoration: InputDecoration(
-        hintText: 'Cerca usuaris pel nom d\'usuari',
-        prefixIcon: const Icon(Icons.search, color: Colors.black54),
-        suffixIcon: _query.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Esborra',
-                icon: const Icon(Icons.close, color: Colors.black54),
-                onPressed: _clearSearch,
-              ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: _kPrimaryRed, width: 1.5),
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
+      textInputAction: TextInputAction.search,
+      hintText: 'Cerca usuaris pel nom d\'usuari',
+      margin: EdgeInsets.zero,
+      suffixIcon: _query.isEmpty
+          ? null
+          : IconButton(
+              tooltip: 'Esborra',
+              icon: const Icon(Icons.close, color: Colors.black54),
+              onPressed: _clearSearch,
+            ),
     );
   }
 

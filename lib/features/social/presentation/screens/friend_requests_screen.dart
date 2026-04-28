@@ -162,6 +162,14 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
       case FriendActionUnauthorized():
         setState(() => _busyRequestIds.remove(request.id));
         _guardAuthenticated();
+      case FriendActionUserNotFound():
+        _removeRequest(request.id);
+        _showSnack('Perfil no vàlid.');
+        _invalidateCaches(targetUserId: sender.id);
+      case FriendActionConflict(:final message):
+        _removeRequest(request.id);
+        _showSnack(message ?? 'Aquesta sol·licitud ja no és vàlida.');
+        _invalidateCaches(targetUserId: sender.id);
       case FriendActionFailure(:final statusCode, :final error):
         setState(() => _busyRequestIds.remove(request.id));
         // 400/404/409/410 → la sol·licitud ja no és vàlida (no existeix,

@@ -211,6 +211,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     required FriendshipStatus successStatus,
     required String successMessage,
     required String genericErrorMessage,
+    String unauthorizedMessage = 'Cal iniciar sessió per fer aquesta acció.',
+    String notFoundMessage = 'Perfil no vàlid.',
+    String invalidActionMessage =
+        'Aquesta acció no és vàlida perquè actualment no sou amics.',
   }) async {
     if (_isFriendshipActionInProgress) return;
 
@@ -234,6 +238,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         final otherId = widget.userId;
         if (otherId != null) {
           _profileQuery.setCachedFriendshipStatus(otherId, successStatus);
+          if (successStatus == FriendshipStatus.none) {
+            _profileQuery.markUserUnfriended(otherId);
+          } else if (successStatus == FriendshipStatus.friends) {
+            _profileQuery.markUserRefriended(otherId);
+          }
         }
         // Invalidem també les llistes d'amistat del meu usuari: així, si
         // tanco l'app o recarrego la pantalla, la pròxima derivació consultarà
@@ -247,10 +256,18 @@ class _ProfileScreenState extends State<ProfileScreen>
         ).showSnackBar(SnackBar(content: Text(successMessage)));
       case FriendActionUnauthorized():
         setState(() => _isFriendshipActionInProgress = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(unauthorizedMessage)));
+      case FriendActionUserNotFound():
+        setState(() => _isFriendshipActionInProgress = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notFoundMessage)));
+      case FriendActionConflict(:final message):
+        setState(() => _isFriendshipActionInProgress = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cal iniciar sessió per fer aquesta acció.'),
-          ),
+          SnackBar(content: Text(message ?? invalidActionMessage)),
         );
       case FriendActionFailure(:final statusCode, :final message, :final error):
         setState(() => _isFriendshipActionInProgress = false);
@@ -306,6 +323,55 @@ class _ProfileScreenState extends State<ProfileScreen>
       successStatus: FriendshipStatus.none,
       successMessage: 'Sol·licitud rebutjada.',
       genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
+    );
+  }
+
+  Future<void> _confirmAndUnfriendUser() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar amistat'),
+          content: Text(
+            'Vols eliminar @${profile.username} de la teva xarxa d\'amics? '
+            'Deixareu de tenir un vincle directe i, si voleu, podreu '
+            'tornar-vos a enviar una sol·licitud d\'amistat en el futur.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel·lar'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _kPrimaryRed),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Eliminar amistat'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _unfriendUser();
+  }
+
+  Future<void> _unfriendUser() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => unfriendUser(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Amistat eliminada.',
+      genericErrorMessage: 'No s\'ha pogut eliminar l\'amistat.',
+      unauthorizedMessage: 'Cal iniciar sessió per eliminar amistats.',
+      notFoundMessage: 'Perfil no vàlid.',
+      invalidActionMessage:
+          'Aquesta acció no és vàlida perquè actualment no sou amics.',
     );
   }
 
@@ -818,13 +884,11 @@ class _ProfileScreenState extends State<ProfileScreen>
           ],
         );
       case FriendshipStatus.friends:
-        return _buildFriendshipBadge(
-          icon: Icons.people_alt,
-          text: 'Amic',
-          background: Colors.blue.shade50,
-          borderColor: Colors.blue.shade200,
-          iconColor: Colors.blue.shade700,
-          textColor: Colors.blue.shade800,
+        return _buildFriendshipOutlinedButton(
+          onPressed: busy ? null : _confirmAndUnfriendUser,
+          icon: Icons.person_remove_outlined,
+          label: 'Eliminar amistat',
+          busy: busy,
         );
       case FriendshipStatus.blocked:
         // Substituïm la badge informativa per un botó d'acció: l'única
@@ -840,40 +904,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           busy: _isBlockActionInProgress,
         );
     }
-  }
-
-  Widget _buildFriendshipBadge({
-    required IconData icon,
-    required String text,
-    required Color background,
-    required Color borderColor,
-    required Color iconColor,
-    required Color textColor,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: iconColor, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildFriendshipPrimaryButton({
