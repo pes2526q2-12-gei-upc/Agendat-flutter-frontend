@@ -21,6 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _usernameFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
   late final TapGestureRecognizer _signUpTapRecognizer;
 
   @override
@@ -39,6 +41,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocusNode.dispose();
+    _passwordFocusNode.dispose();
     _signUpTapRecognizer.dispose();
     super.dispose();
   }
@@ -100,6 +104,11 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: isError ? null : Colors.green.shade700,
       ),
     );
+  }
+
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _login();
   }
 
   Future<void> _loginWithGoogle() async {
@@ -247,7 +256,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _usernameController,
+                    focusNode: _usernameFocusNode,
                     keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_passwordFocusNode);
+                    },
                     decoration: InputDecoration(
                       hintText: 'El teu nom d\'usuari',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -286,7 +300,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _passwordController,
+                    focusNode: _passwordFocusNode,
                     obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submitWithKeyboard(),
                     decoration: InputDecoration(
                       hintText: 'La teva contrasenya',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -328,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 28),
                   FilledButton(
                     onPressed: () {
-                      _login();
+                      _submitWithKeyboard();
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: EventTextUtils.kPrimaryRed,

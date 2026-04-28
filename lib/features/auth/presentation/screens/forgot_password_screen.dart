@@ -20,11 +20,13 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
+  final _emailFocusNode = FocusNode();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
+    _emailFocusNode.dispose();
     super.dispose();
   }
 
@@ -82,6 +84,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _submit();
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
@@ -128,8 +135,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _emailController,
+              focusNode: _emailFocusNode,
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitWithKeyboard(),
               decoration: InputDecoration(
                 hintText: 'exemple@correu.cat',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -158,7 +168,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             const SizedBox(height: 28),
             FilledButton(
-              onPressed: _isLoading ? null : _submit,
+              onPressed: _isLoading ? null : _submitWithKeyboard,
               style: FilledButton.styleFrom(
                 backgroundColor: EventTextUtils.kPrimaryRed,
                 foregroundColor: Colors.white,

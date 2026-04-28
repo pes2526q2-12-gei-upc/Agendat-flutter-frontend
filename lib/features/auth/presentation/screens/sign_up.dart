@@ -20,6 +20,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _usernameFocusNode = FocusNode();
+  final _nameFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+  final _confirmPasswordFocusNode = FocusNode();
   late final TapGestureRecognizer _loginTapRecognizer;
 
   bool _obscurePassword = true;
@@ -46,6 +51,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _usernameFocusNode.dispose();
+    _nameFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
     _loginTapRecognizer.dispose();
     super.dispose();
   }
@@ -124,6 +134,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
         backgroundColor: isError ? null : Colors.green.shade700,
       ),
     );
+  }
+
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _submitSignUp();
   }
 
   @override
@@ -266,32 +281,54 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _usernameController,
+                    focusNode: _usernameFocusNode,
                     hintText: 'Nom d\'usuari únic',
                     keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_nameFocusNode);
+                    },
                   ),
                   const SizedBox(height: 20),
                   _buildLabel('Nom complet'),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _nameController,
+                    focusNode: _nameFocusNode,
                     hintText: 'El teu nom',
                     keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_emailFocusNode);
+                    },
                   ),
                   const SizedBox(height: 20),
                   _buildLabel('Correu electrònic'),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _emailController,
+                    focusNode: _emailFocusNode,
                     hintText: 'exemple@correu.cat',
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_passwordFocusNode);
+                    },
                   ),
                   const SizedBox(height: 20),
                   _buildLabel('Contrasenya'),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _passwordController,
+                    focusNode: _passwordFocusNode,
                     hintText: 'Mínim 8 caràcters',
                     obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) {
+                      FocusScope.of(
+                        context,
+                      ).requestFocus(_confirmPasswordFocusNode);
+                    },
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
@@ -312,8 +349,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _confirmPasswordController,
+                    focusNode: _confirmPasswordFocusNode,
                     hintText: 'Repeteix la contrasenya',
                     obscureText: _obscureConfirmPassword,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submitWithKeyboard(),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscureConfirmPassword
@@ -331,7 +371,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   const SizedBox(height: 28),
                   FilledButton(
-                    onPressed: _isLoading ? null : _submitSignUp,
+                    onPressed: _isLoading ? null : _submitWithKeyboard,
                     style: FilledButton.styleFrom(
                       backgroundColor: EventTextUtils.kPrimaryRed,
                       foregroundColor: Colors.white,
@@ -437,15 +477,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Widget _buildTextField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String hintText,
     TextInputType keyboardType = TextInputType.text,
     bool obscureText = false,
     Widget? suffixIcon,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
   }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: keyboardType,
       obscureText: obscureText,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey.shade400),
