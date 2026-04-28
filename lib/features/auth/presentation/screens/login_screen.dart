@@ -8,6 +8,7 @@ import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -213,10 +214,10 @@ class _LoginScreenState extends State<LoginScreen> {
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
-                24,
+                AppScreenSpacing.horizontal,
                 24 + padding.top * 0.5,
-                24,
-                24 + padding.bottom,
+                AppScreenSpacing.horizontal,
+                AppScreenSpacing.bottom + padding.bottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

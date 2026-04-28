@@ -2,6 +2,7 @@ import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:flutter/material.dart';
 
@@ -71,7 +72,7 @@ class AgendaDetailScreen extends StatelessWidget {
                 ),
               )
             : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                padding: AppScreenSpacing.content,
                 itemCount: daySessions.length + 1,
                 separatorBuilder: (_, index) => index == 0
                     ? const SizedBox(height: 16)

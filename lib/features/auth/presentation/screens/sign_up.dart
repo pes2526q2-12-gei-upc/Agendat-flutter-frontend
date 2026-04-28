@@ -5,6 +5,7 @@ import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -154,7 +155,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppScreenSpacing.horizontal,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -251,10 +254,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
-                24,
+                AppScreenSpacing.horizontal,
                 24 + padding.top * 0.5,
-                24,
-                24 + padding.bottom,
+                AppScreenSpacing.horizontal,
+                AppScreenSpacing.bottom + padding.bottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

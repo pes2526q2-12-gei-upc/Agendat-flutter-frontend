@@ -5,6 +5,7 @@ import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 
 class VisualizeScreen extends StatefulWidget {
@@ -74,7 +75,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
             },
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppScreenSpacing.horizontal,
+            ),
             child: Align(
               alignment: Alignment.topLeft,
               child: FilterButton(
@@ -132,7 +135,12 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          8,
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.bottom,
+        ),
         itemCount: events.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) => eventCard(events[index]),

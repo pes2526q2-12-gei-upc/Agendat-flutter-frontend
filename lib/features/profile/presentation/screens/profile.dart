@@ -9,6 +9,7 @@ import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -708,7 +709,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       onRefresh: () => _loadProfile(forceRefresh: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: AppScreenSpacing.content,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

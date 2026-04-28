@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
@@ -282,7 +283,12 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
 
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppScreenSpacing.horizontal,
+        12,
+        AppScreenSpacing.horizontal,
+        AppScreenSpacing.bottom,
+      ),
       itemCount: _received.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {

@@ -1,6 +1,7 @@
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaDetail.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaList.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +47,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppScreenSpacing.horizontal,
+                    AppScreenSpacing.top,
+                    AppScreenSpacing.horizontal,
+                    0,
+                  ),
                   child: _buildViewSwitch(),
                 ),
                 Expanded(child: _buildBody(context, snapshot)),
@@ -172,7 +178,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildCalendarView(BuildContext context, List<Session> sessions) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+        padding: const EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.top,
+          AppScreenSpacing.horizontal,
+          12,
+        ),
         child: _buildMonthGrid(context, sessions),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
@@ -194,7 +195,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
               _errorMessage == null &&
               _unblockedFriends.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              padding: const EdgeInsets.fromLTRB(
+                AppScreenSpacing.horizontal,
+                8,
+                AppScreenSpacing.horizontal,
+                4,
+              ),
               child: _buildFilterField(),
             ),
           Expanded(
@@ -300,7 +306,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
 
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppScreenSpacing.horizontal,
+        8,
+        AppScreenSpacing.horizontal,
+        AppScreenSpacing.bottom,
+      ),
       itemCount: visible.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {

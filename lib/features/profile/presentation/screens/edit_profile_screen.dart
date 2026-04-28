@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/screens/deleteAccount.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
@@ -175,7 +176,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: AppScreenSpacing.content,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

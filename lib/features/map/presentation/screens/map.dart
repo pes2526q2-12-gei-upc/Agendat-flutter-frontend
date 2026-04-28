@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
@@ -219,7 +220,12 @@ class _MapScreenState extends State<MapScreen> {
                 width: mapContentWidth,
                 child: AppSearchBar(
                   onChanged: _onSearchChanged,
-                  margin: const EdgeInsets.fromLTRB(6, 6, 6, 5),
+                  margin: const EdgeInsets.fromLTRB(
+                    AppScreenSpacing.horizontal,
+                    8,
+                    AppScreenSpacing.horizontal,
+                    5,
+                  ),
                 ),
               ),
             ),
@@ -260,7 +266,12 @@ class _MapScreenState extends State<MapScreen> {
                     child: SizedBox(
                       width: maxMapWidth,
                       child: Container(
-                        margin: const EdgeInsets.all(6),
+                        margin: const EdgeInsets.fromLTRB(
+                          AppScreenSpacing.horizontal,
+                          0,
+                          AppScreenSpacing.horizontal,
+                          AppScreenSpacing.bottom,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(_radius),
                           boxShadow: [
