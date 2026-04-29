@@ -293,15 +293,25 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _formatDateTimeLabel(session.startTime),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.grey.shade700,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _formatDateTimeLabel(session.startTime),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildDeleteSessionButton(session),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       _buildEventTitle(session.event),
@@ -314,6 +324,45 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildDeleteSessionButton(Session session) {
+    return IconButton(
+      tooltip: 'Eliminar sessió',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      icon: const Icon(Icons.delete_outline_rounded, color: _kAccentRed),
+      onPressed: () => _confirmDeleteSession(session),
+    );
+  }
+
+  Future<void> _confirmDeleteSession(Session session) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar sessió'),
+          content: const Text('Vols eliminar aquesta sessió de l’agenda?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel·lar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(foregroundColor: _kAccentRed),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true || !mounted) return;
+
+    await _sessionsQuery.deleteSession(session.id);
+    _refresh();
   }
 
   List<Session> _sortedSessions(List<Session> sessions) {

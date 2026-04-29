@@ -25,6 +25,11 @@ class SessionsQuery {
     );
   }
 
+  Future<void> deleteSession(int sessionId) async {
+    await _api.deleteSession(sessionId);
+    invalidateAll();
+  }
+
   /// Invalidates all cached sessions queries.
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 

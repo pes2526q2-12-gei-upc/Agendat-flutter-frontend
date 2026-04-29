@@ -178,8 +178,10 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title takes remaining space
                   Expanded(child: eventTitle(event)),
                   const SizedBox(width: 10),
+                  // Category now has a max width to prevent overflow
                   eventCategory(event),
                 ],
               ),
@@ -237,8 +239,10 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Container eventCategory(Event event) {
+  Widget eventCategory(Event event) {
     return Container(
+      // Limits width so it doesn't push the title out
+      constraints: const BoxConstraints(maxWidth: 130),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: const Color.fromARGB(255, 190, 0, 47),
@@ -246,6 +250,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       ),
       child: Text(
         event.displayCategory,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
