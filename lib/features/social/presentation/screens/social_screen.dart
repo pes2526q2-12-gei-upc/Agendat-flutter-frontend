@@ -268,9 +268,8 @@ class _SocialScreenState extends State<SocialScreen> {
   Widget _buildBody() {
     if (_query.isEmpty) {
       return _buildCenteredMessage(
-        icon: Icons.person_search,
-        title: 'Cerca altres usuaris',
-        subtitle: 'Escriu un nom d\'usuari per trobar i visitar el seu perfil.',
+        icon: Icons.inbox_outlined,
+        title: 'Encara no tens cap conversa activa.',
       );
     }
 
