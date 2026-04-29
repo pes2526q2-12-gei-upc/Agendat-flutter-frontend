@@ -76,7 +76,7 @@ class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'No tens cap esdeveniment programat per aquets dia.',
+                        'No tens cap esdeveniment programat per aquest dia.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,

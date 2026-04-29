@@ -9,6 +9,18 @@ import 'package:agendat/features/map/presentation/screens/map.dart';
 import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
 import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 
+/// Índex de la pestanya arrel actualment seleccionada.
+///
+/// Es manté actualitzat per [RootNavigationScreen] perquè altres pantalles
+/// puguin reaccionar quan l'usuari canvia de pestanya (per exemple, tancar
+/// overlays transitoris com el llistat d'amics).
+final ValueNotifier<int> rootTabIndexNotifier = ValueNotifier<int>(0);
+
+/// Índex que ocupa la pestanya `Social` dins de [RootNavigationScreen]. Es
+/// manté com a constant pública perquè les pantalles que depenen de canvis
+/// de pestanya no hagin de duplicar la posició.
+const int kSocialTabIndex = 3;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final hasSession = await restoreSession();
@@ -72,6 +84,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
+    rootTabIndexNotifier.value = _selectedIndex;
   }
 
   void _onDestinationSelected(int index) {
@@ -80,6 +93,10 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
     setState(() {
       _selectedIndex = index;
     });
+    // Notifica a la resta de l'app que hi ha hagut canvi de pestanya. Les
+    // pantalles que en depenen (overlays oberts, etc.) poden reaccionar i
+    // tancar-se de manera coordinada.
+    rootTabIndexNotifier.value = index;
   }
 
   @override
