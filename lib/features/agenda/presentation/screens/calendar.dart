@@ -1,5 +1,6 @@
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/core/theme/app_colors.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaDetail.dart';
@@ -40,7 +41,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const MainAppBar(title: "Agenda't"),
-      backgroundColor: const Color(0xFFF7F4F2),
+      backgroundColor: AppColors.screenBackground,
       body: SafeArea(
         child: FutureBuilder<List<Session>>(
           future: _sessionsFuture,

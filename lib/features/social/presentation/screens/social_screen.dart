@@ -12,6 +12,7 @@ import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
+import 'package:agendat/core/theme/app_colors.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/main.dart' show rootTabIndexNotifier, kSocialTabIndex;
@@ -267,7 +268,7 @@ class _SocialScreenState extends State<SocialScreen>
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.screenBackground,
       body: Stack(
         children: [
           Column(
@@ -276,9 +277,9 @@ class _SocialScreenState extends State<SocialScreen>
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppScreenSpacing.horizontal,
-                  8,
+                  AppScreenSpacing.top,
                   AppScreenSpacing.horizontal,
-                  8,
+                  AppScreenSpacing.xs,
                 ),
                 child: _buildSearchField(),
               ),
@@ -320,7 +321,7 @@ class _SocialScreenState extends State<SocialScreen>
                 child: Text(
                   'Social',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),

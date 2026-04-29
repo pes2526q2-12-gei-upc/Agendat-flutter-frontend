@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/theme/app_colors.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/mainAppBar.dart';
@@ -65,6 +66,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const MainAppBar(title: "Agenda't"),
+      backgroundColor: AppColors.screenBackground,
       body: Column(
         children: [
           bar.AppSearchBar(
@@ -73,10 +75,19 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 _query = value;
               });
             },
+            margin: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              AppScreenSpacing.section,
+              AppScreenSpacing.horizontal,
+              AppScreenSpacing.xs,
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppScreenSpacing.horizontal,
+            padding: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              0,
+              AppScreenSpacing.horizontal,
+              AppScreenSpacing.sm,
             ),
             child: Align(
               alignment: Alignment.topLeft,
@@ -86,7 +97,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<Event>>(
               future: _eventsFuture,
@@ -137,12 +147,13 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(
           AppScreenSpacing.horizontal,
-          8,
+          0,
           AppScreenSpacing.horizontal,
           AppScreenSpacing.bottom,
         ),
         itemCount: events.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) =>
+            const SizedBox(height: AppScreenSpacing.sm),
         itemBuilder: (context, index) => eventCard(events[index]),
       ),
     );
