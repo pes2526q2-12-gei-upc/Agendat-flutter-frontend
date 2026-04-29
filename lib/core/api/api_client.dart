@@ -8,6 +8,7 @@ class ApiClient {
 
   static const Map<String, String> _baseHeaders = {
     'Accept': 'application/json',
+    'Accept-Charset': 'utf-8',
   };
 
   static String? _authToken;
@@ -19,7 +20,7 @@ class ApiClient {
   static Map<String, String> _headers({bool jsonContentType = false}) {
     final headers = <String, String>{..._baseHeaders};
     if (jsonContentType) {
-      headers['Content-Type'] = 'application/json';
+      headers['Content-Type'] = 'application/json; charset=utf-8';
     }
     final token = _authToken;
     if (token != null) {

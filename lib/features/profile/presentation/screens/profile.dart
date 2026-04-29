@@ -154,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+              child: const Text('Cancel·lar'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -173,7 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut tancar la sessio.')),
+        const SnackBar(content: Text('No s\'ha pogut tancar la sessió.')),
       );
       setState(() => _isLoggingOut = false);
       return;

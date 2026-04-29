@@ -212,6 +212,8 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
   Widget _buildCategoryChip(CategoryDto category) {
     final id = category.id;
     if (id == null) return const SizedBox.shrink();
+    final categoryLabel =
+        EventTextUtils.labelOrNull(category.name) ?? category.name;
 
     final selected = _selectedIds.contains(id);
     return ChoiceChip(
@@ -226,7 +228,7 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
           ],
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 220),
-            child: Text(category.name, overflow: TextOverflow.ellipsis),
+            child: Text(categoryLabel, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

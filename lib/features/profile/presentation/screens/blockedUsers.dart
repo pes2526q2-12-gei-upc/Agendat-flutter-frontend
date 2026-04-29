@@ -43,7 +43,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          'Cal iniciar sessio per veure el llistat d\'usuaris bloquejats.',
+          'Cal iniciar sessió per veure el llistat d\'usuaris bloquejats.',
         ),
       ),
     );
@@ -81,7 +81,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       setState(() {
         _isLoading = false;
         _errorMessage =
-            'No s\'ha pogut carregar el llistat de bloquejats. Comprova la connexio.';
+            'No s\'ha pogut carregar el llistat de bloquejats. Comprova la connexió.';
       });
     }
   }
@@ -164,7 +164,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
             icon: Icons.block_outlined,
             title: 'No has bloquejat cap usuari.',
             subtitle:
-                'Quan bloquegis algu, apareixera aqui perque el puguis revisar.',
+                'Quan bloquegis algú, apareixerà aquí perquè el puguis revisar.',
           ),
         ],
       );

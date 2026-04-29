@@ -104,7 +104,7 @@ class _EventScreenState extends State<EventScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'La sessio seleccionada es anterior a l\'inici de l\'esdeveniment.',
+            'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
           ),
         ),
       );
@@ -115,7 +115,7 @@ class _EventScreenState extends State<EventScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'La sessio seleccionada es posterior al final de l\'esdeveniment.',
+            'La sessió seleccionada és posterior al final de l\'esdeveniment.',
           ),
         ),
       );
@@ -147,8 +147,8 @@ class _EventScreenState extends State<EventScreen> {
         SnackBar(
           content: Text(
             detail.isEmpty
-                ? 'No s\'ha pogut registrar l\'assistencia (${e.statusCode}).'
-                : 'No s\'ha pogut registrar l\'assistencia (${e.statusCode}): $detail',
+                ? 'No s\'ha pogut registrar l\'assistència (${e.statusCode}).'
+                : 'No s\'ha pogut registrar l\'assistència (${e.statusCode}): $detail',
           ),
         ),
       );
