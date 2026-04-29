@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 
 class FilterSection extends StatelessWidget {
   const FilterSection({
@@ -71,6 +72,9 @@ class _DropdownField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String formatOption(String value) =>
+        EventTextUtils.labelOrNull(value) ?? value;
+
     final displayValue = selectedValue ?? allLabel;
     final allOptions = [allLabel, ...options];
     final resolved = allOptions.contains(displayValue)
@@ -89,7 +93,10 @@ class _DropdownField extends StatelessWidget {
       items: allOptions.map((option) {
         return DropdownMenuItem<String>(
           value: option,
-          child: Text(option, overflow: TextOverflow.ellipsis),
+          child: Text(
+            option == allLabel ? option : formatOption(option),
+            overflow: TextOverflow.ellipsis,
+          ),
         );
       }).toList(),
       onChanged: enabled
@@ -131,9 +138,14 @@ class _SearchableField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String formatOption(String value) =>
+        EventTextUtils.labelOrNull(value) ?? value;
+
     final displayText = !enabled
         ? (disabledHint ?? allLabel)
-        : (selectedValue ?? allLabel);
+        : ((selectedValue == null || selectedValue == allLabel)
+              ? allLabel
+              : formatOption(selectedValue!));
 
     final textColor = enabled
         ? Theme.of(context).textTheme.bodyLarge?.color
@@ -184,10 +196,17 @@ class _OptionSearchDialog extends StatefulWidget {
 class _OptionSearchDialogState extends State<_OptionSearchDialog> {
   String _query = '';
 
+  String _formatOption(String value) =>
+      EventTextUtils.labelOrNull(value) ?? value;
+
   List<String> get _filtered {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return widget.options;
-    return widget.options.where((o) => o.toLowerCase().contains(q)).toList();
+    return widget.options.where((option) {
+      final raw = option.toLowerCase();
+      final formatted = _formatOption(option).toLowerCase();
+      return raw.contains(q) || formatted.contains(q);
+    }).toList();
   }
 
   @override
@@ -250,7 +269,7 @@ class _OptionSearchDialogState extends State<_OptionSearchDialog> {
                         return ListTile(
                           dense: true,
                           title: Text(
-                            option,
+                            _formatOption(option),
                             style: TextStyle(
                               fontWeight: isSelected
                                   ? FontWeight.bold
