@@ -26,7 +26,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+              child: const Text('Cancel·lar'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
