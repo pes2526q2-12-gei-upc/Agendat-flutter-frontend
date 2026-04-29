@@ -56,4 +56,8 @@ class SessionsApi {
       'Expected a list of sessions in the API response',
     );
   }
+
+  Future<void> deleteSession(int sessionId) async {
+    await ApiClient.delete('$_path$sessionId/', expectedStatusCode: 204);
+  }
 }
