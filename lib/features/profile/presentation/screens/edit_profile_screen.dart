@@ -10,6 +10,33 @@ import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 
+@visibleForTesting
+class ProfileFullNameParts {
+  const ProfileFullNameParts({required this.firstName, required this.lastName});
+
+  final String firstName;
+  final String lastName;
+}
+
+@visibleForTesting
+ProfileFullNameParts parseProfileFullName(String fullName) {
+  final parts = fullName.trim().split(RegExp(r'\s+'))
+    ..removeWhere((part) => part.isEmpty);
+
+  if (parts.isEmpty) {
+    return const ProfileFullNameParts(firstName: '', lastName: '');
+  }
+
+  if (parts.length == 1) {
+    return ProfileFullNameParts(firstName: parts.first, lastName: '');
+  }
+
+  return ProfileFullNameParts(
+    firstName: parts.sublist(0, parts.length - 1).join(' '),
+    lastName: parts.last,
+  );
+}
+
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.currentProfile});
 
@@ -20,9 +47,11 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  late final TextEditingController _fullNameController;
   late final TextEditingController _usernameController;
   late final TextEditingController _emailController;
   late final TextEditingController _descriptionController;
+  final _fullNameFocusNode = FocusNode();
   final _usernameFocusNode = FocusNode();
   final _emailFocusNode = FocusNode();
   final _descriptionFocusNode = FocusNode();
@@ -35,6 +64,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _fullNameController = TextEditingController(
+      text: _currentFullName(widget.currentProfile),
+    );
     _usernameController = TextEditingController(
       text: widget.currentProfile.username,
     );
@@ -48,13 +80,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
+    _fullNameController.dispose();
     _usernameController.dispose();
     _emailController.dispose();
     _descriptionController.dispose();
+    _fullNameFocusNode.dispose();
     _usernameFocusNode.dispose();
     _emailFocusNode.dispose();
     _descriptionFocusNode.dispose();
     super.dispose();
+  }
+
+  String _currentFullName(UserProfile profile) {
+    return [
+      profile.firstName,
+      profile.lastName,
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).join(' ');
   }
 
   bool _isValidEmail(String email) {
@@ -63,6 +104,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _submitForm() async {
+    final fullName = _fullNameController.text.trim();
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final description = _descriptionController.text.trim();
@@ -88,6 +130,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     // perfil actual, per no sobreescriure al backend amb valors "stale".
     final current = widget.currentProfile;
     final updates = <String, dynamic>{};
+    if (fullName != _currentFullName(current)) {
+      final fullNameParts = parseProfileFullName(fullName);
+      updates['first_name'] = fullNameParts.firstName;
+      updates['last_name'] = fullNameParts.lastName;
+    }
     if (username != current.username) updates['username'] = username;
     if (email != (current.email ?? '')) updates['email'] = email;
     if (description != (current.description ?? '')) {
@@ -228,6 +275,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               controller: _usernameController,
               focusNode: _usernameFocusNode,
               hintText: 'El teu nom d\'usuari',
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) {
+                FocusScope.of(context).requestFocus(_fullNameFocusNode);
+              },
+            ),
+            const SizedBox(height: 20),
+            _buildLabel('Nom complet'),
+            const SizedBox(height: 8),
+            _buildTextField(
+              controller: _fullNameController,
+              focusNode: _fullNameFocusNode,
+              hintText: 'El teu nom',
+              keyboardType: TextInputType.name,
               textInputAction: TextInputAction.next,
               onSubmitted: (_) {
                 FocusScope.of(context).requestFocus(_emailFocusNode);
