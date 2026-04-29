@@ -1,3 +1,5 @@
+import 'package:agendat/features/social/data/models/user_summary.dart';
+
 /// Estat de la relació d'amistat del meu usuari amb un altre usuari.
 ///
 /// El backend hauria de retornar aquest valor com a camp `friendship_status`
@@ -131,6 +133,21 @@ class UserProfile {
       socialAlertsAllowed: socialAlertsAllowed,
       description: description,
       friendshipStatus: status,
+    );
+  }
+
+  /// Vista lleugera (`UserSummary`) que coincideix amb la representació que
+  /// retornen els endpoints de llistat (cerca, amics, sol·licituds). Útil per
+  /// inserir aquest perfil dins d'una llista cachejada sense haver de
+  /// refetchar de la xarxa.
+  UserSummary toSummary() {
+    return UserSummary(
+      id: id,
+      username: username,
+      firstName: firstName,
+      lastName: lastName,
+      profileImage: profileImage,
+      description: description,
     );
   }
 
