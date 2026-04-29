@@ -14,6 +14,7 @@ import 'package:agendat/features/social/presentation/screens/friend_requests_scr
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/main.dart' show rootTabIndexNotifier, kSocialTabIndex;
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -22,7 +23,8 @@ class SocialScreen extends StatefulWidget {
   State<SocialScreen> createState() => _SocialScreenState();
 }
 
-class _SocialScreenState extends State<SocialScreen> {
+class _SocialScreenState extends State<SocialScreen>
+    with SingleTickerProviderStateMixin {
   static const _kPrimaryRed = Color(0xFFB71C1C);
   static const Duration _debounceDuration = Duration(milliseconds: 350);
 
@@ -39,9 +41,32 @@ class _SocialScreenState extends State<SocialScreen> {
 
   int _pendingRequestsCount = 0;
 
+  // Animació del pop-up del llistat d'amics. Es renderitza com a overlay
+  // dins del cos de la pantalla i lliscà des de baix amb una animació
+  // semblant a la d'un bottom sheet modal, però sense bloquejar la barra
+  // de navegació arrel: així l'usuari pot canviar de pestanya i el pop-up
+  // es tanca sol (vegeu [_onRootTabChanged]).
+  late final AnimationController _popupController;
+  late final Animation<Offset> _popupSlide;
+
   @override
   void initState() {
     super.initState();
+    _popupController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      reverseDuration: const Duration(milliseconds: 220),
+    );
+    _popupSlide = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _popupController,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          ),
+        );
+    _popupController.addStatusListener(_onPopupStatusChanged);
+    rootTabIndexNotifier.addListener(_onRootTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardAuthenticated();
       _loadPendingRequestsCount();
@@ -50,11 +75,36 @@ class _SocialScreenState extends State<SocialScreen> {
 
   @override
   void dispose() {
+    rootTabIndexNotifier.removeListener(_onRootTabChanged);
+    _popupController.removeStatusListener(_onPopupStatusChanged);
+    _popupController.dispose();
     _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
   }
+
+  /// Tanca el pop-up del llistat d'amics quan l'usuari ha canviat a una
+  /// altra pestanya: així no queda obert "ocult" al darrere de l'IndexedStack.
+  void _onRootTabChanged() {
+    if (rootTabIndexNotifier.value != kSocialTabIndex) {
+      _closeFriendsPopup();
+    }
+  }
+
+  /// Reconstrueix la jerarquia quan l'animació entra/surt dels seus extrems
+  /// per afegir o treure el pop-up de l'arbre de widgets segons el seu
+  /// estat (només es rendereix si està visible o animant-se).
+  void _onPopupStatusChanged(AnimationStatus status) {
+    if (!mounted) return;
+    if (status == AnimationStatus.dismissed ||
+        status == AnimationStatus.completed) {
+      setState(() {});
+    }
+  }
+
+  bool get _isFriendsPopupVisible =>
+      _popupController.status != AnimationStatus.dismissed;
 
   bool get _isAuthenticated =>
       currentAuthToken != null && currentAuthToken!.trim().isNotEmpty;
@@ -186,14 +236,28 @@ class _SocialScreenState extends State<SocialScreen> {
     _loadPendingRequestsCount(forceRefresh: true);
   }
 
-  Future<void> _openFriendsList() async {
+  void _openFriendsList() {
     if (!_isAuthenticated) {
       _guardAuthenticated();
       return;
     }
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FriendsListScreen()));
+    // Si ja està obert, l'icona actua com a tancament: així l'usuari pot
+    // tornar a tocar la mateixa acció per fer-lo desaparèixer.
+    if (_popupController.status == AnimationStatus.completed ||
+        _popupController.status == AnimationStatus.forward) {
+      _closeFriendsPopup();
+      return;
+    }
+    setState(() {});
+    _popupController.forward();
+  }
+
+  void _closeFriendsPopup() {
+    if (_popupController.status == AnimationStatus.dismissed ||
+        _popupController.status == AnimationStatus.reverse) {
+      return;
+    }
+    _popupController.reverse();
   }
 
   @override
@@ -204,45 +268,77 @@ class _SocialScreenState extends State<SocialScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text(
-          'Social',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              _buildHeader(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppScreenSpacing.horizontal,
+                  8,
+                  AppScreenSpacing.horizontal,
+                  8,
+                ),
+                child: _buildSearchField(),
+              ),
+              Expanded(child: _buildBody()),
+            ],
           ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-        iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          IconButton(
-            tooltip: 'Els meus amics',
-            onPressed: _openFriendsList,
-            icon: const Icon(Icons.group_outlined, color: Colors.black87),
-          ),
-          _FriendRequestsAction(
-            pendingCount: _pendingRequestsCount,
-            onPressed: _openFriendRequests,
-          ),
-          const SizedBox(width: 4),
+          if (_isFriendsPopupVisible)
+            Positioned.fill(
+              child: SlideTransition(
+                position: _popupSlide,
+                child: FriendsListScreen(
+                  asPopup: true,
+                  onClose: _closeFriendsPopup,
+                ),
+              ),
+            ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppScreenSpacing.horizontal,
-              8,
-              AppScreenSpacing.horizontal,
-              8,
-            ),
-            child: _buildSearchField(),
+    );
+  }
+
+  /// Capçalera de la pantalla Social.
+  ///
+  /// Substitueix l'`AppBar` del `Scaffold` perquè el pop-up del llistat
+  /// d'amics pugui cobrir-la quan es desplega. Conserva el mateix aspecte
+  /// (fons blanc, títol gran i accions a la dreta) sense perdre el padding
+  /// del status bar.
+  Widget _buildHeader() {
+    return Material(
+      color: Colors.white,
+      elevation: 0,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Social',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Els meus amics',
+                onPressed: _openFriendsList,
+                icon: const Icon(Icons.group_outlined, color: Colors.black87),
+              ),
+              _FriendRequestsAction(
+                pendingCount: _pendingRequestsCount,
+                onPressed: _openFriendRequests,
+              ),
+              const SizedBox(width: 4),
+            ],
           ),
-          Expanded(child: _buildBody()),
-        ],
+        ),
       ),
     );
   }
@@ -268,9 +364,8 @@ class _SocialScreenState extends State<SocialScreen> {
   Widget _buildBody() {
     if (_query.isEmpty) {
       return _buildCenteredMessage(
-        icon: Icons.person_search,
-        title: 'Cerca altres usuaris',
-        subtitle: 'Escriu un nom d\'usuari per trobar i visitar el seu perfil.',
+        icon: Icons.inbox_outlined,
+        title: 'Encara no tens cap conversa activa.',
       );
     }
 

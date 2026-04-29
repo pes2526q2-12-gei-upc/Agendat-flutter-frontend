@@ -16,7 +16,14 @@ import 'package:agendat/features/social/data/models/user_summary.dart';
 /// (acceptades), de manera que els usuaris bloquejats no apareixen aquí: el
 /// bloqueig al backend implica que la relació d'amistat ja no existeix.
 class FriendsListScreen extends StatefulWidget {
-  const FriendsListScreen({super.key});
+  const FriendsListScreen({super.key, this.asPopup = false, this.onClose});
+
+  final bool asPopup;
+
+  /// Callback opcional invocat quan l'usuari sol·licita tancar la vista en
+  /// mode popup. Si no es proporciona, s'intenta un `Navigator.maybePop`
+  /// (per quan la pantalla es mostra com a ruta normal).
+  final VoidCallback? onClose;
 
   @override
   State<FriendsListScreen> createState() => _FriendsListScreenState();
@@ -174,7 +181,79 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
-      return const Scaffold(body: SizedBox.shrink());
+      return widget.asPopup
+          ? const SizedBox.shrink()
+          : const Scaffold(body: SizedBox.shrink());
+    }
+
+    final content = Column(
+      children: [
+        if (!_isLoading &&
+            _errorMessage == null &&
+            _unblockedFriends.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              8,
+              AppScreenSpacing.horizontal,
+              4,
+            ),
+            child: _buildFilterField(),
+          ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => _loadFriends(forceRefresh: true),
+            child: _buildBody(),
+          ),
+        ),
+      ],
+    );
+
+    if (widget.asPopup) {
+      return Material(
+        color: Colors.grey.shade50,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppScreenSpacing.horizontal,
+                  12,
+                  10,
+                  8,
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Els meus amics',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Tanca',
+                      onPressed: () {
+                        if (widget.onClose != null) {
+                          widget.onClose!();
+                        } else {
+                          Navigator.of(context).maybePop();
+                        }
+                      },
+                      icon: const Icon(Icons.close, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(child: content),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -193,28 +272,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Column(
-        children: [
-          if (!_isLoading &&
-              _errorMessage == null &&
-              _unblockedFriends.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppScreenSpacing.horizontal,
-                8,
-                AppScreenSpacing.horizontal,
-                4,
-              ),
-              child: _buildFilterField(),
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => _loadFriends(forceRefresh: true),
-              child: _buildBody(),
-            ),
-          ),
-        ],
-      ),
+      body: content,
     );
   }
 

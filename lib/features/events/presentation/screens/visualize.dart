@@ -181,7 +181,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                   // Title takes remaining space
                   Expanded(child: eventTitle(event)),
                   const SizedBox(width: 10),
-                  // Category now has a max width to prevent overflow
+                  // Category badge stays readable and anchored to the right.
                   eventCategory(event),
                 ],
               ),
@@ -240,23 +240,28 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Widget eventCategory(Event event) {
-    return Container(
-      // Limits width so it doesn't push the title out
-      constraints: const BoxConstraints(maxWidth: 130),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 190, 0, 47),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        event.displayCategory,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        softWrap: false,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+    return SizedBox(
+      width: 150,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 190, 0, 47),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            event.displayCategory,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
