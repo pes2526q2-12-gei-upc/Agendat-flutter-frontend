@@ -46,7 +46,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuthenticated()) return;
-      _loadFriends();
+      // Forcem un refetch en muntar: la llista d'amics depèn d'accions que
+      // fan altres usuaris (acceptacions de sol·licituds, eliminacions
+      // d'amistat) i no en rebem cap senyal en temps real. La caché local
+      // pot tenir 2 minuts de retard, però quan l'usuari obre explícitament
+      // el llistat espera veure l'estat actual del backend.
+      _loadFriends(forceRefresh: true);
     });
   }
 
@@ -171,11 +176,34 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
     if (!mounted) return;
 
-    // En tornar del perfil, l'estat local pot haver canviat (bloqueig,
-    // desbloqueig o amistat eliminada). Forcem una reconstrucció perquè
-    // `_visibleFriends` reapliqui els filtres locals sense haver de refetchar
-    // de xarxa ni mostrar un spinner.
-    setState(() {});
+    // En tornar del perfil, l'estat local pot haver canviat: el `ProfileScreen`
+    // ha forçat un fetch del perfil, i `_applyBackendFriendshipState` pot
+    // haver afegit/tret aquest usuari de la caché de la llista d'amics. Re-
+    // llegim la caché perquè la pantalla reflecteixi aquests canvis sense
+    // haver de tancar el popup ni mostrar un spinner. Si la caché s'ha
+    // marcat com a obsoleta, `getFriends` farà un refetch implícit.
+    await _refreshFriendsFromCache();
+  }
+
+  /// Re-llegeix la llista d'amics des de la caché compartida i actualitza
+  /// l'estat de la pantalla. No mostra cap spinner: és pensat per casos en
+  /// què ja teníem dades visibles i només cal aplicar l'última versió de la
+  /// caché (que un altre flux pot haver actualitzat optimísticament).
+  Future<void> _refreshFriendsFromCache() async {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is! int) return;
+    try {
+      final friends = await _profileQuery.getFriends(myId);
+      if (!mounted) return;
+      setState(() {
+        _friends = _sortAlphabetically(friends);
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('[friends-list] silent refresh failed: $e');
+      // Mantenim la llista actual: és pitjor mostrar un error pel costat
+      // que una llista lleugerament desactualitzada.
+      if (mounted) setState(() {});
+    }
   }
 
   @override

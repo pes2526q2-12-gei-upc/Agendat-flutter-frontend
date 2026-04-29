@@ -52,7 +52,15 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadProfile();
+    // Quan visitem el perfil d'un altre usuari forcem un refetch: el seu
+    // `friendship_status` pot haver canviat sense que en rebéssim cap
+    // notificació (per exemple, l'altre ens ha eliminat com a amic, o ha
+    // acceptat la nostra sol·licitud). Així `_applyBackendFriendshipState`
+    // a `ProfileQuery` resincronitza també la nostra llista d'amics
+    // cachejada. Per al perfil propi mantenim el comportament cachejat:
+    // les nostres pròpies dades ja s'actualitzen via mutacions locals i no
+    // val la pena pagar un fetch cada cop que canviem de pestanya.
+    _loadProfile(forceRefresh: widget.userId != null);
   }
 
   @override
@@ -235,23 +243,25 @@ class _ProfileScreenState extends State<ProfileScreen>
           }
           _isFriendshipActionInProgress = false;
         });
-        // Actualitzem la caché del QueryClient per mantenir l'estat entre
-        // navegacions, fins que expiri el staleTime o el backend el refresqui.
+        // Sincronitza la caché del client (perfil cachejat, conjunts locals
+        // i llista d'amics) amb el nou estat. La llista d'amics s'actualitza
+        // optimísticament — si acceptem una sol·licitud o eliminem amistat,
+        // veurem el canvi a l'instant la pròxima vegada que obrim el llistat
+        // sense haver d'esperar un refetch ni el `staleTime`.
         final otherId = widget.userId;
         if (otherId != null) {
-          _profileQuery.setCachedFriendshipStatus(otherId, successStatus);
-          if (successStatus == FriendshipStatus.none) {
-            _profileQuery.markUserUnfriended(otherId);
-          } else if (successStatus == FriendshipStatus.friends) {
-            _profileQuery.markUserRefriended(otherId);
-          }
+          _profileQuery.recordFriendshipStatusChange(
+            otherId,
+            successStatus,
+            otherSummary: _profile?.toSummary(),
+          );
         }
-        // Invalidem també les llistes d'amistat del meu usuari: així, si
-        // tanco l'app o recarrego la pantalla, la pròxima derivació consultarà
-        // el backend i l'estat del botó serà coherent amb la veritat.
+        // La llista de sol·licituds (sent/received) sí que cal forçar-la a
+        // refetchar: l'optimisme local només pot afegir/treure un sol amic,
+        // no mantenir el flux complet de sol·licituds coherent.
         final myId = _currentUserId;
         if (myId != null) {
-          _profileQuery.invalidateFriendshipLists(myId);
+          _profileQuery.invalidateFriendRequestsList(myId);
         }
         ScaffoldMessenger.of(
           context,
@@ -271,6 +281,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message ?? invalidActionMessage)),
         );
+        // El backend ens diu que la nostra premissa local sobre l'estat
+        // d'amistat és incorrecta (p. ex. provem de cancel·lar una
+        // sol·licitud que ja s'ha acceptat, o d'enviar-ne una a algú que ja
+        // és amic nostre). Recarreguem el perfil amb força per recuperar el
+        // `friendship_status` real i actualitzar la UI sense haver d'esperar
+        // que la caché es marqui com a obsoleta.
+        _resyncProfileWithBackend();
       case FriendActionFailure(:final statusCode, :final message, :final error):
         setState(() => _isFriendshipActionInProgress = false);
         final text =
@@ -281,7 +298,22 @@ class _ProfileScreenState extends State<ProfileScreen>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(text)));
+        // Codis 400/410 en una mutació d'amistat solen voler dir el mateix
+        // que el 409: estat incoherent. Ho tractem igual i resincronitzem.
+        if (statusCode == 400 || statusCode == 410) {
+          _resyncProfileWithBackend();
+        }
     }
+  }
+
+  /// Recarrega el perfil saltant-se la caché. La crida posterior a
+  /// `getUserProfile` farà servir `friendship_status` retornat pel backend
+  /// com a font de veritat: actualitzarà la UI, els conjunts locals i la
+  /// llista d'amics cachejada (a través de `_applyBackendFriendshipState` a
+  /// `ProfileQuery`).
+  void _resyncProfileWithBackend() {
+    if (!mounted) return;
+    _loadProfile(forceRefresh: true);
   }
 
   Future<void> _sendFriendRequest() {
@@ -732,25 +764,21 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     final otherId = widget.userId;
     if (otherId != null) {
-      _profileQuery.setCachedFriendshipStatus(otherId, newStatus);
-      // Mantenim la caché local d'IDs bloquejats coherent amb la nova UI.
-      // Si el backend trigarà a propagar el canvi (o encara no implementa
-      // `/blocked/`), aquesta caché basta perquè el botó de "Desbloquejar"
-      // aparegui en re-visitar el perfil dins de la mateixa sessió.
-      if (newStatus == FriendshipStatus.blocked) {
-        _profileQuery.markUserBlocked(otherId);
-      } else {
-        _profileQuery.markUserUnblocked(otherId);
-      }
+      // Sincronitza el perfil cachejat, els sets locals i la llista d'amics:
+      // bloquejar trenca l'amistat al backend i ha de fer desaparèixer
+      // l'usuari del nostre llistat sense esperar al següent refetch.
+      _profileQuery.recordFriendshipStatusChange(
+        otherId,
+        newStatus,
+        otherSummary: _profile?.toSummary(),
+      );
     }
 
-    // Bloquejar trenca l'amistat al backend i amaga l'usuari de les llistes
-    // d'amics i sol·licituds. Desbloquejar deixa l'usuari fora de la llista
-    // de bloquejats. En els dos casos cal invalidar les caches per evitar
-    // mostrar dades obsoletes.
+    // Sol·licituds i bloquejats poden haver canviat al backend; els
+    // invalidem perquè les properes consultes recuperin valors frescos.
     final myId = _currentUserId;
     if (myId != null) {
-      _profileQuery.invalidateFriendshipLists(myId);
+      _profileQuery.invalidateFriendRequestsList(myId);
       _profileQuery.invalidateBlockedUsers(myId);
     }
 
