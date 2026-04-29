@@ -10,6 +10,7 @@ import 'package:agendat/features/profile/presentation/screens/edit_interests_scr
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/foundation.dart';
 
@@ -457,7 +458,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppThemeTokens.screenBackground,
       appBar: _buildAppBar(),
       body: _buildBody(),
     );
@@ -467,17 +468,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     return AppBar(
       title: Text(
         _isOwnProfile ? 'El meu Perfil' : 'Perfil',
-        style: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
-        ),
+        style: AppThemeTokens.appBarTitle,
       ),
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
+      backgroundColor: AppThemeTokens.appBarBackground,
+      elevation: AppThemeTokens.appBarElevation,
+      centerTitle: AppThemeTokens.appBarCenterTitle,
       automaticallyImplyLeading: !_isOwnProfile,
-      iconTheme: const IconThemeData(color: Colors.black),
+      iconTheme: AppThemeTokens.appBarIconTheme,
       actions: _isOwnProfile
           ? [
               IconButton(
@@ -775,13 +772,13 @@ class _ProfileScreenState extends State<ProfileScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppScreenSpacing.section),
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppScreenSpacing.section),
               ElevatedButton(
                 onPressed: () => _loadProfile(forceRefresh: true),
                 style: ElevatedButton.styleFrom(
@@ -806,15 +803,15 @@ class _ProfileScreenState extends State<ProfileScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildProfileCard(profile),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppScreenSpacing.section),
             _buildInterestsSection(_interests),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppScreenSpacing.section),
             _buildTabSection(
               attendedSessions: _sessions,
               reviewsResponse: _reviewsResponse,
             ),
             if (_isOwnProfile) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppScreenSpacing.section),
               _buildLogoutButton(),
             ],
           ],

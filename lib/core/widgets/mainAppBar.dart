@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -16,27 +17,11 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       automaticallyImplyLeading: false,
       leading: (showBackButton && canPop) ? const BackButton() : null,
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/icons/logoAgendat.png',
-              height: 40,
-              width: 40,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-      ],
-      backgroundColor: Colors.white,
-      elevation: 0.0,
-      centerTitle: false,
+      title: Text(title, style: AppThemeTokens.appBarTitle),
+      backgroundColor: AppThemeTokens.appBarBackground,
+      iconTheme: AppThemeTokens.appBarIconTheme,
+      elevation: AppThemeTokens.appBarElevation,
+      centerTitle: AppThemeTokens.appBarCenterTitle,
     );
   }
 
