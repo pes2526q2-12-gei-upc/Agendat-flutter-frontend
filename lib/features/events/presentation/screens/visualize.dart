@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
-import 'package:agendat/core/theme/app_colors.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/mainAppBar.dart';
@@ -66,7 +66,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const MainAppBar(title: "Agenda't"),
-      backgroundColor: AppColors.screenBackground,
+      backgroundColor: AppThemeTokens.screenBackground,
       body: Column(
         children: [
           bar.AppSearchBar(

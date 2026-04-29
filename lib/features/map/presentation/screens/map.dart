@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
-import 'package:agendat/core/theme/app_colors.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -213,7 +213,7 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: const MainAppBar(title: 'La cultura a prop teu'),
-      backgroundColor: AppColors.screenBackground,
+      backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
         child: Column(
           children: [

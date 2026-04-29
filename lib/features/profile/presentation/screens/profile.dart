@@ -10,7 +10,7 @@ import 'package:agendat/features/profile/presentation/screens/edit_interests_scr
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:agendat/features/social/data/social_api.dart';
-import 'package:agendat/core/theme/app_colors.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/foundation.dart';
 
@@ -458,7 +458,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.screenBackground,
+      backgroundColor: AppThemeTokens.screenBackground,
       appBar: _buildAppBar(),
       body: _buildBody(),
     );
@@ -468,17 +468,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     return AppBar(
       title: Text(
         _isOwnProfile ? 'El meu Perfil' : 'Perfil',
-        style: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
-        ),
+        style: AppThemeTokens.appBarTitle,
       ),
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
+      backgroundColor: AppThemeTokens.appBarBackground,
+      elevation: AppThemeTokens.appBarElevation,
+      centerTitle: AppThemeTokens.appBarCenterTitle,
       automaticallyImplyLeading: !_isOwnProfile,
-      iconTheme: const IconThemeData(color: Colors.black),
+      iconTheme: AppThemeTokens.appBarIconTheme,
       actions: _isOwnProfile
           ? [
               IconButton(

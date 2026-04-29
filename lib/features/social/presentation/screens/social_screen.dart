@@ -12,7 +12,7 @@ import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
-import 'package:agendat/core/theme/app_colors.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/main.dart' show rootTabIndexNotifier, kSocialTabIndex;
@@ -268,7 +268,7 @@ class _SocialScreenState extends State<SocialScreen>
     }
 
     return Scaffold(
-      backgroundColor: AppColors.screenBackground,
+      backgroundColor: AppThemeTokens.screenBackground,
       body: Stack(
         children: [
           Column(
@@ -309,23 +309,16 @@ class _SocialScreenState extends State<SocialScreen>
   /// del status bar.
   Widget _buildHeader() {
     return Material(
-      color: Colors.white,
+      color: AppThemeTokens.appBarBackground,
       elevation: 0,
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+          padding: AppThemeTokens.socialHeaderPadding,
           child: Row(
             children: [
               const Expanded(
-                child: Text(
-                  'Social',
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
+                child: Text('Social', style: AppThemeTokens.appBarTitle),
               ),
               IconButton(
                 tooltip: 'Els meus amics',
@@ -393,7 +386,7 @@ class _SocialScreenState extends State<SocialScreen>
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
         AppScreenSpacing.horizontal,
-        4,
+        AppScreenSpacing.xxs,
         AppScreenSpacing.horizontal,
         AppScreenSpacing.bottom,
       ),
@@ -401,7 +394,7 @@ class _SocialScreenState extends State<SocialScreen>
         user: _results[index],
         onTap: () => _openProfile(_results[index]),
       ),
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: AppScreenSpacing.xs),
       itemCount: _results.length,
     );
   }
