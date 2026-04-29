@@ -245,6 +245,11 @@ class _BlockedUserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = user.displayName.trim().isNotEmpty
+        ? user.displayName.trim()
+        : (user.username.trim().isNotEmpty ? user.username.trim() : 'Usuari');
+    final username = user.username.trim();
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -271,7 +276,7 @@ class _BlockedUserTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user.displayName,
+                  displayName,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -279,28 +284,29 @@ class _BlockedUserTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                InkWell(
-                  onTap: () => onOpenProfile(user),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(
-                      '@${user.username}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                        decoration: TextDecoration.underline,
+                if (username.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  InkWell(
+                    onTap: () => onOpenProfile(user),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '@$username',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          decoration: TextDecoration.underline,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: Colors.grey.shade400),
         ],
       ),
     );
@@ -322,7 +328,7 @@ class _Avatar extends StatelessWidget {
       return CircleAvatar(
         radius: radius,
         backgroundColor: Colors.grey.shade200,
-        child: Icon(Icons.person, size: 26, color: Colors.grey.shade400),
+        child: Icon(Icons.person, size: 26, color: Colors.grey.shade500),
       );
     }
 

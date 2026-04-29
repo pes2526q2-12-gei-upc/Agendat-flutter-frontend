@@ -349,13 +349,14 @@ Future<BlockActionResult> _postBlockAction(String path) async {
   }
 }
 
-/// GET /api/users/{userId}/blocked/ — llista d'usuaris que jo he bloquejat.
+/// GET /api/users/{userId}/blocked-users/ — llista d'usuaris que jo he
+/// bloquejat.
 /// Es fa servir per derivar si un perfil concret està bloquejat (mentre el
 /// backend no exposi `friendship_status` a `GET /api/users/{id}/`).
 Future<List<UserSummary>> fetchBlockedUsers(int userId) async {
-  final response = await ApiClient.get('/api/users/$userId/blocked/');
+  final response = await ApiClient.get('/api/users/$userId/blocked-users/');
   if (kDebugMode) {
-    debugPrint('[social] GET /blocked/ for $userId → ${response.body}');
+    debugPrint('[social] GET /blocked-users/ for $userId → ${response.body}');
   }
   final decoded = jsonDecode(response.body);
   if (decoded is List) {
