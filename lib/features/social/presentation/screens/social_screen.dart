@@ -10,7 +10,6 @@ import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
-import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -28,6 +27,7 @@ class _SocialScreenState extends State<SocialScreen> {
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final ProfileQuery _profileQuery = ProfileQuery.instance;
 
   Timer? _debounce;
   int _requestToken = 0;
@@ -37,14 +37,17 @@ class _SocialScreenState extends State<SocialScreen> {
   List<UserSummary> _results = const [];
   String? _errorMessage;
 
-  int _pendingRequestsCount = 0;
+  bool _isLoadingRequests = true;
+  String? _requestsErrorMessage;
+  List<PendingFriendRequest> _receivedRequests = const [];
+  final Set<int> _busyRequestIds = <int>{};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardAuthenticated();
-      _loadPendingRequestsCount();
+      _loadFriendRequests();
     });
   }
 
@@ -149,41 +152,37 @@ class _SocialScreenState extends State<SocialScreen> {
     ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
   }
 
-  /// Llegeix el nombre de sol·licituds rebudes pendents per mostrar un badge
-  /// a l'icona d'accés a la pantalla de gestió de sol·licituds. Si falla, no
-  /// mostra cap badge — la llista és accessible igualment.
-  Future<void> _loadPendingRequestsCount({bool forceRefresh = false}) async {
+  Future<void> _loadFriendRequests({bool forceRefresh = false}) async {
     if (!_isAuthenticated) return;
     final myId = currentLoggedInUser?['id'];
     if (myId is! int) return;
 
+    setState(() {
+      _isLoadingRequests = true;
+      _requestsErrorMessage = null;
+    });
+
     try {
-      final data = await ProfileQuery.instance.getFriendRequests(
+      final data = await _profileQuery.getFriendRequests(
         myId,
         forceRefresh: forceRefresh,
       );
       if (!mounted) return;
-      final pending = data.received
+      final pendingReceived = data.received
           .where((r) => r.status.toLowerCase() == 'pending')
-          .length;
-      setState(() => _pendingRequestsCount = pending);
+          .toList();
+      setState(() {
+        _receivedRequests = pendingReceived;
+        _isLoadingRequests = false;
+      });
     } catch (_) {
-      // Silenciós: el badge és informatiu i no crític.
+      if (!mounted) return;
+      setState(() {
+        _isLoadingRequests = false;
+        _requestsErrorMessage =
+            'No s\'han pogut carregar les sol·licituds. Comprova la connexió.';
+      });
     }
-  }
-
-  Future<void> _openFriendRequests() async {
-    if (!_isAuthenticated) {
-      _guardAuthenticated();
-      return;
-    }
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FriendRequestsScreen()));
-    if (!mounted) return;
-    // Refresquem el comptador en tornar perquè l'usuari pot haver acceptat o
-    // rebutjat sol·licituds des de la pantalla.
-    _loadPendingRequestsCount(forceRefresh: true);
   }
 
   Future<void> _openFriendsList() async {
@@ -194,6 +193,125 @@ class _SocialScreenState extends State<SocialScreen> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const FriendsListScreen()));
+  }
+
+  UserSummary? _senderOf(PendingFriendRequest request) {
+    return request.counterpart ?? request.requestedBy;
+  }
+
+  Future<void> _acceptRequest(PendingFriendRequest request) {
+    return _runRequestAction(
+      request: request,
+      action: (userId) => acceptFriendRequest(userId),
+      successMessage: 'Sol·licitud acceptada. Ara sou amics!',
+      genericErrorMessage: 'No s\'ha pogut acceptar la sol·licitud.',
+    );
+  }
+
+  Future<void> _rejectRequest(PendingFriendRequest request) {
+    return _runRequestAction(
+      request: request,
+      action: (userId) => rejectFriendRequest(userId),
+      successMessage: 'Sol·licitud rebutjada.',
+      genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
+    );
+  }
+
+  Future<void> _runRequestAction({
+    required PendingFriendRequest request,
+    required Future<FriendActionResult> Function(int userId) action,
+    required String successMessage,
+    required String genericErrorMessage,
+  }) async {
+    if (!_isAuthenticated) {
+      _guardAuthenticated();
+      return;
+    }
+    if (_busyRequestIds.contains(request.id)) return;
+
+    final sender = _senderOf(request);
+    if (sender == null) {
+      _showSnack('Aquesta sol·licitud ja no és vàlida.');
+      _removeRequest(request.id);
+      return;
+    }
+
+    setState(() => _busyRequestIds.add(request.id));
+
+    final result = await action(sender.id);
+    if (!mounted) return;
+
+    switch (result) {
+      case FriendActionSuccess():
+        setState(() {
+          _busyRequestIds.remove(request.id);
+          _receivedRequests = _receivedRequests
+              .where((r) => r.id != request.id)
+              .toList();
+        });
+        _invalidateCaches(targetUserId: sender.id);
+        _showSnack(successMessage);
+      case FriendActionUnauthorized():
+        setState(() => _busyRequestIds.remove(request.id));
+        _guardAuthenticated();
+      case FriendActionUserNotFound():
+        _removeRequest(request.id);
+        _showSnack('Perfil no vàlid.');
+        _invalidateCaches(targetUserId: sender.id);
+      case FriendActionConflict(:final message):
+        _removeRequest(request.id);
+        _showSnack(message ?? 'Aquesta sol·licitud ja no és vàlida.');
+        _invalidateCaches(targetUserId: sender.id);
+      case FriendActionFailure(:final statusCode, :final error):
+        setState(() => _busyRequestIds.remove(request.id));
+        if (_isInvalidRequestStatus(statusCode)) {
+          _removeRequest(request.id);
+          _showSnack('Aquesta sol·licitud ja no és vàlida.');
+          _invalidateCaches(targetUserId: sender.id);
+          return;
+        }
+        final text = error != null && statusCode == -1
+            ? 'Error de connexió. Comprova la teva connexió a internet.'
+            : '$genericErrorMessage (codi $statusCode)';
+        _showSnack(text);
+    }
+  }
+
+  bool _isInvalidRequestStatus(int statusCode) {
+    return statusCode == 400 ||
+        statusCode == 404 ||
+        statusCode == 409 ||
+        statusCode == 410;
+  }
+
+  void _removeRequest(int requestId) {
+    setState(() {
+      _receivedRequests = _receivedRequests
+          .where((r) => r.id != requestId)
+          .toList();
+      _busyRequestIds.remove(requestId);
+    });
+  }
+
+  void _invalidateCaches({required int targetUserId}) {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      _profileQuery.invalidateFriendshipLists(myId);
+    }
+    _profileQuery.invalidateUser(targetUserId);
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openSenderProfile(UserSummary sender) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: sender.id)));
   }
 
   @override
@@ -222,10 +340,6 @@ class _SocialScreenState extends State<SocialScreen> {
             tooltip: 'Els meus amics',
             onPressed: _openFriendsList,
             icon: const Icon(Icons.group_outlined, color: Colors.black87),
-          ),
-          _FriendRequestsAction(
-            pendingCount: _pendingRequestsCount,
-            onPressed: _openFriendRequests,
           ),
           const SizedBox(width: 4),
         ],
@@ -267,10 +381,66 @@ class _SocialScreenState extends State<SocialScreen> {
 
   Widget _buildBody() {
     if (_query.isEmpty) {
-      return _buildCenteredMessage(
-        icon: Icons.person_search,
-        title: 'Cerca altres usuaris',
-        subtitle: 'Escriu un nom d\'usuari per trobar i visitar el seu perfil.',
+      if (_isLoadingRequests) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (_receivedRequests.isEmpty || _requestsErrorMessage != null) {
+        return _buildCenteredMessage(
+          icon: Icons.person_search,
+          title: 'Cerca altres usuaris',
+          subtitle:
+              'Escriu un nom d\'usuari per trobar i visitar el seu perfil.',
+        );
+      }
+
+      return RefreshIndicator(
+        onRefresh: () => _loadFriendRequests(forceRefresh: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            AppScreenSpacing.horizontal,
+            8,
+            AppScreenSpacing.horizontal,
+            AppScreenSpacing.bottom,
+          ),
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.person_add_alt_1_outlined,
+                  size: 18,
+                  color: _kPrimaryRed,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Sol·licituds (${_receivedRequests.length})',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ..._receivedRequests.map((request) {
+              final sender = _senderOf(request);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _InlineFriendRequestTile(
+                  request: request,
+                  isBusy: _busyRequestIds.contains(request.id),
+                  onAccept: () => _acceptRequest(request),
+                  onReject: () => _rejectRequest(request),
+                  onTap: sender == null
+                      ? null
+                      : () => _openSenderProfile(sender),
+                ),
+              );
+            }),
+          ],
+        ),
       );
     }
 
@@ -425,64 +595,132 @@ class _UserResultTile extends StatelessWidget {
   }
 }
 
-class _FriendRequestsAction extends StatelessWidget {
-  const _FriendRequestsAction({
-    required this.pendingCount,
+class _InlineFriendRequestTile extends StatelessWidget {
+  const _InlineFriendRequestTile({
+    required this.request,
+    required this.isBusy,
+    required this.onAccept,
+    required this.onReject,
+    required this.onTap,
+  });
+
+  static const _kPrimaryRed = Color(0xFFB71C1C);
+
+  final PendingFriendRequest request;
+  final bool isBusy;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final sender = request.counterpart ?? request.requestedBy;
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              _Avatar(profileImage: sender?.profileImage),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sender?.displayName ?? 'Usuari desconegut',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (sender != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '@${sender.username}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (isBusy)
+                const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else ...[
+                _CircleActionButton(
+                  icon: Icons.check,
+                  backgroundColor: _kPrimaryRed,
+                  foregroundColor: Colors.white,
+                  onPressed: onAccept,
+                ),
+                const SizedBox(width: 8),
+                _CircleActionButton(
+                  icon: Icons.close,
+                  backgroundColor: Colors.grey.shade200,
+                  foregroundColor: Colors.blueGrey.shade700,
+                  onPressed: onReject,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleActionButton extends StatelessWidget {
+  const _CircleActionButton({
+    required this.icon,
+    required this.backgroundColor,
+    required this.foregroundColor,
     required this.onPressed,
   });
 
-  final int pendingCount;
+  final IconData icon;
+  final Color backgroundColor;
+  final Color foregroundColor;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final hasBadge = pendingCount > 0;
-    final badgeLabel = pendingCount > 99 ? '99+' : '$pendingCount';
-
-    return Tooltip(
-      message: 'Sol·licituds d\'amistat',
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          IconButton(
-            onPressed: onPressed,
-            icon: const Icon(
-              Icons.person_add_alt_1_outlined,
-              color: Colors.black87,
-            ),
-          ),
-          if (hasBadge)
-            Positioned(
-              right: 6,
-              top: 6,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 2,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 18,
-                    minHeight: 18,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFB71C1C),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.white, width: 1.5),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    badgeLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+    return SizedBox(
+      width: 32,
+      height: 32,
+      child: Material(
+        color: backgroundColor,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: Icon(icon, color: foregroundColor, size: 16),
+        ),
       ),
     );
   }
