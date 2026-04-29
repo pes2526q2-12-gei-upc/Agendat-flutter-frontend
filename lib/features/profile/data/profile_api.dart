@@ -196,18 +196,6 @@ Future<UpdateProfileResult> updateUserProfile(
             message: _extractErrorMessage(body['username']),
           );
         }
-        if (body['first_name'] != null) {
-          return UpdateProfileValidationError(
-            field: 'first_name',
-            message: _extractErrorMessage(body['first_name']),
-          );
-        }
-        if (body['last_name'] != null) {
-          return UpdateProfileValidationError(
-            field: 'last_name',
-            message: _extractErrorMessage(body['last_name']),
-          );
-        }
         if (body['password'] != null) {
           return UpdateProfileValidationError(
             field: 'password',
