@@ -40,7 +40,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MainAppBar(title: "Agenda't"),
+      appBar: const MainAppBar(title: "Agenda"),
       backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
         child: FutureBuilder<List<Session>>(
