@@ -224,6 +224,7 @@ class UserReview {
     required this.createdAt,
     required this.reviewerId,
     required this.reviewerUsername,
+    this.eventCode,
   });
 
   final int id;
@@ -232,8 +233,20 @@ class UserReview {
   final DateTime createdAt;
   final int reviewerId;
   final String reviewerUsername;
+  final String? eventCode;
 
   factory UserReview.fromJson(Map<String, dynamic> json) {
+    final reviewer = json['reviewer'];
+    final reviewerMap = reviewer is Map<String, dynamic> ? reviewer : null;
+    final event = json['event'];
+    final eventMap = event is Map<String, dynamic> ? event : null;
+    final rawEventCode =
+        json['event_code'] ??
+        json['event_id'] ??
+        json['event'] ??
+        eventMap?['code'] ??
+        eventMap?['id'];
+    final eventCode = rawEventCode?.toString().trim();
     return UserReview(
       id: (json['id'] as num).toInt(),
       rating: (json['rating'] as num).toInt(),
@@ -242,7 +255,11 @@ class UserReview {
           DateTime.tryParse((json['created_at'] as String?) ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       reviewerId: (json['reviewer_id'] as num?)?.toInt() ?? 0,
-      reviewerUsername: (json['reviewer_username'] as String?) ?? '',
+      reviewerUsername:
+          (json['reviewer_username'] as String?) ??
+          (reviewerMap?['username'] as String?) ??
+          '',
+      eventCode: (eventCode == null || eventCode.isEmpty) ? null : eventCode,
     );
   }
 }
@@ -254,7 +271,11 @@ class UserReviewsResponse {
   final List<UserReview> reviews;
 
   factory UserReviewsResponse.fromJson(Map<String, dynamic> json) {
-    final rawReviews = (json['reviews'] as List?) ?? const [];
+    final dynamic rawReviewsDynamic =
+        json['reviews'] ?? json['results'] ?? json['items'] ?? json['data'];
+    final rawReviews = rawReviewsDynamic is List
+        ? rawReviewsDynamic
+        : const <dynamic>[];
     return UserReviewsResponse(
       count: (json['count'] as num?)?.toInt() ?? rawReviews.length,
       reviews: rawReviews
