@@ -34,6 +34,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/flutter/
 
 # Accidental duplicate lockfiles (e.g. "pubspec 2.lock", "pubspec 3.lock")
 pubspec *.lock
@@ -41,6 +42,10 @@ pubspec *.lock
 # Accidental duplicate manifests/text files
 android/app/src/**/AndroidManifest *.xml
 import 'dartconvert'; *.txt
+
+# Local Firebase configuration
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # Symbolication related
 app.*.symbols
