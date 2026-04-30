@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
-import 'package:agendat/core/models/session.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
@@ -35,7 +35,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserProfile? _profile;
   UserStats? _stats;
   List<UserInterest> _interests = const [];
-  List<Session> _sessions = const [];
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
@@ -108,16 +107,15 @@ class _ProfileScreenState extends State<ProfileScreen>
               return const <UserInterest>[];
             });
         final reviewsResponse = await _profileQuery
-            .getUserReviews(userId, forceRefresh: forceRefresh)
+            .getUserReviews(
+              userId,
+              // Les ressenyes es mostren en una pestanya dinàmica del perfil.
+              // Forcem refetch per evitar quedar-nos amb caché buida/obsoleta.
+              forceRefresh: true,
+            )
             .catchError((_) {
               return const UserReviewsResponse(count: 0, reviews: []);
             });
-        final sessions = await _profileQuery
-            .getUserSessions(
-              username: profile.username,
-              forceRefresh: forceRefresh,
-            )
-            .catchError((_) => const <Session>[]);
 
         final derivedStatus = _resolveFriendshipStatus(profile: profile);
 
@@ -128,7 +126,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           _stats = stats;
           _interests = interests;
           _reviewsResponse = reviewsResponse;
-          _sessions = sessions;
           _friendshipStatus = derivedStatus;
           _isLoading = false;
         });
@@ -834,10 +831,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             const SizedBox(height: AppScreenSpacing.section),
             _buildInterestsSection(_interests),
             const SizedBox(height: AppScreenSpacing.section),
-            _buildTabSection(
-              attendedSessions: _sessions,
-              reviewsResponse: _reviewsResponse,
-            ),
+            _buildTabSection(reviewsResponse: _reviewsResponse),
             if (_isOwnProfile) ...[
               const SizedBox(height: AppScreenSpacing.section),
               _buildLogoutButton(),
@@ -1222,10 +1216,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildTabSection({
-    required List<Session> attendedSessions,
-    required UserReviewsResponse? reviewsResponse,
-  }) {
+  Widget _buildTabSection({required UserReviewsResponse? reviewsResponse}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1289,7 +1280,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildAttendedSessionsTab(attendedSessions),
+                _buildAttendedSessionsTab(),
                 _buildReviewsTab(reviewsResponse),
               ],
             ),
@@ -1299,35 +1290,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildAttendedSessionsTab(List<Session> sessions) {
-    if (sessions.isEmpty) {
-      return _buildEmptyTabContent(
-        'No hi ha esdeveniments',
-        Icons.event_outlined,
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: sessions.length,
-      separatorBuilder: (_, __) => const Divider(height: 16),
-      itemBuilder: (context, index) {
-        final s = sessions[index];
-        final start = s.startTime;
-        final startLabel =
-            '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')} '
-            '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
-
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.event, color: Colors.grey.shade600),
-          title: Text(
-            s.event.isEmpty ? 'Event' : s.event,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Text(startLabel),
-        );
-      },
+  Widget _buildAttendedSessionsTab() {
+    // Pendent d'implementar endpoint al backend per recuperar assistències
+    // d'un usuari i mostrar-les al perfil.
+    return _buildEmptyTabContent(
+      'Assistències pendents de backend',
+      Icons.event_outlined,
     );
   }
 
@@ -1347,6 +1315,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemBuilder: (context, index) {
         final r = reviews[index];
         return ListTile(
+          onTap: () => _openReviewEvent(r),
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.rate_review, color: Colors.grey.shade600),
           title: Text(
@@ -1354,20 +1323,22 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text(r.comment.isEmpty ? '—' : r.comment),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Text(
-              '${r.rating}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
         );
       },
+    );
+  }
+
+  void _openReviewEvent(UserReview review) {
+    final eventCode = review.eventCode;
+    if (eventCode == null || eventCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aquesta ressenya no té esdeveniment.')),
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => EventScreen(eventCode: eventCode)),
     );
   }
 

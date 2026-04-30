@@ -10,7 +10,6 @@ import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
-import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
@@ -40,7 +39,10 @@ class _SocialScreenState extends State<SocialScreen>
   List<UserSummary> _results = const [];
   String? _errorMessage;
 
-  int _pendingRequestsCount = 0;
+  bool _isLoadingRequests = false;
+  String? _requestsErrorMessage;
+  List<PendingFriendRequest> _pendingRequests = const [];
+  final Set<int> _busyRequestIds = <int>{};
 
   // Animació del pop-up del llistat d'amics. Es renderitza com a overlay
   // dins del cos de la pantalla i lliscà des de baix amb una animació
@@ -200,13 +202,17 @@ class _SocialScreenState extends State<SocialScreen>
     ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
   }
 
-  /// Llegeix el nombre de sol·licituds rebudes pendents per mostrar un badge
-  /// a l'icona d'accés a la pantalla de gestió de sol·licituds. Si falla, no
-  /// mostra cap badge — la llista és accessible igualment.
+  /// Llegeix les sol·licituds rebudes pendents per mostrar-les directament
+  /// dins la pantalla social.
   Future<void> _loadPendingRequestsCount({bool forceRefresh = false}) async {
     if (!_isAuthenticated) return;
     final myId = currentLoggedInUser?['id'];
     if (myId is! int) return;
+
+    setState(() {
+      _isLoadingRequests = true;
+      _requestsErrorMessage = null;
+    });
 
     try {
       final data = await ProfileQuery.instance.getFriendRequests(
@@ -216,25 +222,132 @@ class _SocialScreenState extends State<SocialScreen>
       if (!mounted) return;
       final pending = data.received
           .where((r) => r.status.toLowerCase() == 'pending')
-          .length;
-      setState(() => _pendingRequestsCount = pending);
+          .toList();
+      setState(() {
+        _pendingRequests = pending;
+        _isLoadingRequests = false;
+      });
     } catch (_) {
-      // Silenciós: el badge és informatiu i no crític.
+      if (!mounted) return;
+      setState(() {
+        _isLoadingRequests = false;
+        _requestsErrorMessage =
+            'No s\'han pogut carregar les sol·licituds. Comprova la teva connexió.';
+      });
     }
   }
 
-  Future<void> _openFriendRequests() async {
+  UserSummary? _senderOf(PendingFriendRequest request) {
+    return request.counterpart ?? request.requestedBy;
+  }
+
+  Future<void> _acceptRequest(PendingFriendRequest request) {
+    return _runRequestAction(
+      request: request,
+      action: (userId) => acceptFriendRequest(userId),
+      successMessage: 'Sol·licitud acceptada. Ara sou amics!',
+      genericErrorMessage: 'No s\'ha pogut acceptar la sol·licitud.',
+    );
+  }
+
+  Future<void> _rejectRequest(PendingFriendRequest request) {
+    return _runRequestAction(
+      request: request,
+      action: (userId) => rejectFriendRequest(userId),
+      successMessage: 'Sol·licitud rebutjada.',
+      genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
+    );
+  }
+
+  Future<void> _runRequestAction({
+    required PendingFriendRequest request,
+    required Future<FriendActionResult> Function(int userId) action,
+    required String successMessage,
+    required String genericErrorMessage,
+  }) async {
     if (!_isAuthenticated) {
       _guardAuthenticated();
       return;
     }
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FriendRequestsScreen()));
+    if (_busyRequestIds.contains(request.id)) return;
+
+    final sender = _senderOf(request);
+    if (sender == null) {
+      _showSnack('Aquesta sol·licitud ja no és vàlida.');
+      _removeRequest(request.id);
+      return;
+    }
+
+    setState(() => _busyRequestIds.add(request.id));
+    final result = await action(sender.id);
+
     if (!mounted) return;
-    // Refresquem el comptador en tornar perquè l'usuari pot haver acceptat o
-    // rebutjat sol·licituds des de la pantalla.
-    _loadPendingRequestsCount(forceRefresh: true);
+
+    switch (result) {
+      case FriendActionSuccess():
+        setState(() {
+          _busyRequestIds.remove(request.id);
+          _pendingRequests = _pendingRequests
+              .where((r) => r.id != request.id)
+              .toList();
+        });
+        _invalidateCaches(targetUserId: sender.id);
+        _showSnack(successMessage);
+      case FriendActionUnauthorized():
+        setState(() => _busyRequestIds.remove(request.id));
+        _guardAuthenticated();
+      case FriendActionUserNotFound():
+        _removeRequest(request.id);
+        _showSnack('Perfil no vàlid.');
+        _invalidateCaches(targetUserId: sender.id);
+      case FriendActionConflict(:final message):
+        _removeRequest(request.id);
+        _showSnack(message ?? 'Aquesta sol·licitud ja no és vàlida.');
+        _invalidateCaches(targetUserId: sender.id);
+      case FriendActionFailure(:final statusCode, :final error):
+        setState(() => _busyRequestIds.remove(request.id));
+        if (_isInvalidRequestStatus(statusCode)) {
+          _removeRequest(request.id);
+          _showSnack('Aquesta sol·licitud ja no és vàlida.');
+          _invalidateCaches(targetUserId: sender.id);
+          return;
+        }
+        final text = error != null && statusCode == -1
+            ? 'Error de connexió. Comprova la teva connexió a internet.'
+            : '$genericErrorMessage (codi $statusCode)';
+        _showSnack(text);
+    }
+  }
+
+  bool _isInvalidRequestStatus(int statusCode) {
+    return statusCode == 400 ||
+        statusCode == 404 ||
+        statusCode == 409 ||
+        statusCode == 410;
+  }
+
+  void _removeRequest(int requestId) {
+    setState(() {
+      _pendingRequests = _pendingRequests
+          .where((r) => r.id != requestId)
+          .toList();
+      _busyRequestIds.remove(requestId);
+    });
+  }
+
+  void _invalidateCaches({required int targetUserId}) {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      ProfileQuery.instance.invalidateFriendshipLists(myId);
+    }
+    ProfileQuery.instance.invalidateUser(targetUserId);
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openFriendsList() {
@@ -325,10 +438,6 @@ class _SocialScreenState extends State<SocialScreen>
                 onPressed: _openFriendsList,
                 icon: const Icon(Icons.group_outlined, color: Colors.black87),
               ),
-              _FriendRequestsAction(
-                pendingCount: _pendingRequestsCount,
-                onPressed: _openFriendRequests,
-              ),
               const SizedBox(width: 4),
             ],
           ),
@@ -356,6 +465,47 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   Widget _buildBody() {
+    if (_query.isEmpty && _isLoadingRequests) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_query.isEmpty && _requestsErrorMessage != null) {
+      return _buildCenteredMessage(
+        icon: Icons.error_outline,
+        title: _requestsErrorMessage!,
+        actionLabel: 'Reintentar',
+        onAction: () => _loadPendingRequestsCount(forceRefresh: true),
+      );
+    }
+
+    if (_query.isEmpty && _pendingRequests.isNotEmpty) {
+      return ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.xxs,
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.bottom,
+        ),
+        itemBuilder: (context, index) {
+          final request = _pendingRequests[index];
+          return _FriendRequestTile(
+            request: request,
+            isBusy: _busyRequestIds.contains(request.id),
+            onAccept: () => _acceptRequest(request),
+            onReject: () => _rejectRequest(request),
+            onTap: () {
+              final sender = _senderOf(request);
+              if (sender != null) _openProfile(sender);
+            },
+          );
+        },
+        separatorBuilder: (_, __) =>
+            const SizedBox(height: AppScreenSpacing.xs),
+        itemCount: _pendingRequests.length,
+      );
+    }
+
     if (_query.isEmpty) {
       return _buildCenteredMessage(
         icon: Icons.inbox_outlined,
@@ -514,66 +664,174 @@ class _UserResultTile extends StatelessWidget {
   }
 }
 
-class _FriendRequestsAction extends StatelessWidget {
-  const _FriendRequestsAction({
-    required this.pendingCount,
-    required this.onPressed,
+class _FriendRequestTile extends StatelessWidget {
+  const _FriendRequestTile({
+    required this.request,
+    required this.isBusy,
+    required this.onAccept,
+    required this.onReject,
+    required this.onTap,
   });
 
-  final int pendingCount;
-  final VoidCallback onPressed;
+  static const _kPrimaryRed = Color(0xFFB71C1C);
+
+  final PendingFriendRequest request;
+  final bool isBusy;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final hasBadge = pendingCount > 0;
-    final badgeLabel = pendingCount > 99 ? '99+' : '$pendingCount';
+    final sender = request.counterpart ?? request.requestedBy;
 
-    return Tooltip(
-      message: 'Sol·licituds d\'amistat',
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          IconButton(
-            onPressed: onPressed,
-            icon: const Icon(
-              Icons.person_add_alt_1_outlined,
-              color: Colors.black87,
-            ),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: sender == null ? null : onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
-          if (hasBadge)
-            Positioned(
-              right: 6,
-              top: 6,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 2,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 18,
-                    minHeight: 18,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFB71C1C),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.white, width: 1.5),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    badgeLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _Avatar(profileImage: sender?.profileImage),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          sender?.displayName ?? 'Usuari desconegut',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (sender != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '@${sender.username}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        if (request.createdAt != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatDate(request.createdAt!),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
+                ],
               ),
-            ),
-        ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: ElevatedButton.icon(
+                        onPressed: isBusy ? null : onAccept,
+                        icon: isBusy
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.check, size: 18),
+                        label: const Text(
+                          'Acceptar',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _kPrimaryRed,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: _kPrimaryRed.withValues(
+                            alpha: 0.6,
+                          ),
+                          disabledForegroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: OutlinedButton.icon(
+                        onPressed: isBusy ? null : onReject,
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text(
+                          'Rebutjar',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _kPrimaryRed,
+                          side: const BorderSide(color: _kPrimaryRed),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    final y = local.year.toString().padLeft(4, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final d = local.day.toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final mm = local.minute.toString().padLeft(2, '0');
+    return '$d/$m/$y · $hh:$mm';
   }
 }
 

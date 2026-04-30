@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/token_storage.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/models/forgot_password_request.dart';
@@ -74,6 +75,12 @@ Future<void> setCurrentAuthToken(String? token) async {
 
 /// Tanca la sessió local: esborra l'usuari i el token d'autenticació.
 Future<void> logout() async {
+  await PushNotificationsService.instance.unregisterDevice();
+  await clearLocalSession();
+}
+
+/// Clears only local auth state without calling the backend.
+Future<void> clearLocalSession() async {
   currentLoggedInUser = null;
   currentAuthToken = null;
   ApiClient.setAuthToken(null);
@@ -84,7 +91,8 @@ Future<void> logout() async {
 /// Retorna `true` si hi havia un token desat (l'usuari pot saltar el login).
 Future<bool> restoreSession() async {
   final token = await TokenStorage.read();
-  if (token == null) {
+  if (token == null || token.trim().isEmpty) {
+    await clearLocalSession();
     return false;
   }
 
@@ -93,8 +101,8 @@ Future<bool> restoreSession() async {
     currentLoggedInUser = userJson;
   }
 
-  currentAuthToken = token;
-  ApiClient.setAuthToken(token);
+  currentAuthToken = token.trim();
+  ApiClient.setAuthToken(currentAuthToken);
 
   return true;
 }
@@ -125,6 +133,8 @@ Future<LoginUserResult> loginWithGoogle({
       await setCurrentLoggedInUser(null);
     }
     await setCurrentAuthToken(token);
+    await PushNotificationsService.instance
+        .requestPermissionAndRegisterDevice();
     return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
   } on ApiException catch (e) {
     Map<String, dynamic>? body;
@@ -158,6 +168,8 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
       await setCurrentLoggedInUser(null);
     }
     await setCurrentAuthToken(token);
+    await PushNotificationsService.instance
+        .requestPermissionAndRegisterDevice();
     return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
   } on ApiException catch (e) {
     return LoginUserFailure(statusCode: e.statusCode, error: e);
