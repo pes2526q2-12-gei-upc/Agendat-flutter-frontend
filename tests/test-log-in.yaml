@@ -11,7 +11,7 @@ appId: com.example.agendat
 - inputText: Casteller100
 - tapOn: La teva contrasenya
 - inputText: k.87_oP[
-- tapOn: Inicia sessió
+- pressKey: Enter
 - assertVisible: No s'ha pogut iniciar sessió.
 - waitForAnimationToEnd
 - tapOn: Casteller100
@@ -24,7 +24,7 @@ appId: com.example.agendat
 - inputText: Casteller98
 - tapOn: La teva contrasenya
 - inputText: k.87_oP]
-- tapOn: Inicia sessió
+- pressKey: Enter
 - assertVisible: No s'ha pogut iniciar sessió.
 - waitForAnimationToEnd
 - tapOn: Casteller98
@@ -37,5 +37,5 @@ appId: com.example.agendat
 - inputText: Casteller98
 - tapOn: La teva contrasenya
 - inputText: k.87_oP[
-- tapOn: Inicia sessió
+- pressKey: Enter
 - assertNotVisible: Inicia sessió per continuar

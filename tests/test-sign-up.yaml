@@ -1,3 +1,5 @@
+# Augmentar en un número el nom i el correu cada
+# vegada que es vulgui executar el happy path
 appId: com.example.agendat
 ---
 - launchApp:
@@ -9,18 +11,18 @@ appId: com.example.agendat
 
 # Happy path
 - tapOn: Nom d'usuari únic
-- inputText: Casteller12
+- inputText: Casteller15 # Augmentar aquí
 - tapOn: El teu nom
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
-- inputText: Casteller12@gmail.com
+- inputText: Casteller15@gmail.com # Augmentar aquí
 - tapOn: Mínim 8 caràcters
 - inputText: k.87_oP[
-- tapOn: Repeteix la contrasenya
+- pressKey: Enter
 - inputText: k.87_oP[
-- tapOn: Crear compte
+- pressKey: Enter
 - waitForAnimationToEnd
-- assertVisible: Benvingut/da! #comprovat el primer cop
+- assertVisible: Benvingut/da!
 #- tapOn: Enrere
 - waitForAnimationToEnd
 
@@ -30,9 +32,9 @@ appId: com.example.agendat
 - inputText: Casteller99@gmail.com
 - tapOn: Mínim 8 caràcters
 - inputText: k.87_oP[
-- tapOn: Repeteix la contrasenya
+- pressKey: Enter
 - inputText: k.87_oP[
-- tapOn: Crear compte
+- pressKey: Enter
 - assertVisible: Introdueix un nom d'usuari.
 - waitForAnimationToEnd
 - tapOn: Enrere
@@ -47,9 +49,9 @@ appId: com.example.agendat
 - inputText: Casteller99@gmail.com
 - tapOn: Mínim 8 caràcters
 - inputText: k.87_oP
-- tapOn: Repeteix la contrasenya
+- pressKey: Enter
 - inputText: k.87_oP
-- tapOn: Crear compte
+- pressKey: Enter
 - assertVisible: La contrasenya ha de tenir almenys 8 caràcters.
 - waitForAnimationToEnd
 - tapOn: Enrere
@@ -64,9 +66,9 @@ appId: com.example.agendat
 - inputText: CastellerNoExistent@gmail.com
 - tapOn: Mínim 8 caràcters
 - inputText: k.87_oP[
-- tapOn: Repeteix la contrasenya
+- pressKey: Enter
 - inputText: k.87_oP[
-- tapOn: Crear compte
+- pressKey: Enter
 - assertVisible: No s'ha pogut crear el compte.
 - waitForAnimationToEnd
 - tapOn: Enrere
@@ -81,7 +83,7 @@ appId: com.example.agendat
 - inputText: Casteller98@gmail.com
 - tapOn: Mínim 8 caràcters
 - inputText: k.87_oP[
-- tapOn: Repeteix la contrasenya
+- pressKey: Enter
 - inputText: k.87_oP[
-- tapOn: Crear compte
-- assertVisible: Crea el teu compte
+- pressKey: Enter
+- assertVisible: No s'ha pogut crear el compte.
