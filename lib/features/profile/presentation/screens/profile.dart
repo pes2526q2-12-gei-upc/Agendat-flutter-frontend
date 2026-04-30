@@ -11,6 +11,10 @@ import 'package:agendat/features/profile/presentation/screens/edit_profile_scree
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/models/event.dart';
+import 'package:agendat/core/models/session.dart';
+import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/foundation.dart';
 
@@ -38,6 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
+  final SessionsQuery _sessionsQuery = SessionsQuery.instance;
+  final EventsQuery _eventsQuery = EventsQuery.instance;
 
   FriendshipStatus? _friendshipStatus;
   bool _isFriendshipActionInProgress = false;
@@ -1244,7 +1250,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             labelPadding: const EdgeInsets.symmetric(horizontal: 12),
             tabs: [
-              const Tab(text: 'Assistits'),
+              Tab(child: _buildAttendedTabLabel()),
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1290,11 +1296,89 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAttendedSessionsTab() {
-    // Pendent d'implementar endpoint al backend per recuperar assistències
-    // d'un usuari i mostrar-les al perfil.
-    return _buildEmptyTabContent(
-      'Assistències pendents de backend',
-      Icons.event_outlined,
+    // Les assistències només les mostrem al perfil propi.
+    if (!_isOwnProfile) {
+      return _buildEmptyTabContent(
+        'Assistències només disponibles al teu perfil',
+        Icons.event_outlined,
+      );
+    }
+
+    return FutureBuilder<List<Session>>(
+      future: _sessionsQuery.getSessions(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return _buildEmptyTabContent(
+            'No s\'han pogut carregar les assistències',
+            Icons.error_outline,
+          );
+        }
+
+        final sessions = _sortedAttendedSessions(snapshot.data ?? const []);
+        if (sessions.isEmpty) {
+          return _buildEmptyTabContent(
+            'Encara no tens assistències registrades',
+            Icons.event_outlined,
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(12),
+          itemCount: sessions.length,
+          separatorBuilder: (_, __) => const Divider(height: 16),
+          itemBuilder: (context, index) {
+            final session = sessions[index];
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.event_available, color: Colors.grey.shade600),
+              title: _buildSessionEventTitle(session.event),
+              // Mostrem data/hora
+              subtitle: Text(_formatSessionDateTime(session.startTime)),
+              onTap: () => _openSessionEvent(session),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAttendedTabLabel() {
+    if (!_isOwnProfile) {
+      return const Text('Assistits');
+    }
+
+    return FutureBuilder<List<Session>>(
+      // Mateixa font de dades que la pestanya de contingut.
+      future: _sessionsQuery.getSessions(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.length ?? 0;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Assistits'),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1351,6 +1435,57 @@ class _ProfileScreenState extends State<ProfileScreen>
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EventScreen(eventCode: eventCode)),
     );
+  }
+
+  void _openSessionEvent(Session session) {
+    if (session.event.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aquesta sessió no té esdeveniment.')),
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => EventScreen(eventCode: session.event)),
+    );
+  }
+
+  List<Session> _sortedAttendedSessions(List<Session> sessions) {
+    final sorted = [...sessions];
+    sorted.sort((left, right) {
+      // Primer les sessions més recents; empat resolt per codi d'event.
+      final byDate = right.startTime.compareTo(left.startTime);
+      if (byDate != 0) return byDate;
+      return left.event.toLowerCase().compareTo(right.event.toLowerCase());
+    });
+    return sorted;
+  }
+
+  Widget _buildSessionEventTitle(String eventCode) {
+    return FutureBuilder<EventExtended>(
+      // Carrega el detall per mostrar títol humà en lloc del codi.
+      future: _eventsQuery.getEventByCode(eventCode),
+      builder: (context, snapshot) {
+        final title = snapshot.data?.title.trim();
+        final display = (title == null || title.isEmpty) ? eventCode : title;
+        return Text(
+          display,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        );
+      },
+    );
+  }
+
+  String _formatSessionDateTime(DateTime dateTime) {
+    final localDateTime = dateTime.toLocal();
+    final day = localDateTime.day.toString().padLeft(2, '0');
+    final month = localDateTime.month.toString().padLeft(2, '0');
+    final year = localDateTime.year.toString();
+    final hour = localDateTime.hour.toString().padLeft(2, '0');
+    final minute = localDateTime.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year · $hour:$minute';
   }
 
   Widget _buildEmptyTabContent(String message, IconData icon) {
