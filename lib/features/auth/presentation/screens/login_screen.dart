@@ -7,6 +7,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/forgot_password_screen.dart';
+import 'package:agendat/features/auth/presentation/screens/register_interests_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -70,14 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // loginUser() ja ha guardat l'usuari + token. Inicialitzem les
         // caches de sessió (usuaris bloquejats, etc.) abans de navegar
         // perquè la primera pantalla autenticada ja vegi l'estat correcte.
-        await _bootstrapSessionCaches();
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const RootNavigationScreen(initialIndex: 0),
-          ),
-        );
+        await _enterHome();
       case LoginUserFailure(:final statusCode, :final body):
         String message = 'No s\'ha pogut iniciar sessió.';
         if (statusCode == 404) {
@@ -114,6 +108,44 @@ class _LoginScreenState extends State<LoginScreen> {
     if (myId is int) {
       await ProfileQuery.instance.bootstrapForAuthenticatedUser(myId);
     }
+  }
+
+  // funcio default
+  Future<void> _enterHome() async {
+    await _bootstrapSessionCaches();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RootNavigationScreen(initialIndex: 0),
+      ),
+    );
+  }
+
+  // interessos setup (desde login google) -> Home screen
+  Future<void> _enterHomeAfterGoogleOnboarding(NavigatorState navigator) async {
+    await _bootstrapSessionCaches();
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => const RootNavigationScreen(initialIndex: 0),
+      ),
+      (route) => false,
+    );
+  }
+
+  // Login amb google -> interessos setup
+  void _openGoogleInterestOnboarding(int userId) {
+    final navigator = Navigator.of(context);
+    navigator.pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => RegisterInterestsScreen(
+          userId: userId,
+          onFinished: () {
+            _enterHomeAfterGoogleOnboarding(navigator);
+          },
+        ),
+      ),
+    );
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
@@ -161,17 +193,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       switch (result) {
-        case LoginUserSuccess():
+        case LoginUserSuccess(:final body):
           // Mateix tractament que el login per credencials: prepara les
           // caches dependents de la sessió abans d'entrar a la home.
-          await _bootstrapSessionCaches();
-          if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const RootNavigationScreen(initialIndex: 0),
-            ),
-          );
+          final userId = _userIdFromLoginBody(body);
+          if (_isNewUserFromLoginBody(body) && userId != null) {
+            _openGoogleInterestOnboarding(userId);
+            return;
+          }
+
+          await _enterHome();
         case LoginUserFailure(:final statusCode, :final body):
           String message = 'No s\'ha pogut iniciar sessió amb Google.';
           if (body != null && body['detail'] != null) {
@@ -185,6 +216,25 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       _showSnackBar('Error durant el login amb Google: $e');
     }
+  }
+
+  bool _isNewUserFromLoginBody(Map<String, dynamic>? body) {
+    return body?['is_new_user'] == true;
+  }
+
+  int? _userIdFromLoginBody(Map<String, dynamic>? body) {
+    final user = body?['user'];
+    if (user is Map<String, dynamic>) {
+      final id = user['id'];
+      if (id is int) return id;
+      if (id is num) return id.toInt();
+    }
+
+    final currentId = currentLoggedInUser?['id'];
+    if (currentId is int) return currentId;
+    if (currentId is num) return currentId.toInt();
+
+    return null;
   }
 
   @override
