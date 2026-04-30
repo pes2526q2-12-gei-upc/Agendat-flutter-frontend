@@ -25,8 +25,8 @@ class InfoRow extends StatelessWidget {
           Icon(icon, size: 20, color: const Color.fromARGB(255, 202, 3, 3)),
           const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: TextSpan(
+            child: Text.rich(
+              TextSpan(
                 style: const TextStyle(fontSize: 14, color: Colors.black87),
                 children: [
                   TextSpan(
@@ -36,6 +36,9 @@ class InfoRow extends StatelessWidget {
                   TextSpan(text: value),
                 ],
               ),
+              softWrap: true,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

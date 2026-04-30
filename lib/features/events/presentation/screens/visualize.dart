@@ -193,7 +193,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                   Expanded(child: eventTitle(event)),
                   const SizedBox(width: 10),
                   // Category badge stays readable and anchored to the right.
-                  eventCategory(event),
+                  Flexible(child: eventCategory(event)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -201,9 +201,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  eventDate(event),
+                  Expanded(child: eventDate(event)),
                   const Spacer(),
-                  eventPayment(event),
+                  Flexible(child: eventPayment(event)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -219,17 +219,22 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return Text(
       event.location,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
   Text eventPayment(Event event) {
     return Text(
       event.free ? 'Gratuït' : 'De pagament',
+      textAlign: TextAlign.end,
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: Colors.black,
       ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -237,6 +242,8 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return Text(
       event.displayDateRange,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -251,27 +258,25 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Widget eventCategory(Event event) {
-    return SizedBox(
-      width: 150,
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 190, 0, 47),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            event.displayCategory,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color.fromARGB(255, 190, 0, 47),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          event.displayCategory,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
       ),

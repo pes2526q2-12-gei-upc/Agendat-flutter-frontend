@@ -133,7 +133,8 @@ Future<LoginUserResult> loginWithGoogle({
       await setCurrentLoggedInUser(null);
     }
     await setCurrentAuthToken(token);
-    await PushNotificationsService.instance.requestPermissionAndRegisterDevice();
+    await PushNotificationsService.instance
+        .requestPermissionAndRegisterDevice();
     return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
   } on ApiException catch (e) {
     Map<String, dynamic>? body;
@@ -167,7 +168,8 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
       await setCurrentLoggedInUser(null);
     }
     await setCurrentAuthToken(token);
-    await PushNotificationsService.instance.requestPermissionAndRegisterDevice();
+    await PushNotificationsService.instance
+        .requestPermissionAndRegisterDevice();
     return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
   } on ApiException catch (e) {
     return LoginUserFailure(statusCode: e.statusCode, error: e);
