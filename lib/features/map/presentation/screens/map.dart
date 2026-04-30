@@ -159,12 +159,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
-    final screenHeight = mediaQuery.size.height;
     final mapContentWidth = math.min(screenWidth, 900.0);
-    // L'alçada de la card ha de ser suficient per encabir títols llargs
-    // (amb ellipsis) i els dos botons.
-    final selectedCardHeight = (screenHeight * 0.22).clamp(220.0, 320.0);
-
     final filteredEvents = _events
         .where((event) => _eventMatchesSearch(event, _searchQuery))
         .toList();
@@ -355,7 +350,6 @@ class _MapScreenState extends State<MapScreen> {
                                     event: selectedEvent,
                                     hasCurrentLocation: hasCurrentLocation,
                                     distanceKm: distanceKm,
-                                    cardHeight: selectedCardHeight,
                                     onRoutePressed: () =>
                                         _openNavigationToEvent(selectedEvent),
                                     onMoreDetailsPressed: () =>
