@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -48,8 +49,42 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    // Entrem amb el filtre compartit actual (si n'hi ha).
+    _activeFilters = _eventsQuery.persistedFilters ?? const EventFilters();
     _loadEvents();
     _loadCurrentLocation();
+    // Si canvia el filtre a una altra vista, ens posem al dia aquí.
+    _eventsQuery.persistedFiltersListenable.addListener(
+      _onSharedFiltersChanged,
+    );
+  }
+
+  @override
+  void dispose() {
+    // Traiem listener
+    _eventsQuery.persistedFiltersListenable.removeListener(
+      _onSharedFiltersChanged,
+    );
+    super.dispose();
+  }
+
+  void _onSharedFiltersChanged() {
+    if (!mounted) return;
+    final sharedFilters = _eventsQuery.persistedFilters ?? const EventFilters();
+    final hasChanged = !mapEquals(
+      _activeFilters.toQueryParams(),
+      sharedFilters.toQueryParams(),
+    );
+    // Si no hi ha canvi real, no recarreguem.
+    if (!hasChanged) return;
+
+    setState(() {
+      // Apliquem el filtre compartit i netegem selecció de targeta del mapa.
+      _activeFilters = sharedFilters;
+      _selectedEvent = null;
+    });
+    // Recarreguem marcadors amb el filtre nou.
+    _loadEvents();
   }
 
   Future<void> _loadEvents({bool forceRefresh = false}) async {
@@ -146,13 +181,9 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  Future<void> _onApplyFilters(EventFilters filters) async {
-    if (!mounted) return;
-    setState(() {
-      _activeFilters = filters;
-      _selectedEvent = null;
-    });
-    await _loadEvents();
+  void _onApplyFilters(EventFilters filters) {
+    // Publica el filtre compartit; la recàrrega la gestiona el listener.
+    _eventsQuery.setPersistedFilters(filters);
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
@@ -19,13 +20,60 @@ class VisualizeScreen extends StatefulWidget {
 class _VisualizeScreenState extends State<VisualizeScreen> {
   final EventsQuery _eventsQuery = EventsQuery.instance;
   late Future<List<Event>> _eventsFuture;
+  late final EventFilters _defaultFilters;
   String _query = '';
   EventFilters _activeFilters = const EventFilters();
+
+  DateTime get _todayAtMidnight {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
 
   @override
   void initState() {
     super.initState();
-    _eventsFuture = _eventsQuery.getEvents(forceRefresh: true);
+    // Filtre base de la pantalla: a partir d'avui.
+    _defaultFilters = EventFilters(dateFrom: _todayAtMidnight);
+    _activeFilters = _eventsQuery.persistedFilters ?? _defaultFilters;
+    if (_eventsQuery.persistedFilters == null) {
+      _eventsQuery.setPersistedFilters(_activeFilters);
+    }
+    _eventsFuture = _eventsQuery.getEvents(
+      filters: _activeFilters.isEmpty ? null : _activeFilters,
+      forceRefresh: true,
+    );
+    // Escoltem: si canvia al mapa, aquí també s'actualitza.
+    _eventsQuery.persistedFiltersListenable.addListener(
+      _onSharedFiltersChanged,
+    );
+  }
+
+  @override
+  void dispose() {
+    // Traiem el listener en sortir
+    _eventsQuery.persistedFiltersListenable.removeListener(
+      _onSharedFiltersChanged,
+    );
+    super.dispose();
+  }
+
+  void _onSharedFiltersChanged() {
+    if (!mounted) return;
+    final sharedFilters = _eventsQuery.persistedFilters ?? _defaultFilters;
+    final hasChanged = !mapEquals(
+      _activeFilters.toQueryParams(),
+      sharedFilters.toQueryParams(),
+    );
+    // Si és igual, no toquem res.
+    if (!hasChanged) return;
+
+    setState(() {
+      // Ens quedem amb el filtre nou i recarreguem la llista.
+      _activeFilters = sharedFilters;
+      _eventsFuture = _eventsQuery.getEvents(
+        filters: _activeFilters.isEmpty ? null : _activeFilters,
+      );
+    });
   }
 
   void _refresh() {
@@ -38,12 +86,8 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   void _onApplyFilters(EventFilters filters) {
-    setState(() {
-      _activeFilters = filters;
-      _eventsFuture = _eventsQuery.getEvents(
-        filters: filters.isEmpty ? null : filters,
-      );
-    });
+    // Aquí no recarreguem manualment: ho farà el listener compartit.
+    _eventsQuery.setPersistedFilters(filters);
   }
 
   List<Event> _applySearch(List<Event> events) {

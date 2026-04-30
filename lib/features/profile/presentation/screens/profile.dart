@@ -240,11 +240,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           }
           _isFriendshipActionInProgress = false;
         });
-        // Sincronitza la caché del client (perfil cachejat, conjunts locals
-        // i llista d'amics) amb el nou estat. La llista d'amics s'actualitza
-        // optimísticament — si acceptem una sol·licitud o eliminem amistat,
-        // veurem el canvi a l'instant la pròxima vegada que obrim el llistat
-        // sense haver d'esperar un refetch ni el `staleTime`.
+        // Actualitzem la caché del QueryClient per mantenir l'estat entre
+        // navegacions, fins que expiri el staleTime o el backend el refresqui.
         final otherId = widget.userId;
         if (otherId != null) {
           _profileQuery.recordFriendshipStatusChange(
@@ -771,11 +768,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
     }
 
-    // Sol·licituds i bloquejats poden haver canviat al backend; els
-    // invalidem perquè les properes consultes recuperin valors frescos.
+    // Bloquejar trenca l'amistat al backend i amaga l'usuari de les llistes
+    // d'amics i sol·licituds. Desbloquejar deixa l'usuari fora de la llista
+    // de bloquejats. En els dos casos cal invalidar les caches per evitar
+    // mostrar dades obsoletes.
     final myId = _currentUserId;
     if (myId != null) {
-      _profileQuery.invalidateFriendRequestsList(myId);
+      _profileQuery.invalidateFriendshipLists(myId);
       _profileQuery.invalidateBlockedUsers(myId);
     }
 
@@ -1323,6 +1322,18 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text(r.comment.isEmpty ? '—' : r.comment),
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Text(
+              '${r.rating}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
         );
       },
     );
