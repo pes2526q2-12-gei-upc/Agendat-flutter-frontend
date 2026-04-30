@@ -22,6 +22,9 @@ final ValueNotifier<int> rootTabIndexNotifier = ValueNotifier<int>(0);
 /// Index of the `Social` tab inside [RootNavigationScreen].
 const int kSocialTabIndex = 3;
 
+/// Índex que ocupa la pestanya `Agenda` dins de [RootNavigationScreen].
+const int kAgendaTabIndex = 2;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
