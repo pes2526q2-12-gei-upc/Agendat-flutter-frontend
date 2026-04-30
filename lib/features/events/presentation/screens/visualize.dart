@@ -19,13 +19,24 @@ class VisualizeScreen extends StatefulWidget {
 class _VisualizeScreenState extends State<VisualizeScreen> {
   final EventsQuery _eventsQuery = EventsQuery.instance;
   late Future<List<Event>> _eventsFuture;
+  late final EventFilters _defaultFilters;
   String _query = '';
   EventFilters _activeFilters = const EventFilters();
+
+  DateTime get _todayAtMidnight {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
 
   @override
   void initState() {
     super.initState();
-    _eventsFuture = _eventsQuery.getEvents(forceRefresh: true);
+    _defaultFilters = EventFilters(dateFrom: _todayAtMidnight);
+    _activeFilters = _defaultFilters;
+    _eventsFuture = _eventsQuery.getEvents(
+      filters: _activeFilters,
+      forceRefresh: true,
+    );
   }
 
   void _refresh() {
