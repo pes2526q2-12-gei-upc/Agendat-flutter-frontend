@@ -54,16 +54,64 @@ class ProfileQuery {
       queryFn: () async {
         final result = await fetchUserProfile(userId);
         if (result is ProfileSuccess) {
-          // Amb `friendship_status` al perfil, podem mantenir la caché local
-          // de bloquejats sincronitzada amb la resposta autoritativa.
-          if (result.profile.friendshipStatus == FriendshipStatus.blocked) {
-            _localBlockedIds.add(userId);
-          } else {
-            _localBlockedIds.remove(userId);
-          }
+          // El perfil retorna `friendship_status` autoritativament: el fem
+          // servir com a font de veritat per sincronitzar caches locals (set
+          // de bloquejats, set d'amistats eliminades i llista d'amics
+          // cachejada). Així ens recuperem si l'altre usuari ha fet canvis
+          // que el nostre client encara no havia pogut percebre (p. ex. ens
+          // ha eliminat de la seva xarxa o ha acceptat la nostra sol·licitud
+          // sense que sapiguéssim res).
+          _applyBackendFriendshipState(result.profile);
         }
         return result;
       },
+    );
+  }
+
+  /// Aplica l'estat d'amistat retornat pel backend (`friendship_status`) a
+  /// les caches locals: conjunts d'ids (bloquejats, eliminats com a amic) i
+  /// llista d'amics cachejada. No fa cap mutació si el perfil correspon a
+  /// l'usuari autenticat (no té sentit comparar-se amb un mateix).
+  void _applyBackendFriendshipState(UserProfile profile) {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is! int || myId == profile.id) return;
+
+    final status = profile.friendshipStatus;
+
+    // [_localBlockedIds] només s'omple aquí (mai s'esborra). El backend pot
+    // retornar `friendship_status: none` o ometre el camp per a usuaris que
+    // jo he bloquejat (depèn de la implementació de `GET /api/users/{id}/`),
+    // i si confiéssim en aquesta resposta per esborrar de la caché local
+    // perdríem la informació recuperada via `bootstrapForAuthenticatedUser`
+    // i la UI tornaria a mostrar "Enviar sol·licitud" a un usuari que tinc
+    // bloquejat. La supressió només passa explícitament a través de
+    // [markUserUnblocked] (i de [recordFriendshipStatusChange] quan
+    // confirmem un desbloqueig al backend).
+    if (status == FriendshipStatus.blocked) {
+      _localBlockedIds.add(profile.id);
+    }
+
+    // Si el backend confirma que som amics, descartem qualsevol marca local
+    // que els amagués del llistat. Si confirma que NO som amics, no toquem
+    // [_localUnfriendedIds] perquè la llista d'amics ja se sincronitza per
+    // sota i el set és només una xarxa de seguretat per popups oberts amb
+    // estat antic.
+    if (status == FriendshipStatus.friends) {
+      _localUnfriendedIds.remove(profile.id);
+    }
+
+    // Per al sync de la llista d'amics fem servir l'estat efectiu (incloent
+    // el bloqueig local que el backend pot no estar reportant): així ens
+    // assegurem que un usuari bloquejat que casualment encara consti com a
+    // amic en una caché vella es retiri.
+    final effectiveStatus = _localBlockedIds.contains(profile.id)
+        ? FriendshipStatus.blocked
+        : status;
+    _syncFriendsCacheForUser(
+      myId,
+      profile.id,
+      effectiveStatus,
+      profile.toSummary(),
     );
   }
 
@@ -243,6 +291,105 @@ class ProfileQuery {
     _client.invalidate('$_prefix:friends:$userId');
   }
 
+  /// Invalida només la llista de sol·licituds d'amistat de l'usuari [userId].
+  /// Útil després d'una mutació que afecta una sol·licitud (acceptar,
+  /// rebutjar, enviar, cancel·lar) i en què la llista d'amics ja s'ha
+  /// sincronitzat optimísticament per altres camins.
+  void invalidateFriendRequestsList(int userId) {
+    _client.invalidate('$_prefix:friend-requests:$userId');
+  }
+
+  /// Sincronitza la caché del client després d'un canvi confirmat (per crida
+  /// pròpia, no per refetch de backend) en l'estat d'amistat amb [userId]:
+  ///
+  /// - Actualitza el camp `friendshipStatus` del perfil cachejat.
+  /// - Afegeix o esborra l'usuari de [_localBlockedIds] segons si està
+  ///   bloquejat.
+  /// - Afegeix o esborra l'usuari de [_localUnfriendedIds] segons si la nova
+  ///   relació és d'amistat o no (la xarxa de seguretat per a popups amb
+  ///   estat antic).
+  /// - Manté la llista d'amics cachejada coherent amb el nou estat: hi afegeix
+  ///   [otherSummary] si ara som amics i encara no hi era, o l'esborra si
+  ///   deixem de ser-ho.
+  ///
+  /// Aquesta crida NO toca la caché de sol·licituds d'amistat: si la mutació
+  /// modifica les llistes `sent`/`received`, cal invocar separadament
+  /// [invalidateFriendRequestsList].
+  void recordFriendshipStatusChange(
+    int userId,
+    FriendshipStatus? status, {
+    UserSummary? otherSummary,
+  }) {
+    setCachedFriendshipStatus(userId, status);
+
+    if (status == FriendshipStatus.blocked) {
+      _localBlockedIds.add(userId);
+      // Bloquejar trenca l'amistat, però el bloqueig ja és el filtre fort:
+      // no cal mantenir l'usuari a [_localUnfriendedIds] en paral·lel.
+      _localUnfriendedIds.remove(userId);
+    } else if (status == FriendshipStatus.friends) {
+      _localBlockedIds.remove(userId);
+      _localUnfriendedIds.remove(userId);
+    } else if (status == FriendshipStatus.none) {
+      _localBlockedIds.remove(userId);
+      // Marquem l'usuari com a "no amic" per garantir que un popup amb estat
+      // antic no el continuï mostrant a la llista d'amics fins al següent
+      // refetch. És inofensiu si l'usuari mai havia estat amic.
+      _localUnfriendedIds.add(userId);
+    } else {
+      // requestSent / requestReceived: no eren amics i tampoc no ho són,
+      // així que no toquem el set d'eliminats per no introduir falsos
+      // positius en la llista d'amics.
+      _localBlockedIds.remove(userId);
+    }
+
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int && myId != userId) {
+      _syncFriendsCacheForUser(myId, userId, status, otherSummary);
+    }
+  }
+
+  /// Aplica el nou [status] d'amistat amb [otherId] a la llista d'amics
+  /// cachejada de [myId]. Si la caché no existeix, no fa res: la pròxima
+  /// lectura ja farà un refetch fresc del backend.
+  ///
+  /// - Si ara som amics i l'usuari no hi és, l'afegeix (cal [otherSummary]).
+  ///   Si no se'n proporciona cap, invalida la caché perquè el següent
+  ///   `getFriends` el recuperi del backend.
+  /// - Si ara NO som amics i l'usuari hi és, el filtra de la caché.
+  void _syncFriendsCacheForUser(
+    int myId,
+    int otherId,
+    FriendshipStatus? status,
+    UserSummary? otherSummary,
+  ) {
+    final friendsKey = '$_prefix:friends:$myId';
+    final cached = _client.getQueryData<List<UserSummary>>(friendsKey);
+    if (cached == null) return;
+
+    final hasUser = cached.any((u) => u.id == otherId);
+    final shouldBeFriend = status == FriendshipStatus.friends;
+
+    if (shouldBeFriend && !hasUser) {
+      if (otherSummary != null) {
+        _client.setQueryData<List<UserSummary>>(friendsKey, [
+          ...cached,
+          otherSummary,
+        ]);
+      } else {
+        // No tenim representació prou rica de l'usuari per inserir-lo a la
+        // llista. Invalidem la caché per forçar un refetch el següent cop
+        // que es consulti.
+        _client.invalidate(friendsKey);
+      }
+    } else if (!shouldBeFriend && hasUser) {
+      _client.setQueryData<List<UserSummary>>(
+        friendsKey,
+        cached.where((u) => u.id != otherId).toList(),
+      );
+    }
+  }
+
   /// GET /api/users/{userId}/blocked/ — llistat d'usuaris que jo he bloquejat.
   /// Es fa servir per derivar l'estat de bloqueig amb un perfil concret.
   ///
@@ -317,4 +464,41 @@ class ProfileQuery {
       Set.unmodifiable(_localUnfriendedIds);
 
   void invalidateAll() => _client.invalidatePrefix(_prefix);
+
+  /// Inicialitza les caches que han de ser coherents amb la sessió
+  /// autenticada actual. Cal cridar-lo en dos casos:
+  ///
+  /// - Després d'iniciar sessió (ja sigui per credencials o per Google),
+  ///   abans de mostrar la primera pantalla autenticada.
+  /// - Després de restaurar una sessió persistida en arrencar l'app.
+  ///
+  /// El mètode buida l'estat residual (els conjunts locals i la caché del
+  /// `QueryClient` viuen com a singletons en memòria i sobreviuen a
+  /// `logout`), i tot seguit força el fetch del llistat d'usuaris bloquejats
+  /// per repoblar `_localBlockedIds`. Sense això, després d'un reinici de
+  /// l'app o d'un canvi d'usuari, els perfils dels usuaris que havíem
+  /// bloquejat no es marquen correctament com a `blocked` (el backend pot
+  /// retornar `friendship_status: none` o ometre el camp), i la UI ofereix
+  /// "Enviar sol·licitud" en comptes de "Desbloquejar".
+  Future<void> bootstrapForAuthenticatedUser(int userId) async {
+    // Comencem amb caches netes: si un altre usuari havia iniciat sessió en
+    // aquesta mateixa instància de l'app, els seus ids bloquejats no han de
+    // contaminar la sessió nova.
+    _localBlockedIds.clear();
+    _localUnfriendedIds.clear();
+    _client.invalidatePrefix(_prefix);
+
+    // Repoblar la caché local d'usuaris bloquejats és la font de veritat per
+    // a la decisió "puc enviar sol·licitud" vs "he de desbloquejar". Si el
+    // fetch falla (xarxa, 5xx) ho deixem en silenci: la propera vegada que
+    // l'usuari obri el llistat de bloquejats o intenti una acció amb un
+    // usuari concret (rebrà una resposta del backend i la caché es
+    // corregirà sola).
+    try {
+      await getBlockedUsers(userId, forceRefresh: true);
+    } catch (_) {
+      // Best-effort: no volem trencar el flux d'inici de sessió per culpa
+      // d'una crida derivada que pot reintentar-se més tard.
+    }
+  }
 }

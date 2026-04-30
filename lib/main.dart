@@ -3,6 +3,7 @@ import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
@@ -24,6 +25,16 @@ const int kSocialTabIndex = 3;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final hasSession = await restoreSession();
+  if (hasSession) {
+    // Repoblem les caches dependents de la sessió (per exemple el conjunt
+    // local d'usuaris bloquejats) abans de mostrar la primera pantalla. La
+    // crida és "best effort" i ja gestiona els errors internament: si falla,
+    // l'app es continua obrint amb normalitat.
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      await ProfileQuery.instance.bootstrapForAuthenticatedUser(myId);
+    }
+  }
   runApp(
     MyApp(
       initialHome: hasSession

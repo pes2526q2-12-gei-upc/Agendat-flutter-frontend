@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
@@ -66,7 +67,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     switch (result) {
       case LoginUserSuccess():
-        // loginUser() ja ha guardat l'usuari + token
+        // loginUser() ja ha guardat l'usuari + token. Inicialitzem les
+        // caches de sessió (usuaris bloquejats, etc.) abans de navegar
+        // perquè la primera pantalla autenticada ja vegi l'estat correcte.
+        await _bootstrapSessionCaches();
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -94,6 +99,20 @@ class _LoginScreenState extends State<LoginScreen> {
           message = 'Error de connexió. Comprova la xarxa.';
         }
         _showSnackBar(message);
+    }
+  }
+
+  /// Repobla les caches que depenen de l'usuari autenticat (usuaris
+  /// bloquejats, set local d'amistats eliminades, etc.) abans d'entrar a la
+  /// pantalla principal. Així evitem que un usuari que abans havia bloquejat
+  /// algú no l'identifiqui com a bloquejat just després d'iniciar sessió,
+  /// i veiem el botó correcte de "Desbloquejar" en comptes d'oferir-li
+  /// enviar una sol·licitud d'amistat. La crida ja gestiona internament
+  /// els errors de xarxa, així que mai bloqueja el flux d'inici de sessió.
+  Future<void> _bootstrapSessionCaches() async {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      await ProfileQuery.instance.bootstrapForAuthenticatedUser(myId);
     }
   }
 
@@ -143,6 +162,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       switch (result) {
         case LoginUserSuccess():
+          // Mateix tractament que el login per credencials: prepara les
+          // caches dependents de la sessió abans d'entrar a la home.
+          await _bootstrapSessionCaches();
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
