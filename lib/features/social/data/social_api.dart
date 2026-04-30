@@ -248,9 +248,6 @@ class FriendRequestsData {
 /// GET /api/users/{userId}/friend-requests/
 Future<FriendRequestsData> fetchFriendRequests(int userId) async {
   final response = await ApiClient.get('/api/users/$userId/friend-requests/');
-  if (kDebugMode) {
-    debugPrint('[social] GET /friend-requests/ for $userId → ${response.body}');
-  }
   final decoded = jsonDecode(response.body);
   if (decoded is Map<String, dynamic>) {
     return FriendRequestsData.fromJson(decoded);
