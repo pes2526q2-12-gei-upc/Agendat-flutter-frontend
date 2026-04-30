@@ -327,6 +327,7 @@ class DateRangeFilterSection extends StatelessWidget {
       initialDate: _clamp(dateFrom ?? DateTime.now(), first, last),
       firstDate: first,
       lastDate: last,
+      confirmText: "D'acord",
       locale: const Locale('ca'),
     );
     if (picked != null) onDateFromChanged(picked);
@@ -340,6 +341,7 @@ class DateRangeFilterSection extends StatelessWidget {
       initialDate: _clamp(dateTo ?? DateTime.now(), first, last),
       firstDate: first,
       lastDate: last,
+      confirmText: "D'acord",
       locale: const Locale('ca'),
     );
     if (picked != null) onDateToChanged(picked);
