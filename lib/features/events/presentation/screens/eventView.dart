@@ -11,6 +11,8 @@ import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/events/presentation/widgets/info_row.dart';
 import 'package:agendat/features/events/presentation/widgets/link_tile.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_section.dart';
+import 'package:agendat/core/services/google_calendar_service.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key, required this.eventCode});
@@ -25,9 +27,13 @@ class _EventScreenState extends State<EventScreen> {
   final EventsQuery _eventsQuery = EventsQuery.instance;
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
   final SessionsApi _sessionsApi = SessionsApi();
+  final GoogleCalendarService _googleCalendarService = GoogleCalendarService();
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
   bool _isCreatingSession = false;
+
+  bool get _addToGoogleCalendar =>
+      (currentLoggedInUser?['calendar_sync_allowed'] as bool?) ?? true;
 
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
@@ -121,6 +127,32 @@ class _EventScreenState extends State<EventScreen> {
         ),
       );
       _sessionsQuery.invalidateAll();
+
+      // Add event to Google Calendar if user has given permission
+      if (_addToGoogleCalendar) {
+        final accessToken = await _googleCalendarService.getAccessToken();
+        if (accessToken != null && mounted) {
+          final calendarSuccess = await _googleCalendarService.createCalendarEvent(
+            accessToken: accessToken,
+            eventTitle: '${event.title}',
+            startDateTime: selectedDateTime,
+            endDateTime: endDateTime,
+            description:
+                'Sessió sincronitzada automàticament des de l\'aplicació Agenda\'t',
+          );
+
+          if (!calendarSuccess && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Assistència registrada, però no s\'ha pogut afegir a Google Calendar.',
+                ),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

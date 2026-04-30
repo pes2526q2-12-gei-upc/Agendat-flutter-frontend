@@ -63,8 +63,20 @@ Map<String, dynamic>? currentLoggedInUser;
 String? currentAuthToken;
 
 Future<void> setCurrentLoggedInUser(Map<String, dynamic>? userJson) async {
-  currentLoggedInUser = userJson;
-  await TokenStorage.writeUser(userJson);
+  final normalizedUser = _normalizeLoggedInUser(userJson);
+  currentLoggedInUser = normalizedUser;
+  await TokenStorage.writeUser(normalizedUser);
+}
+
+Map<String, dynamic>? _normalizeLoggedInUser(Map<String, dynamic>? userJson) {
+  if (userJson == null) return null;
+
+  final normalizedUser = Map<String, dynamic>.from(userJson);
+  normalizedUser['calendar_sync_allowed'] =
+      normalizedUser['calendar_sync_allowed'] ??
+      currentLoggedInUser?['calendar_sync_allowed'] ??
+      true;
+  return normalizedUser;
 }
 
 Future<void> setCurrentAuthToken(String? token) async {
