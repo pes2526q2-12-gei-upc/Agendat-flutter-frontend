@@ -63,7 +63,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() {
       _sessionsFuture = _sessionsQuery.getSessions(forceRefresh: true);
     });
-    await _sessionsFuture;
+    try {
+      await _sessionsFuture;
+    } catch (_) {
+      // The FutureBuilder displays the error state for `_sessionsFuture`.
+      // Swallow refresh errors here to avoid uncaught async exceptions when
+      // pull-to-refresh or tab changes trigger a reload.
+    }
   }
 
   void _changeMonth(int delta) {
