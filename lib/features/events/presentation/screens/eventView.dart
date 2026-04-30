@@ -31,7 +31,7 @@ class _EventScreenState extends State<EventScreen> {
   bool _isDescriptionExpanded = false;
   bool _isCreatingSession = false;
   bool _addToGoogleCalendar =
-      false; // User preference to add event to Google Calendar
+      true; // User preference to add event to Google Calendar
 
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
