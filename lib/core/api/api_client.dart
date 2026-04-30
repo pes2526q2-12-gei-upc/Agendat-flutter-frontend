@@ -8,6 +8,7 @@ class ApiClient {
 
   static const Map<String, String> _baseHeaders = {
     'Accept': 'application/json',
+    'Accept-Charset': 'utf-8',
   };
 
   static String? _authToken;
@@ -19,7 +20,7 @@ class ApiClient {
   static Map<String, String> _headers({bool jsonContentType = false}) {
     final headers = <String, String>{..._baseHeaders};
     if (jsonContentType) {
-      headers['Content-Type'] = 'application/json';
+      headers['Content-Type'] = 'application/json; charset=utf-8';
     }
     final token = _authToken;
     if (token != null) {
@@ -104,6 +105,31 @@ class ApiClient {
 
     final response = await http
         .patch(
+          uri,
+          headers: _headers(jsonContentType: true),
+          body: jsonEncode(body),
+        )
+        .timeout(timeout);
+
+    _ensureStatus(response, uri, expectedStatusCode, acceptedStatusCodes);
+    return response;
+  }
+
+  static Future<http.Response> putJson(
+    String path, {
+    Map<String, String>? queryParams,
+    Object? body,
+    int expectedStatusCode = 200,
+    Set<int>? acceptedStatusCodes,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path').replace(
+      queryParameters: queryParams != null && queryParams.isNotEmpty
+          ? queryParams
+          : null,
+    );
+
+    final response = await http
+        .put(
           uri,
           headers: _headers(jsonContentType: true),
           body: jsonEncode(body),

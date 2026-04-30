@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 
 class VisualizeScreen extends StatefulWidget {
@@ -64,6 +66,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const MainAppBar(title: "Agenda't"),
+      backgroundColor: AppThemeTokens.screenBackground,
       body: Column(
         children: [
           bar.AppSearchBar(
@@ -72,9 +75,20 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 _query = value;
               });
             },
+            margin: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              AppScreenSpacing.section,
+              AppScreenSpacing.horizontal,
+              AppScreenSpacing.xs,
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              0,
+              AppScreenSpacing.horizontal,
+              AppScreenSpacing.sm,
+            ),
             child: Align(
               alignment: Alignment.topLeft,
               child: FilterButton(
@@ -83,7 +97,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<Event>>(
               future: _eventsFuture,
@@ -132,9 +145,15 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          0,
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.bottom,
+        ),
         itemCount: events.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) =>
+            const SizedBox(height: AppScreenSpacing.sm),
         itemBuilder: (context, index) => eventCard(events[index]),
       ),
     );
@@ -170,8 +189,10 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title takes remaining space
                   Expanded(child: eventTitle(event)),
                   const SizedBox(width: 10),
+                  // Category badge stays readable and anchored to the right.
                   eventCategory(event),
                 ],
               ),
@@ -229,19 +250,29 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
-  Container eventCategory(Event event) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 190, 0, 47),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        event.displayCategory,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+  Widget eventCategory(Event event) {
+    return SizedBox(
+      width: 150,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 190, 0, 47),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            event.displayCategory,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );

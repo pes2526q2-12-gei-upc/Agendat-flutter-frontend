@@ -4,6 +4,7 @@ import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/api/sessions_api.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -56,45 +57,30 @@ class _EventScreenState extends State<EventScreen> {
   }
 
   Future<void> _handleAssistir(EventExtended event) async {
-    final now = DateTime.now();
-    final initialStartDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      now.hour,
-      now.minute,
-    );
-    final initialEndDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      now.hour < 23 ? now.hour + 1 : now.hour,
-      now.minute,
-    );
-    final selectedDateTimes = await _showSessionDateTimeDialog(
-      initialDateTime: initialStartDateTime,
-      initialEndDateTime: initialEndDateTime,
-      eventTitle: event.title,
-    );
-
-    if (selectedDateTimes == null || !mounted) {
-      return;
-    }
-
-    if (selectedDateTimes.end.isBefore(selectedDateTimes.start)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('La data de final ha de ser posterior a la d\'inici.'),
-        ),
-      );
-      return;
-    }
-
-    final selectedStartDate = DateUtils.dateOnly(selectedDateTimes.start);
-    final selectedEndDate = DateUtils.dateOnly(selectedDateTimes.end);
+    final today = DateUtils.dateOnly(DateTime.now());
     final eventStartDate = event.startDate == null
         ? null
         : DateUtils.dateOnly(event.startDate!);
+    final initialDate = eventStartDate != null && eventStartDate.isAfter(today)
+        ? eventStartDate
+        : today;
+    final initialStartDateTime = DateTime(
+      initialDate.year,
+      initialDate.month,
+      initialDate.day,
+      0,
+      0,
+    );
+    final selectedDateTime = await _showSessionDateTimeDialog(
+      initialDateTime: initialStartDateTime,
+      eventTitle: event.title,
+    );
+
+    if (selectedDateTime == null || !mounted) {
+      return;
+    }
+
+    final selectedStartDate = DateUtils.dateOnly(selectedDateTime);
     final eventEndDate = event.endDate == null
         ? eventStartDate
         : DateUtils.dateOnly(event.endDate!);
@@ -103,18 +89,18 @@ class _EventScreenState extends State<EventScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'La sessio seleccionada es anterior a l\'inici de l\'esdeveniment.',
+            'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
           ),
         ),
       );
       return;
     }
 
-    if (eventEndDate != null && selectedEndDate.isAfter(eventEndDate)) {
+    if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'La sessio seleccionada es posterior al final de l\'esdeveniment.',
+            'La sessió seleccionada és posterior al final de l\'esdeveniment.',
           ),
         ),
       );
@@ -126,11 +112,12 @@ class _EventScreenState extends State<EventScreen> {
     });
 
     try {
+      final endDateTime = selectedDateTime.add(const Duration(hours: 1));
       await _sessionsApi.createSession(
         CreateSessionRequest(
           event: event.code,
-          startTime: selectedDateTimes.start,
-          endTime: selectedDateTimes.end,
+          startTime: selectedDateTime,
+          endTime: endDateTime,
         ),
       );
       _sessionsQuery.invalidateAll();
@@ -146,8 +133,8 @@ class _EventScreenState extends State<EventScreen> {
         SnackBar(
           content: Text(
             detail.isEmpty
-                ? 'No s\'ha pogut registrar l\'assistencia (${e.statusCode}).'
-                : 'No s\'ha pogut registrar l\'assistencia (${e.statusCode}): $detail',
+                ? 'No s\'ha pogut registrar l\'assistència (${e.statusCode}).'
+                : 'No s\'ha pogut registrar l\'assistència (${e.statusCode}): $detail',
           ),
         ),
       );
@@ -167,9 +154,8 @@ class _EventScreenState extends State<EventScreen> {
     }
   }
 
-  Future<DateTimeRange?> _showSessionDateTimeDialog({
+  Future<DateTime?> _showSessionDateTimeDialog({
     required DateTime initialDateTime,
-    required DateTime initialEndDateTime,
     required String eventTitle,
   }) async {
     DateTime selectedStartDate = DateTime(
@@ -182,17 +168,7 @@ class _EventScreenState extends State<EventScreen> {
       minute: initialDateTime.minute,
     );
 
-    DateTime selectedEndDate = DateTime(
-      initialEndDateTime.year,
-      initialEndDateTime.month,
-      initialEndDateTime.day,
-    );
-    TimeOfDay selectedEndTime = TimeOfDay(
-      hour: initialEndDateTime.hour,
-      minute: initialEndDateTime.minute,
-    );
-
-    return showDialog<DateTimeRange>(
+    return showDialog<DateTime>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
@@ -212,29 +188,30 @@ class _EventScreenState extends State<EventScreen> {
               selectedStartDate,
               selectedStartTime,
             );
-            final endDateTime = combineDateAndTime(
-              selectedEndDate,
-              selectedEndTime,
-            );
 
             return AlertDialog(
-              title: const Text('Confirma l\'assistència'),
+              backgroundColor: const Color.fromARGB(255, 255, 244, 244),
+              surfaceTintColor: Colors.transparent,
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     eventTitle,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 22,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.calendar_today_rounded),
-                    title: const Text('Inici'),
-                    subtitle: Text(
-                      '${_formatDate(selectedStartDate)} · ${selectedStartTime.format(dialogContext)}',
+                    leading: const Icon(
+                      Icons.calendar_today_rounded,
+                      color: Color(0xFFD96B6B),
                     ),
+                    title: const Text('Data'),
+                    subtitle: Text(_formatDate(selectedStartDate)),
                     trailing: TextButton(
                       onPressed: () async {
                         final pickedDate = await showDatePicker(
@@ -245,75 +222,75 @@ class _EventScreenState extends State<EventScreen> {
                           confirmText: 'D\'acord',
                         );
                         if (pickedDate == null) return;
-                        final pickedTime = await showTimePicker(
-                          context: dialogContext,
-                          initialTime: selectedStartTime,
-                          initialEntryMode: TimePickerEntryMode.input,
-                          confirmText: 'D\'acord',
-                        );
-                        if (pickedTime == null) return;
                         setDialogState(() {
                           selectedStartDate = DateTime(
                             pickedDate.year,
                             pickedDate.month,
                             pickedDate.day,
                           );
-                          selectedStartTime = pickedTime;
                         });
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color.fromARGB(255, 175, 40, 40),
+                      ),
                       child: const Text('Canvia'),
                     ),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.access_time_rounded),
-                    title: const Text('Final'),
-                    subtitle: Text(
-                      '${_formatDate(selectedEndDate)} · ${selectedEndTime.format(dialogContext)}',
+                    leading: const Icon(
+                      Icons.access_time_rounded,
+                      color: Color.fromARGB(255, 175, 40, 40),
                     ),
+                    title: const Text('Hora'),
+                    subtitle: Text(selectedStartTime.format(dialogContext)),
                     trailing: TextButton(
                       onPressed: () async {
-                        final pickedDate = await showDatePicker(
-                          context: dialogContext,
-                          initialDate: selectedEndDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2100),
-                          confirmText: 'D\'acord',
-                        );
-                        if (pickedDate == null) return;
                         final pickedTime = await showTimePicker(
                           context: dialogContext,
-                          initialTime: selectedEndTime,
+                          initialTime: selectedStartTime,
                           initialEntryMode: TimePickerEntryMode.input,
                           confirmText: 'D\'acord',
+                          builder: (context, child) {
+                            final mediaQuery = MediaQuery.of(context);
+                            return MediaQuery(
+                              data: mediaQuery.copyWith(
+                                alwaysUse24HourFormat: true,
+                              ),
+                              child: child ?? const SizedBox.shrink(),
+                            );
+                          },
                         );
                         if (pickedTime == null) return;
                         setDialogState(() {
-                          selectedEndDate = DateTime(
-                            pickedDate.year,
-                            pickedDate.month,
-                            pickedDate.day,
-                          );
-                          selectedEndTime = pickedTime;
+                          selectedStartTime = pickedTime;
                         });
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFC84D4D),
+                      ),
                       child: const Text('Canvia'),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 0),
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFC84D4D),
+                  ),
                   child: const Text('Cancel·la'),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(dialogContext).pop(
-                      DateTimeRange(start: startDateTime, end: endDateTime),
-                    );
+                    Navigator.of(dialogContext).pop(startDateTime);
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 175, 40, 40),
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Confirmar'),
                 ),
               ],
@@ -371,17 +348,14 @@ class _EventScreenState extends State<EventScreen> {
           }
 
           final event = snapshot.data!;
-          final String startDate =
-              EventTextUtils.formatDisplayDate(event.startDate) ?? '';
-          final String endDate =
-              EventTextUtils.formatDisplayDate(event.endDate) ?? '';
+          final String displayDateRange = event.displayDateRange;
           final List<String> formattedCategories = event.categories
               .map(EventTextUtils.labelOrNull)
               .whereType<String>()
               .toList();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: AppScreenSpacing.content,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -460,9 +434,7 @@ class _EventScreenState extends State<EventScreen> {
                       InfoRow(
                         icon: Icons.calendar_today_rounded,
                         label: 'Data',
-                        value: (startDate == endDate)
-                            ? startDate
-                            : '$startDate - $endDate',
+                        value: displayDateRange,
                       ),
                       if (_hasText(event.schedule))
                         InfoRow(

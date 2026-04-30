@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
@@ -15,7 +16,14 @@ import 'package:agendat/features/social/data/models/user_summary.dart';
 /// (acceptades), de manera que els usuaris bloquejats no apareixen aquí: el
 /// bloqueig al backend implica que la relació d'amistat ja no existeix.
 class FriendsListScreen extends StatefulWidget {
-  const FriendsListScreen({super.key});
+  const FriendsListScreen({super.key, this.asPopup = false, this.onClose});
+
+  final bool asPopup;
+
+  /// Callback opcional invocat quan l'usuari sol·licita tancar la vista en
+  /// mode popup. Si no es proporciona, s'intenta un `Navigator.maybePop`
+  /// (per quan la pantalla es mostra com a ruta normal).
+  final VoidCallback? onClose;
 
   @override
   State<FriendsListScreen> createState() => _FriendsListScreenState();
@@ -38,7 +46,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuthenticated()) return;
-      _loadFriends();
+      // Forcem un refetch en muntar: la llista d'amics depèn d'accions que
+      // fan altres usuaris (acceptacions de sol·licituds, eliminacions
+      // d'amistat) i no en rebem cap senyal en temps real. La caché local
+      // pot tenir 2 minuts de retard, però quan l'usuari obre explícitament
+      // el llistat espera veure l'estat actual del backend.
+      _loadFriends(forceRefresh: true);
     });
   }
 
@@ -120,15 +133,20 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     return sorted;
   }
 
-  /// Amics actius: tot el que ve del backend menys els que estan a la caché
-  /// local d'usuaris bloquejats. Garanteix que un usuari acabat de bloquejar
-  /// desapareixi a l'instant, encara que el backend no hagi cascadat la
-  /// ruptura de l'amistat o `getFriends` encara retorni la versió antiga
-  /// des de la caché.
+  /// Amics actius: tot el que ve del backend menys els usuaris que la sessió
+  /// actual ja sap que no han d'aparèixer (`blocked` o `unfriended`).
+  /// Garanteix que un usuari acabat de bloquejar o d'eliminar com a amic
+  /// desapareixi a l'instant, encara que `getFriends` encara retorni la
+  /// versió antiga des de la caché.
   List<UserSummary> get _unblockedFriends {
     final blockedIds = _profileQuery.locallyBlockedUserIds;
-    if (blockedIds.isEmpty) return _friends;
-    return _friends.where((u) => !blockedIds.contains(u.id)).toList();
+    final unfriendedIds = _profileQuery.locallyUnfriendedUserIds;
+    if (blockedIds.isEmpty && unfriendedIds.isEmpty) return _friends;
+    return _friends
+        .where(
+          (u) => !blockedIds.contains(u.id) && !unfriendedIds.contains(u.id),
+        )
+        .toList();
   }
 
   /// Llistat finalment visible: amics actius + filtre de text si està actiu.
@@ -158,18 +176,112 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
     if (!mounted) return;
 
-    // En tornar del perfil, l'estat local de bloquejats pot haver canviat
-    // (l'usuari ha bloquejat o desbloquejat algú). Forcem una reconstrucció
-    // perquè `_visibleFriends` reapliqui el filtre local, sense haver de
-    // refetchar de xarxa ni mostrar un spinner. Si l'usuari vol dades fresques
-    // del backend, té el RefreshIndicator a la part superior.
-    setState(() {});
+    // En tornar del perfil, l'estat local pot haver canviat: el `ProfileScreen`
+    // ha forçat un fetch del perfil, i `_applyBackendFriendshipState` pot
+    // haver afegit/tret aquest usuari de la caché de la llista d'amics. Re-
+    // llegim la caché perquè la pantalla reflecteixi aquests canvis sense
+    // haver de tancar el popup ni mostrar un spinner. Si la caché s'ha
+    // marcat com a obsoleta, `getFriends` farà un refetch implícit.
+    await _refreshFriendsFromCache();
+  }
+
+  /// Re-llegeix la llista d'amics des de la caché compartida i actualitza
+  /// l'estat de la pantalla. No mostra cap spinner: és pensat per casos en
+  /// què ja teníem dades visibles i només cal aplicar l'última versió de la
+  /// caché (que un altre flux pot haver actualitzat optimísticament).
+  Future<void> _refreshFriendsFromCache() async {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is! int) return;
+    try {
+      final friends = await _profileQuery.getFriends(myId);
+      if (!mounted) return;
+      setState(() {
+        _friends = _sortAlphabetically(friends);
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('[friends-list] silent refresh failed: $e');
+      // Mantenim la llista actual: és pitjor mostrar un error pel costat
+      // que una llista lleugerament desactualitzada.
+      if (mounted) setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
-      return const Scaffold(body: SizedBox.shrink());
+      return widget.asPopup
+          ? const SizedBox.shrink()
+          : const Scaffold(body: SizedBox.shrink());
+    }
+
+    final content = Column(
+      children: [
+        if (!_isLoading &&
+            _errorMessage == null &&
+            _unblockedFriends.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              8,
+              AppScreenSpacing.horizontal,
+              4,
+            ),
+            child: _buildFilterField(),
+          ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => _loadFriends(forceRefresh: true),
+            child: _buildBody(),
+          ),
+        ),
+      ],
+    );
+
+    if (widget.asPopup) {
+      return Material(
+        color: Colors.grey.shade50,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppScreenSpacing.horizontal,
+                  12,
+                  10,
+                  8,
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Els meus amics',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Tanca',
+                      onPressed: () {
+                        if (widget.onClose != null) {
+                          widget.onClose!();
+                        } else {
+                          Navigator.of(context).maybePop();
+                        }
+                      },
+                      icon: const Icon(Icons.close, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(child: content),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -188,23 +300,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Column(
-        children: [
-          if (!_isLoading &&
-              _errorMessage == null &&
-              _unblockedFriends.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: _buildFilterField(),
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => _loadFriends(forceRefresh: true),
-              child: _buildBody(),
-            ),
-          ),
-        ],
-      ),
+      body: content,
     );
   }
 
@@ -300,7 +396,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
 
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppScreenSpacing.horizontal,
+        8,
+        AppScreenSpacing.horizontal,
+        AppScreenSpacing.bottom,
+      ),
       itemCount: visible.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {

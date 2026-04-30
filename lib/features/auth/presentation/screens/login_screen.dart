@@ -4,10 +4,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _usernameFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
   late final TapGestureRecognizer _signUpTapRecognizer;
 
   @override
@@ -38,6 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocusNode.dispose();
+    _passwordFocusNode.dispose();
     _signUpTapRecognizer.dispose();
     super.dispose();
   }
@@ -61,7 +67,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     switch (result) {
       case LoginUserSuccess():
-        // loginUser() ja ha guardat l'usuari + token
+        // loginUser() ja ha guardat l'usuari + token. Inicialitzem les
+        // caches de sessió (usuaris bloquejats, etc.) abans de navegar
+        // perquè la primera pantalla autenticada ja vegi l'estat correcte.
+        await _bootstrapSessionCaches();
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -92,6 +102,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Repobla les caches que depenen de l'usuari autenticat (usuaris
+  /// bloquejats, set local d'amistats eliminades, etc.) abans d'entrar a la
+  /// pantalla principal. Així evitem que un usuari que abans havia bloquejat
+  /// algú no l'identifiqui com a bloquejat just després d'iniciar sessió,
+  /// i veiem el botó correcte de "Desbloquejar" en comptes d'oferir-li
+  /// enviar una sol·licitud d'amistat. La crida ja gestiona internament
+  /// els errors de xarxa, així que mai bloqueja el flux d'inici de sessió.
+  Future<void> _bootstrapSessionCaches() async {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      await ProfileQuery.instance.bootstrapForAuthenticatedUser(myId);
+    }
+  }
+
   void _showSnackBar(String message, {bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -99,6 +123,11 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: isError ? null : Colors.green.shade700,
       ),
     );
+  }
+
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _login();
   }
 
   Future<void> _loginWithGoogle() async {
@@ -133,6 +162,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       switch (result) {
         case LoginUserSuccess():
+          // Mateix tractament que el login per credencials: prepara les
+          // caches dependents de la sessió abans d'entrar a la home.
+          await _bootstrapSessionCaches();
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -185,7 +218,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const _CalendarIcon(),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            'assets/icons/logoAgendat.png',
+                            height: 120,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       const Text(
                         'Agenda\'t',
@@ -213,10 +255,10 @@ class _LoginScreenState extends State<LoginScreen> {
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
-                24,
+                AppScreenSpacing.horizontal,
                 24 + padding.top * 0.5,
-                24,
-                24 + padding.bottom,
+                AppScreenSpacing.horizontal,
+                AppScreenSpacing.bottom + padding.bottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -246,7 +288,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _usernameController,
+                    focusNode: _usernameFocusNode,
                     keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_passwordFocusNode);
+                    },
                     decoration: InputDecoration(
                       hintText: 'El teu nom d\'usuari',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -285,7 +332,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _passwordController,
+                    focusNode: _passwordFocusNode,
                     obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submitWithKeyboard(),
                     decoration: InputDecoration(
                       hintText: 'La teva contrasenya',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -327,7 +377,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 28),
                   FilledButton(
                     onPressed: () {
-                      _login();
+                      _submitWithKeyboard();
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: EventTextUtils.kPrimaryRed,
@@ -437,52 +487,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Small calendar-style icon with "JUL 17" for the header.
-class _CalendarIcon extends StatelessWidget {
-  const _CalendarIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            EventTextUtils.calendarMonthNames[DateTime.now().month - 1],
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-          Text(
-            DateTime.now().day.toString(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ],

@@ -6,9 +6,12 @@ import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/foundation.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -49,7 +52,15 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadProfile();
+    // Quan visitem el perfil d'un altre usuari forcem un refetch: el seu
+    // `friendship_status` pot haver canviat sense que en rebéssim cap
+    // notificació (per exemple, l'altre ens ha eliminat com a amic, o ha
+    // acceptat la nostra sol·licitud). Així `_applyBackendFriendshipState`
+    // a `ProfileQuery` resincronitza també la nostra llista d'amics
+    // cachejada. Per al perfil propi mantenim el comportament cachejat:
+    // les nostres pròpies dades ja s'actualitzen via mutacions locals i no
+    // val la pena pagar un fetch cada cop que canviem de pestanya.
+    _loadProfile(forceRefresh: widget.userId != null);
   }
 
   @override
@@ -151,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+              child: const Text('Cancel·lar'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -170,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut tancar la sessio.')),
+        const SnackBar(content: Text('No s\'ha pogut tancar la sessió.')),
       );
       setState(() => _isLoggingOut = false);
       return;
@@ -210,6 +221,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     required FriendshipStatus successStatus,
     required String successMessage,
     required String genericErrorMessage,
+    String unauthorizedMessage = 'Cal iniciar sessió per fer aquesta acció.',
+    String notFoundMessage = 'Perfil no vàlid.',
+    String invalidActionMessage =
+        'Aquesta acció no és vàlida perquè actualment no sou amics.',
   }) async {
     if (_isFriendshipActionInProgress) return;
 
@@ -228,29 +243,51 @@ class _ProfileScreenState extends State<ProfileScreen>
           }
           _isFriendshipActionInProgress = false;
         });
-        // Actualitzem la caché del QueryClient per mantenir l'estat entre
-        // navegacions, fins que expiri el staleTime o el backend el refresqui.
+        // Sincronitza la caché del client (perfil cachejat, conjunts locals
+        // i llista d'amics) amb el nou estat. La llista d'amics s'actualitza
+        // optimísticament — si acceptem una sol·licitud o eliminem amistat,
+        // veurem el canvi a l'instant la pròxima vegada que obrim el llistat
+        // sense haver d'esperar un refetch ni el `staleTime`.
         final otherId = widget.userId;
         if (otherId != null) {
-          _profileQuery.setCachedFriendshipStatus(otherId, successStatus);
+          _profileQuery.recordFriendshipStatusChange(
+            otherId,
+            successStatus,
+            otherSummary: _profile?.toSummary(),
+          );
         }
-        // Invalidem també les llistes d'amistat del meu usuari: així, si
-        // tanco l'app o recarrego la pantalla, la pròxima derivació consultarà
-        // el backend i l'estat del botó serà coherent amb la veritat.
+        // La llista de sol·licituds (sent/received) sí que cal forçar-la a
+        // refetchar: l'optimisme local només pot afegir/treure un sol amic,
+        // no mantenir el flux complet de sol·licituds coherent.
         final myId = _currentUserId;
         if (myId != null) {
-          _profileQuery.invalidateFriendshipLists(myId);
+          _profileQuery.invalidateFriendRequestsList(myId);
         }
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(successMessage)));
       case FriendActionUnauthorized():
         setState(() => _isFriendshipActionInProgress = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(unauthorizedMessage)));
+      case FriendActionUserNotFound():
+        setState(() => _isFriendshipActionInProgress = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notFoundMessage)));
+      case FriendActionConflict(:final message):
+        setState(() => _isFriendshipActionInProgress = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cal iniciar sessió per fer aquesta acció.'),
-          ),
+          SnackBar(content: Text(message ?? invalidActionMessage)),
         );
+        // El backend ens diu que la nostra premissa local sobre l'estat
+        // d'amistat és incorrecta (p. ex. provem de cancel·lar una
+        // sol·licitud que ja s'ha acceptat, o d'enviar-ne una a algú que ja
+        // és amic nostre). Recarreguem el perfil amb força per recuperar el
+        // `friendship_status` real i actualitzar la UI sense haver d'esperar
+        // que la caché es marqui com a obsoleta.
+        _resyncProfileWithBackend();
       case FriendActionFailure(:final statusCode, :final message, :final error):
         setState(() => _isFriendshipActionInProgress = false);
         final text =
@@ -261,7 +298,22 @@ class _ProfileScreenState extends State<ProfileScreen>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(text)));
+        // Codis 400/410 en una mutació d'amistat solen voler dir el mateix
+        // que el 409: estat incoherent. Ho tractem igual i resincronitzem.
+        if (statusCode == 400 || statusCode == 410) {
+          _resyncProfileWithBackend();
+        }
     }
+  }
+
+  /// Recarrega el perfil saltant-se la caché. La crida posterior a
+  /// `getUserProfile` farà servir `friendship_status` retornat pel backend
+  /// com a font de veritat: actualitzarà la UI, els conjunts locals i la
+  /// llista d'amics cachejada (a través de `_applyBackendFriendshipState` a
+  /// `ProfileQuery`).
+  void _resyncProfileWithBackend() {
+    if (!mounted) return;
+    _loadProfile(forceRefresh: true);
   }
 
   Future<void> _sendFriendRequest() {
@@ -308,6 +360,55 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Future<void> _confirmAndUnfriendUser() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar amistat'),
+          content: Text(
+            'Vols eliminar @${profile.username} de la teva xarxa d\'amics? '
+            'Deixareu de tenir un vincle directe i, si voleu, podreu '
+            'tornar-vos a enviar una sol·licitud d\'amistat en el futur.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel·lar'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _kPrimaryRed),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Eliminar amistat'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _unfriendUser();
+  }
+
+  Future<void> _unfriendUser() {
+    final userId = widget.userId;
+    if (userId == null) return Future.value();
+    return _runFriendshipAction(
+      action: () => unfriendUser(userId),
+      successStatus: FriendshipStatus.none,
+      successMessage: 'Amistat eliminada.',
+      genericErrorMessage: 'No s\'ha pogut eliminar l\'amistat.',
+      unauthorizedMessage: 'Cal iniciar sessió per eliminar amistats.',
+      notFoundMessage: 'Perfil no vàlid.',
+      invalidActionMessage:
+          'Aquesta acció no és vàlida perquè actualment no sou amics.',
+    );
+  }
+
   Future<void> _navigateToEditProfile() async {
     if (_profile == null) return;
 
@@ -334,6 +435,31 @@ class _ProfileScreenState extends State<ProfileScreen>
         'event_updates_allowed': updatedProfile.eventUpdatesAllowed,
         'social_alerts_allowed': updatedProfile.socialAlertsAllowed,
       });
+    }
+  }
+
+  Future<void> _navigateToEditInterests() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final updatedInterests = await Navigator.push<List<UserInterest>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditInterestsScreen(
+          userId: profile.id,
+          currentInterests: _interests,
+        ),
+      ),
+    );
+
+    if (updatedInterests != null && mounted) {
+      setState(() => _interests = updatedInterests);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Preferències actualitzades correctament'),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
     }
   }
 
@@ -364,7 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppThemeTokens.screenBackground,
       appBar: _buildAppBar(),
       body: _buildBody(),
     );
@@ -374,17 +500,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     return AppBar(
       title: Text(
         _isOwnProfile ? 'El meu Perfil' : 'Perfil',
-        style: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
-        ),
+        style: AppThemeTokens.appBarTitle,
       ),
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
+      backgroundColor: AppThemeTokens.appBarBackground,
+      elevation: AppThemeTokens.appBarElevation,
+      centerTitle: AppThemeTokens.appBarCenterTitle,
       automaticallyImplyLeading: !_isOwnProfile,
-      iconTheme: const IconThemeData(color: Colors.black),
+      iconTheme: AppThemeTokens.appBarIconTheme,
       actions: _isOwnProfile
           ? [
               IconButton(
@@ -642,25 +764,21 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     final otherId = widget.userId;
     if (otherId != null) {
-      _profileQuery.setCachedFriendshipStatus(otherId, newStatus);
-      // Mantenim la caché local d'IDs bloquejats coherent amb la nova UI.
-      // Si el backend trigarà a propagar el canvi (o encara no implementa
-      // `/blocked/`), aquesta caché basta perquè el botó de "Desbloquejar"
-      // aparegui en re-visitar el perfil dins de la mateixa sessió.
-      if (newStatus == FriendshipStatus.blocked) {
-        _profileQuery.markUserBlocked(otherId);
-      } else {
-        _profileQuery.markUserUnblocked(otherId);
-      }
+      // Sincronitza el perfil cachejat, els sets locals i la llista d'amics:
+      // bloquejar trenca l'amistat al backend i ha de fer desaparèixer
+      // l'usuari del nostre llistat sense esperar al següent refetch.
+      _profileQuery.recordFriendshipStatusChange(
+        otherId,
+        newStatus,
+        otherSummary: _profile?.toSummary(),
+      );
     }
 
-    // Bloquejar trenca l'amistat al backend i amaga l'usuari de les llistes
-    // d'amics i sol·licituds. Desbloquejar deixa l'usuari fora de la llista
-    // de bloquejats. En els dos casos cal invalidar les caches per evitar
-    // mostrar dades obsoletes.
+    // Sol·licituds i bloquejats poden haver canviat al backend; els
+    // invalidem perquè les properes consultes recuperin valors frescos.
     final myId = _currentUserId;
     if (myId != null) {
-      _profileQuery.invalidateFriendshipLists(myId);
+      _profileQuery.invalidateFriendRequestsList(myId);
       _profileQuery.invalidateBlockedUsers(myId);
     }
 
@@ -682,13 +800,13 @@ class _ProfileScreenState extends State<ProfileScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppScreenSpacing.section),
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppScreenSpacing.section),
               ElevatedButton(
                 onPressed: () => _loadProfile(forceRefresh: true),
                 style: ElevatedButton.styleFrom(
@@ -708,20 +826,20 @@ class _ProfileScreenState extends State<ProfileScreen>
       onRefresh: () => _loadProfile(forceRefresh: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: AppScreenSpacing.content,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildProfileCard(profile),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppScreenSpacing.section),
             _buildInterestsSection(_interests),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppScreenSpacing.section),
             _buildTabSection(
               attendedSessions: _sessions,
               reviewsResponse: _reviewsResponse,
             ),
             if (_isOwnProfile) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppScreenSpacing.section),
               _buildLogoutButton(),
             ],
           ],
@@ -817,13 +935,11 @@ class _ProfileScreenState extends State<ProfileScreen>
           ],
         );
       case FriendshipStatus.friends:
-        return _buildFriendshipBadge(
-          icon: Icons.people_alt,
-          text: 'Amic',
-          background: Colors.blue.shade50,
-          borderColor: Colors.blue.shade200,
-          iconColor: Colors.blue.shade700,
-          textColor: Colors.blue.shade800,
+        return _buildFriendshipOutlinedButton(
+          onPressed: busy ? null : _confirmAndUnfriendUser,
+          icon: Icons.person_remove_outlined,
+          label: 'Eliminar amistat',
+          busy: busy,
         );
       case FriendshipStatus.blocked:
         // Substituïm la badge informativa per un botó d'acció: l'única
@@ -839,40 +955,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           busy: _isBlockActionInProgress,
         );
     }
-  }
-
-  Widget _buildFriendshipBadge({
-    required IconData icon,
-    required String text,
-    required Color background,
-    required Color borderColor,
-    required Color iconColor,
-    required Color textColor,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: iconColor, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildFriendshipPrimaryButton({
@@ -1099,13 +1181,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               if (_isOwnProfile)
                 GestureDetector(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Editar interessos pendent'),
-                      ),
-                    );
-                  },
+                  onTap: _navigateToEditInterests,
                   child: const Text(
                     'Editar',
                     style: TextStyle(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/models/forgot_password_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/reset_password_screen.dart';
@@ -19,11 +20,13 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
+  final _emailFocusNode = FocusNode();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
+    _emailFocusNode.dispose();
     super.dispose();
   }
 
@@ -81,6 +84,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _submit();
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
@@ -93,7 +101,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         title: const Text('Contrasenya oblidada'),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + padding.bottom),
+        padding: EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          24,
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.bottom + padding.bottom,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -122,8 +135,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _emailController,
+              focusNode: _emailFocusNode,
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitWithKeyboard(),
               decoration: InputDecoration(
                 hintText: 'exemple@correu.cat',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -152,7 +168,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             const SizedBox(height: 28),
             FilledButton(
-              onPressed: _isLoading ? null : _submit,
+              onPressed: _isLoading ? null : _submitWithKeyboard,
               style: FilledButton.styleFrom(
                 backgroundColor: EventTextUtils.kPrimaryRed,
                 foregroundColor: Colors.white,

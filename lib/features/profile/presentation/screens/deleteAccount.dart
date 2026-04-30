@@ -1,6 +1,7 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/material.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+              child: const Text('Cancel·lar'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -99,7 +100,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Eliminar compte')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: AppScreenSpacing.content,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

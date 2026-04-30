@@ -1,24 +1,43 @@
 import 'dart:async';
 
 import 'package:agendat/core/services/push_notifications_service.dart';
+import 'package:agendat/core/widgets/app_navigation_bar.dart';
+import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:agendat/core/widgets/app_navigation_bar.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
-import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/presentation/screens/social_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+/// Index of the currently selected root tab.
+///
+/// Kept in sync by [RootNavigationScreen] so other screens can react when the
+/// user switches tabs, such as closing transient overlays.
+final ValueNotifier<int> rootTabIndexNotifier = ValueNotifier<int>(0);
+
+/// Index of the `Social` tab inside [RootNavigationScreen].
+const int kSocialTabIndex = 3;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   const forceLogin = bool.fromEnvironment('FORCE_LOGIN');
   if (forceLogin) {
     await clearLocalSession();
   }
+
   final hasSession = forceLogin ? false : await restoreSession();
+  if (hasSession) {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      await ProfileQuery.instance.bootstrapForAuthenticatedUser(myId);
+    }
+  }
+
   runApp(
     MyApp(
       initialHome: hasSession
@@ -26,6 +45,7 @@ Future<void> main() async {
           : const LoginScreen(),
     ),
   );
+
   if (hasSession) {
     unawaited(
       PushNotificationsService.instance.requestPermissionAndRegisterDevice(),
@@ -84,6 +104,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
+    rootTabIndexNotifier.value = _selectedIndex;
   }
 
   void _onDestinationSelected(int index) {
@@ -92,6 +113,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
     setState(() {
       _selectedIndex = index;
     });
+    rootTabIndexNotifier.value = index;
   }
 
   @override

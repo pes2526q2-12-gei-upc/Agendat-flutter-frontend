@@ -1,6 +1,8 @@
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaDetail.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaList.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,7 @@ enum _AgendaView { calendar, list }
 
 class _CalendarScreenState extends State<CalendarScreen> {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
+  static const Color _kSessionDayRed = Color(0xFFFFDDE0);
 
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
 
@@ -37,8 +40,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MainAppBar(title: "Agenda't"),
-      backgroundColor: const Color(0xFFF7F4F2),
+      appBar: const MainAppBar(title: "Agenda"),
+      backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
         child: FutureBuilder<List<Session>>(
           future: _sessionsFuture,
@@ -46,7 +49,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppScreenSpacing.horizontal,
+                    AppScreenSpacing.top,
+                    AppScreenSpacing.horizontal,
+                    0,
+                  ),
                   child: _buildViewSwitch(),
                 ),
                 Expanded(child: _buildBody(context, snapshot)),
@@ -172,7 +180,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildCalendarView(BuildContext context, List<Session> sessions) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+        padding: const EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.top,
+          AppScreenSpacing.horizontal,
+          12,
+        ),
         child: _buildMonthGrid(context, sessions),
       ),
     );
@@ -265,42 +278,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isToday
-                          ? const Color(0xFFFFF3F4)
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: isToday ? _kAccentRed : Colors.transparent,
-                        width: 2,
-                      ),
+                          ? _kAccentRed
+                          : (hasEvents ? _kSessionDayRed : Colors.transparent),
+                      border: Border.all(color: Colors.transparent, width: 0),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Text(
-                            '$dayNumber',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: isToday
-                                  ? _kAccentRed
-                                  : Colors.grey.shade700,
-                            ),
-                          ),
+                    child: Center(
+                      child: Text(
+                        '$dayNumber',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: isToday
+                              ? Colors.white
+                              : (hasEvents
+                                    ? _kAccentRed
+                                    : Colors.grey.shade700),
                         ),
-                        if (hasEvents)
-                          Positioned(
-                            right: 6,
-                            top: 6,
-                            child: Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: _kAccentRed,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

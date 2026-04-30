@@ -1,4 +1,5 @@
 import 'package:agendat/core/api/categories_api.dart';
+import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/query_client.dart';
 
 class CategoriesQuery {
@@ -29,5 +30,25 @@ class CategoriesQuery {
     );
   }
 
-  void invalidate() => _client.invalidate(_key);
+  Future<List<CategoryDto>> getCategoryDtos({bool forceRefresh = false}) {
+    return _client.query<List<CategoryDto>>(
+      key: '$_key:dtos',
+      staleTime: staleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () async {
+        final list = await _api.fetchCategories();
+        return list
+            .where((dto) => dto.id != null && dto.name.isNotEmpty)
+            .toList()
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+      },
+    );
+  }
+
+  void invalidate() {
+    _client.invalidate(_key);
+    _client.invalidate('$_key:dtos');
+  }
 }

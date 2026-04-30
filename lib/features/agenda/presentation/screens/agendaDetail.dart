@@ -1,11 +1,13 @@
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:flutter/material.dart';
 
-class AgendaDetailScreen extends StatelessWidget {
+class AgendaDetailScreen extends StatefulWidget {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
   static final EventsQuery _eventsQuery = EventsQuery.instance;
 
@@ -19,9 +21,24 @@ class AgendaDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<AgendaDetailScreen> createState() => _AgendaDetailScreenState();
+}
+
+class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
+  static const Color _kAccentRed = AgendaDetailScreen._kAccentRed;
+  final SessionsQuery _sessionsQuery = SessionsQuery.instance;
+  late List<Session> _sessions;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessions = List<Session>.of(widget.sessions);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final normalizedDate = DateUtils.dateOnly(date);
-    final daySessions = sessions
+    final normalizedDate = DateUtils.dateOnly(widget.date);
+    final daySessions = _sessions
         .where((session) => _sessionMatchesDate(session, normalizedDate))
         .toList();
     daySessions.sort((left, right) {
@@ -59,7 +76,7 @@ class AgendaDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'No tens cap esdeveniment programat per aquets dia.',
+                        'No tens cap esdeveniment programat per aquest dia.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
@@ -71,7 +88,7 @@ class AgendaDetailScreen extends StatelessWidget {
                 ),
               )
             : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                padding: AppScreenSpacing.content,
                 itemCount: daySessions.length + 1,
                 separatorBuilder: (_, index) => index == 0
                     ? const SizedBox(height: 16)
@@ -168,15 +185,25 @@ class AgendaDetailScreen extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _formatDateTimeLabel(session.startTime),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.grey.shade700,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _formatDateTimeLabel(session.startTime),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildDeleteSessionButton(session),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       _buildEventTitle(session.event),
@@ -191,6 +218,47 @@ class AgendaDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildDeleteSessionButton(Session session) {
+    return IconButton(
+      tooltip: 'Eliminar sessió',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      icon: const Icon(Icons.delete_outline_rounded, color: _kAccentRed),
+      onPressed: () => _confirmDeleteSession(session),
+    );
+  }
+
+  Future<void> _confirmDeleteSession(Session session) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar sessió'),
+          content: const Text('Vols eliminar aquesta sessió de l’agenda?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel·lar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(foregroundColor: _kAccentRed),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true || !mounted) return;
+
+    await _sessionsQuery.deleteSession(session.id);
+    setState(() {
+      _sessions.removeWhere((item) => item.id == session.id);
+    });
+  }
+
   bool _sessionMatchesDate(Session session, DateTime date) {
     final selected = DateUtils.dateOnly(date.toLocal());
     final sessionDate = DateUtils.dateOnly(session.startTime.toLocal());
@@ -199,7 +267,7 @@ class AgendaDetailScreen extends StatelessWidget {
 
   Widget _buildEventTitle(String eventCode) {
     return FutureBuilder<EventExtended>(
-      future: _eventsQuery.getEventByCode(eventCode),
+      future: AgendaDetailScreen._eventsQuery.getEventByCode(eventCode),
       builder: (context, snapshot) {
         final title = snapshot.data?.title.trim();
         final display = (title == null || title.isEmpty) ? eventCode : title;

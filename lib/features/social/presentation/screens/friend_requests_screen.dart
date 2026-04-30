@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
@@ -37,7 +39,12 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuthenticated()) return;
-      _loadRequests();
+      // Forcem un refetch en muntar la pantalla. Les sol·licituds canvien
+      // per accions externes (algú m'envia una sol·licitud, o algú accepta
+      // la meva i la meva entrada `sent` desapareix), i la caché es marca
+      // com a obsoleta passats 2 minuts. Per assegurar dades fresques quan
+      // l'usuari obre explícitament la pantalla de gestió, saltem la caché.
+      _loadRequests(forceRefresh: true);
     });
   }
 
@@ -114,6 +121,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     return _runAction(
       request: request,
       action: (userId) => acceptFriendRequest(userId),
+      successStatus: FriendshipStatus.friends,
       successMessage: 'Sol·licitud acceptada. Ara sou amics!',
       genericErrorMessage: 'No s\'ha pogut acceptar la sol·licitud.',
     );
@@ -123,6 +131,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     return _runAction(
       request: request,
       action: (userId) => rejectFriendRequest(userId),
+      successStatus: FriendshipStatus.none,
       successMessage: 'Sol·licitud rebutjada.',
       genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
     );
@@ -131,6 +140,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
   Future<void> _runAction({
     required PendingFriendRequest request,
     required Future<FriendActionResult> Function(int userId) action,
+    required FriendshipStatus successStatus,
     required String successMessage,
     required String genericErrorMessage,
   }) async {
@@ -156,11 +166,32 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
           _busyRequestIds.remove(request.id);
           _received = _received.where((r) => r.id != request.id).toList();
         });
-        _invalidateCaches(targetUserId: sender.id);
+        // Sincronitza la caché del client amb el nou estat: actualitza el
+        // perfil cachejat de l'altre usuari, els conjunts locals
+        // (eliminats/refets) i la llista d'amics. Si acceptem, és clau
+        // perquè aparegui immediatament a la pestanya d'amics encara que
+        // el seu id constés a `_localUnfriendedIds` per accions anteriors.
+        _profileQuery.recordFriendshipStatusChange(
+          sender.id,
+          successStatus,
+          otherSummary: sender,
+        );
+        // La llista de sol·licituds ha canviat (la rebuda ja no hi és):
+        // forcem un refetch la propera vegada per mantenir el badge i la
+        // pantalla de gestió alineats amb el backend.
+        _invalidateFriendRequestsList();
         _showSnack(successMessage);
       case FriendActionUnauthorized():
         setState(() => _busyRequestIds.remove(request.id));
         _guardAuthenticated();
+      case FriendActionUserNotFound():
+        _removeRequest(request.id);
+        _showSnack('Perfil no vàlid.');
+        _invalidateCachesAfterFailure(targetUserId: sender.id);
+      case FriendActionConflict(:final message):
+        _removeRequest(request.id);
+        _showSnack(message ?? 'Aquesta sol·licitud ja no és vàlida.');
+        _invalidateCachesAfterFailure(targetUserId: sender.id);
       case FriendActionFailure(:final statusCode, :final error):
         setState(() => _busyRequestIds.remove(request.id));
         // 400/404/409/410 → la sol·licitud ja no és vàlida (no existeix,
@@ -169,7 +200,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
           _removeRequest(request.id);
           _showSnack('Aquesta sol·licitud ja no és vàlida.');
           // Refresquem la llista per assegurar coherència amb el backend.
-          _invalidateCaches(targetUserId: sender.id);
+          _invalidateCachesAfterFailure(targetUserId: sender.id);
           return;
         }
         final text = error != null && statusCode == -1
@@ -193,14 +224,30 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     });
   }
 
-  void _invalidateCaches({required int targetUserId}) {
+  /// Invalida només la caché de sol·licituds. La fem servir després
+  /// d'acceptar/rebutjar correctament: la llista d'amics i el perfil de
+  /// l'altre usuari ja s'han actualitzat optimísticament a través de
+  /// `recordFriendshipStatusChange`, així que invalidar-los aquí provocaria
+  /// que la propera lectura llencés un fetch que podria retornar dades
+  /// obsoletes (latència de propagació al backend) i sobreescriure
+  /// l'optimisme.
+  void _invalidateFriendRequestsList() {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      _profileQuery.invalidateFriendRequestsList(myId);
+    }
+  }
+
+  /// Invalidació conservadora: si la mutació no ha tingut èxit (no found,
+  /// conflicte, error de servidor amb codi reconegut com a "estat
+  /// incoherent"), no podem confiar que la nostra fotografia local sigui
+  /// correcta. Buidem totes les caches relacionades per recuperar-les
+  /// fresques del backend la propera vegada.
+  void _invalidateCachesAfterFailure({required int targetUserId}) {
     final myId = currentLoggedInUser?['id'];
     if (myId is int) {
       _profileQuery.invalidateFriendshipLists(myId);
     }
-    // El perfil de l'altre usuari pot mostrar l'estat d'amistat: l'invalidem
-    // per assegurar-nos que la propera vegada que el visitem, mostri l'estat
-    // actualitzat.
     _profileQuery.invalidateUser(targetUserId);
   }
 
@@ -282,7 +329,12 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
 
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppScreenSpacing.horizontal,
+        12,
+        AppScreenSpacing.horizontal,
+        AppScreenSpacing.bottom,
+      ),
       itemCount: _received.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {

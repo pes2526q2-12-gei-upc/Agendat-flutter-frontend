@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/features/profile/presentation/screens/blockedUsers.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.currentProfile});
@@ -165,14 +167,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildBody() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: AppScreenSpacing.content,
       children: [
         _buildIntroText(),
         const SizedBox(height: 24),
+        _buildBlockedUsersShortcut(),
+        const SizedBox(height: 12),
         _buildNotificationBlock(),
         const SizedBox(height: 12),
         _buildSavingIndicator(),
       ],
+    );
+  }
+
+  Widget _buildBlockedUsersShortcut() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFFB71C1C).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.block, color: Color(0xFFB71C1C)),
+        ),
+        title: const Text(
+          'Usuaris bloquejats',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: const Text('Revisa els perfils que has bloquejat.'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const BlockedUsersScreen()));
+        },
+      ),
     );
   }
 

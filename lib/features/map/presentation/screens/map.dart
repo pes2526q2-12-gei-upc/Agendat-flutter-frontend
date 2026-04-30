@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
@@ -211,6 +213,7 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: const MainAppBar(title: 'La cultura a prop teu'),
+      backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -219,7 +222,12 @@ class _MapScreenState extends State<MapScreen> {
                 width: mapContentWidth,
                 child: AppSearchBar(
                   onChanged: _onSearchChanged,
-                  margin: const EdgeInsets.fromLTRB(6, 6, 6, 5),
+                  margin: const EdgeInsets.fromLTRB(
+                    AppScreenSpacing.horizontal,
+                    AppScreenSpacing.section,
+                    AppScreenSpacing.horizontal,
+                    AppScreenSpacing.section,
+                  ),
                 ),
               ),
             ),
@@ -260,7 +268,12 @@ class _MapScreenState extends State<MapScreen> {
                     child: SizedBox(
                       width: maxMapWidth,
                       child: Container(
-                        margin: const EdgeInsets.all(6),
+                        margin: const EdgeInsets.fromLTRB(
+                          AppScreenSpacing.horizontal,
+                          0,
+                          AppScreenSpacing.horizontal,
+                          AppScreenSpacing.section,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(_radius),
                           boxShadow: [

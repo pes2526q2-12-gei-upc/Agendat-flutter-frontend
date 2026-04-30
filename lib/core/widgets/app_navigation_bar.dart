@@ -38,7 +38,7 @@ class AppNavigationBar extends StatelessWidget {
           NavigationDestination(
             icon: Icon(Icons.calendar_month, color: Colors.white70),
             selectedIcon: Icon(Icons.calendar_month, color: Colors.white),
-            label: 'Calendari',
+            label: 'Agenda',
           ),
           NavigationDestination(
             icon: Icon(Icons.chat_bubble, color: Colors.white70),
