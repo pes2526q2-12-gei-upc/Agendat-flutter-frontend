@@ -5,6 +5,7 @@ import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaDetail.dart';
 import 'package:agendat/features/agenda/presentation/screens/agendaList.dart';
+import 'package:agendat/main.dart' show kAgendaTabIndex, rootTabIndexNotifier;
 import 'package:flutter/material.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -19,21 +20,55 @@ enum _AgendaView { calendar, list }
 class _CalendarScreenState extends State<CalendarScreen> {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
   static const Color _kSessionDayRed = Color(0xFFFFDDE0);
+  static const List<String> _monthNames = [
+    'Gener',
+    'Febrer',
+    'Març',
+    'Abril',
+    'Maig',
+    'Juny',
+    'Juliol',
+    'Agost',
+    'Setembre',
+    'Octubre',
+    'Novembre',
+    'Desembre',
+  ];
 
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
 
   late Future<List<Session>> _sessionsFuture;
+  int _monthOffset = 0;
 
   @override
   void initState() {
     super.initState();
     _sessionsFuture = _sessionsQuery.getSessions(forceRefresh: true);
+    rootTabIndexNotifier.addListener(_onRootTabChanged);
   }
 
-  void _refresh() {
-    _sessionsQuery.invalidateAll();
+  @override
+  void dispose() {
+    rootTabIndexNotifier.removeListener(_onRootTabChanged);
+    super.dispose();
+  }
+
+  void _onRootTabChanged() {
+    if (rootTabIndexNotifier.value == kAgendaTabIndex) {
+      _refresh();
+    }
+  }
+
+  Future<void> _refresh() async {
     setState(() {
-      _sessionsFuture = _sessionsQuery.getSessions();
+      _sessionsFuture = _sessionsQuery.getSessions(forceRefresh: true);
+    });
+    await _sessionsFuture;
+  }
+
+  void _changeMonth(int delta) {
+    setState(() {
+      _monthOffset += delta;
     });
   }
 
@@ -43,24 +78,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: const MainAppBar(title: "Agenda"),
       backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
-        child: FutureBuilder<List<Session>>(
-          future: _sessionsFuture,
-          builder: (context, snapshot) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppScreenSpacing.horizontal,
-                    AppScreenSpacing.top,
-                    AppScreenSpacing.horizontal,
-                    0,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: FutureBuilder<List<Session>>(
+            future: _sessionsFuture,
+            builder: (context, snapshot) {
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppScreenSpacing.horizontal,
+                      AppScreenSpacing.top,
+                      AppScreenSpacing.horizontal,
+                      0,
+                    ),
+                    child: _buildViewSwitch(),
                   ),
-                  child: _buildViewSwitch(),
-                ),
-                Expanded(child: _buildBody(context, snapshot)),
-              ],
-            );
-          },
+                  Expanded(child: _buildBody(context, snapshot)),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -126,7 +164,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AgendaListScreen()),
-            );
+            ).then((_) {
+              if (mounted) {
+                _refresh();
+              }
+            });
           }
         },
       ),
@@ -179,6 +221,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildCalendarView(BuildContext context, List<Session> sessions) {
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           AppScreenSpacing.horizontal,
@@ -192,15 +235,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildMonthGrid(BuildContext context, List<Session> sessions) {
-    final now = DateTime.now();
-    final firstDayOfMonth = DateTime(now.year, now.month, 1);
-    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
+    final baseDate = DateTime.now();
+    final monthDate = DateTime(baseDate.year, baseDate.month + _monthOffset, 1);
+    final firstDayOfMonth = monthDate;
+    final lastDayOfMonth = DateTime(monthDate.year, monthDate.month + 1, 0);
     final daysInMonth = lastDayOfMonth.day;
     final firstWeekday = firstDayOfMonth.weekday;
     final totalDayCells = (firstWeekday - 1) + daysInMonth;
     final weekRows = (totalDayCells / 7).ceil();
 
-    const dayLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+    const dayLabels = ['DL', 'DM', 'DC', 'DJ', 'DV', 'DS', 'DG'];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -217,9 +261,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       child: Column(
         children: [
-          Text(
-            '${<String>["Gener", "Febrer", "Març", "Abril", "Maig", "Juny", "Juliol", "Agost", "Setembre", "Octubre", "Novembre", "Desembre"][now.month - 1]} ${now.year}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => _changeMonth(-1),
+                icon: const Icon(Icons.chevron_left_rounded),
+                color: _kAccentRed,
+              ),
+              Expanded(
+                child: Text(
+                  '${_monthNames[monthDate.month - 1]} ${monthDate.year}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => _changeMonth(1),
+                icon: const Icon(Icons.chevron_right_rounded),
+                color: _kAccentRed,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           GridView.builder(
@@ -254,7 +318,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
 
               final date = DateUtils.dateOnly(
-                DateTime(now.year, now.month, dayNumber),
+                DateTime(monthDate.year, monthDate.month, dayNumber),
               );
               final daySessions = _sessionsForDate(sessions, date);
               final hasEvents = daySessions.isNotEmpty;
@@ -272,7 +336,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           sessions: daySessions,
                         ),
                       ),
-                    );
+                    ).then((_) {
+                      if (mounted) {
+                        _refresh();
+                      }
+                    });
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
