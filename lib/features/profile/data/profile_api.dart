@@ -132,8 +132,17 @@ Future<UpdateUserInterestsResult> updateUserInterests(
 
 Future<UserReviewsResponse> fetchUserReviews(int userId) async {
   final response = await ApiClient.get('/api/users/$userId/reviews/');
-  final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-  return UserReviewsResponse.fromJson(decoded);
+  final decoded = jsonDecode(response.body) as dynamic;
+  if (decoded is Map<String, dynamic>) {
+    return UserReviewsResponse.fromJson(decoded);
+  }
+  if (decoded is List) {
+    return UserReviewsResponse.fromJson(<String, dynamic>{
+      'count': decoded.length,
+      'reviews': decoded,
+    });
+  }
+  throw const FormatException('Unexpected reviews response format');
 }
 
 /// "Attended events" are represented by Sessions.
@@ -143,12 +152,26 @@ Future<List<Session>> fetchUserSessions({required String username}) async {
     '/api/sessions/',
     queryParams: {'user': username},
   );
-  final decoded = jsonDecode(response.body) as List<dynamic>;
-  return decoded
+  final decoded = jsonDecode(response.body) as dynamic;
+  final rawSessions = _extractSessionList(decoded);
+  return rawSessions
       .whereType<Map<String, dynamic>>()
       .map(SessionDto.fromJson)
       .map((dto) => dto.toDomain())
       .toList();
+}
+
+List<dynamic> _extractSessionList(dynamic decoded) {
+  if (decoded is List) return decoded;
+  if (decoded is Map<String, dynamic>) {
+    final dynamic raw =
+        decoded['results'] ??
+        decoded['sessions'] ??
+        decoded['items'] ??
+        decoded['data'];
+    if (raw is List) return raw;
+  }
+  return const <dynamic>[];
 }
 
 /// Actualitza el perfil d'usuari amb PATCH /api/users/{id}/
