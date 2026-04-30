@@ -431,6 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         'event_reminders_allowed': updatedProfile.eventRemindersAllowed,
         'event_updates_allowed': updatedProfile.eventUpdatesAllowed,
         'social_alerts_allowed': updatedProfile.socialAlertsAllowed,
+        'calendar_sync_allowed': updatedProfile.calendarSyncAllowed,
       });
     }
   }
@@ -480,7 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
 
     if (mounted) {
-      await _loadProfile();
+      await _loadProfile(forceRefresh: true);
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/core/services/user_preferences_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
@@ -23,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _eventRemindersAllowed;
   late bool _eventUpdatesAllowed;
   late bool _socialAlertsAllowed;
+  late bool _calendarSyncAllowed;
   bool _isSaving = false;
 
   @override
@@ -32,6 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _eventRemindersAllowed = widget.currentProfile.eventRemindersAllowed;
     _eventUpdatesAllowed = widget.currentProfile.eventUpdatesAllowed;
     _socialAlertsAllowed = widget.currentProfile.socialAlertsAllowed;
+    _calendarSyncAllowed = widget.currentProfile.calendarSyncAllowed;
   }
 
   Future<void> _persistPreferences() async {
@@ -44,12 +47,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final previousEventReminders = _eventRemindersAllowed;
     final previousEventUpdates = _eventUpdatesAllowed;
     final previousSocialAlerts = _socialAlertsAllowed;
+    final previousCalendarSync = _calendarSyncAllowed;
 
     final result = await updateUserProfile(widget.currentProfile.id, {
       'notifications_allowed': _notificationsAllowed,
       'event_reminders_allowed': _eventRemindersAllowed,
       'event_updates_allowed': _eventUpdatesAllowed,
       'social_alerts_allowed': _socialAlertsAllowed,
+      'calendar_sync_allowed': _calendarSyncAllowed,
     });
 
     if (!mounted) return;
@@ -66,6 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _eventRemindersAllowed = profile.eventRemindersAllowed;
           _eventUpdatesAllowed = profile.eventUpdatesAllowed;
           _socialAlertsAllowed = profile.socialAlertsAllowed;
+          _calendarSyncAllowed = profile.calendarSyncAllowed;
           _isSaving = false;
         });
       case UpdateProfileFailure(:final statusCode):
@@ -74,6 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _eventRemindersAllowed = previousEventReminders;
           _eventUpdatesAllowed = previousEventUpdates;
           _socialAlertsAllowed = previousSocialAlerts;
+          _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
         if (statusCode == 401 || statusCode == 403) {
@@ -89,6 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _eventRemindersAllowed = previousEventReminders;
           _eventUpdatesAllowed = previousEventUpdates;
           _socialAlertsAllowed = previousSocialAlerts;
+          _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
         _showMessage('No s\'han pogut desar les preferències d\'alertes.');
@@ -133,6 +141,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _persistPreferences();
   }
 
+  Future<void> _updateCalendarSyncAllowed(bool enabled) async {
+    if (currentLoggedInUser == null || currentAuthToken == null) {
+      _showMessage(_unauthenticatedMessage);
+      return;
+    }
+
+    final previousCalendarSync = _calendarSyncAllowed;
+
+    setState(() {
+      _isSaving = true;
+      _calendarSyncAllowed = enabled;
+    });
+
+    final result = await updateCalendarSyncAllowed(
+      widget.currentProfile.id,
+      enabled,
+    );
+
+    if (!mounted) return;
+
+    switch (result) {
+      case UpdateProfileSuccess(:final profile):
+        await setCurrentLoggedInUser({
+          ...currentLoggedInUser ?? <String, dynamic>{},
+          ...profile.toJson(),
+          'id': profile.id,
+        });
+        setState(() {
+          _calendarSyncAllowed = profile.calendarSyncAllowed;
+          _isSaving = false;
+        });
+      case UpdateProfileFailure(:final statusCode):
+        setState(() {
+          _calendarSyncAllowed = previousCalendarSync;
+          _isSaving = false;
+        });
+        if (statusCode == 401 || statusCode == 403) {
+          _showMessage(_unauthenticatedMessage);
+        } else if (statusCode == -1) {
+          _showMessage('Error de connexió. Comprova la teva connexió.');
+        } else {
+          _showMessage(
+            'No s\'ha pogut actualitzar la sincronització de calendari.',
+          );
+        }
+      case UpdateProfileValidationError():
+        setState(() {
+          _calendarSyncAllowed = previousCalendarSync;
+          _isSaving = false;
+        });
+        _showMessage(
+          'No s\'ha pogut actualitzar la sincronització de calendari.',
+        );
+    }
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(
       context,
@@ -174,6 +238,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildBlockedUsersShortcut(),
         const SizedBox(height: 12),
         _buildNotificationBlock(),
+        const SizedBox(height: 12),
+        _buildCalendarSyncBlock(),
         const SizedBox(height: 12),
         _buildSavingIndicator(),
       ],
@@ -277,6 +343,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCalendarSyncBlock() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SwitchListTile.adaptive(
+        title: const Text(
+          'Sincronitzar amb Google Calendar',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: const Text(
+          'Afegeix automàticament les sessions que afegeixes a Google Calendar.',
+        ),
+        value: _calendarSyncAllowed,
+        onChanged: !_isSaving ? _updateCalendarSyncAllowed : null,
+        activeThumbColor: const Color(0xFFB71C1C),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       ),
     );
   }
