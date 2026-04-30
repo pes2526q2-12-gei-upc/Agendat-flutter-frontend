@@ -201,9 +201,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Expanded(child: eventDate(event)),
+                  eventDate(event),
                   const Spacer(),
-                  Flexible(child: eventPayment(event)),
+                  eventPayment(event),
                 ],
               ),
               const SizedBox(height: 4),
