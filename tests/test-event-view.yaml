@@ -1,0 +1,62 @@
+# Fer aquest test després del sign up ja que així ja està el compte creat
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+# Happy path de login
+- tapOn: El teu nom d'usuari
+- inputText: Casteller123
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertNotVisible: Inicia sessió per continuar
+
+# Testejar cerca sense coincidències
+- tapOn: Cerca...
+- inputText: ponganos un 10 :)
+- assertVisible: No hi ha esdeveniments.
+- tapOn: ponganos un 10 :)
+- eraseText
+
+# Happy path visualize event
+- tapOn: Cerca...
+- inputText: cultura
+- tapOn: |-
+    Exposició "El poble gitano de Catalunya: història i cultura"
+    Exposicions
+    Sense descripció
+    02/10/2025 - 02/08/2026
+    De pagament
+    Barcelona, Barcelona
+- tapOn: |-
+    VALORACIONS (0)
+    Encara no hi ha valoracions.
+- assertVisible: Afegir valoració
+- waitForAnimationToEnd
+- tapOn:
+    point: 84%,52%
+- swipe:
+    direction: UP
+- assertVisible: Exposicions
+
+# Test crear sessió
+# Happy path crear sessió
+- tapOn: Assistir
+- tapOn: Canvia
+- tapOn: Canvia a introducció de text
+- inputText: 21/5/2026 # s'ha de posar un dia vàlid diferent cada cop
+- tapOn: D'acord
+- tapOn:
+    text: Canvia
+    index: 1
+- tapOn: '00'
+- eraseText
+- inputText: 10
+- tapOn: D'acord
+- tapOn: Confirmar
+- waitForAnimationToEnd
+- tapOn:
+    point: 50%, 80%
+- assertVisible: Assistència registrada correctament.

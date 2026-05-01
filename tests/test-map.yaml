@@ -17,17 +17,20 @@ appId: com.example.agendat
 - tapOn: |-
     Mapa
     Pestanya 2 de 5
+# Testejar zoom in i zoom out
 - tapOn:
     point: 8%,20%
 - tapOn:
     point: 8%,26%
 - tapOn:
     point: 8%,20%
+# Testejar clicar esdeveniment
 - tapOn:
     point: 37%,56%
 - tapOn: Veure detalls
 - assertVisible: Detalls
 - tapOn: Enrere
+# Testejar moviment:
 - swipe:
     direction: LEFT
 - swipe:
