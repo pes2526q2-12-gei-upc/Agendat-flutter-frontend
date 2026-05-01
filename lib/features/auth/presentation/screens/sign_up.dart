@@ -2,44 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
-import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:agendat/features/auth/presentation/screens/register_interests_screen.dart';
+import 'package:agendat/features/auth/presentation/screens/signup_code_screen.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-
-int? createdUserIdFromBody(Map<String, dynamic>? body) {
-  final topLevelId = body?['id'];
-  if (topLevelId is int) return topLevelId;
-
-  final user = body?['user'];
-  if (user is Map<String, dynamic>) {
-    final nestedId = user['id'];
-    if (nestedId is int) return nestedId;
-  }
-
-  return null;
-}
-
-String? createdAuthTokenFromBody(Map<String, dynamic>? body) {
-  final directToken = _tokenFromValue(body?['token']);
-  if (directToken != null) return directToken;
-
-  final auth = body?['auth'];
-  if (auth is Map<String, dynamic>) {
-    final authToken = _tokenFromValue(auth['token']);
-    if (authToken != null) return authToken;
-  }
-
-  return null;
-}
-
-String? _tokenFromValue(Object? value) {
-  final token = value?.toString().trim();
-  if (token == null || token.isEmpty) return null;
-  return token;
-}
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -125,38 +92,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
       first_name: fullName,
       password: password,
     );
-    final result = await createUser(request);
+    final result = await requestSignupCode(request);
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     switch (result) {
-      case CreateUserSuccess(:final body):
-        final userId = createdUserIdFromBody(body);
-        if (userId == null) {
-          _finishRegistration();
-          return;
-        }
-        await _prepareTemporaryRegistrationSession(
-          body: body,
-          username: username,
-          password: password,
-        );
-        if (!mounted) return;
-        final navigator = Navigator.of(context);
-        final scaffoldMessenger = ScaffoldMessenger.of(context);
-        navigator.pushReplacement(
+      case RequestSignupCodeSuccess():
+        Navigator.pushReplacement(
+          context,
           MaterialPageRoute(
-            builder: (_) => RegisterInterestsScreen(
-              userId: userId,
-              onFinished: () => _finishRegistration(
-                navigator: navigator,
-                scaffoldMessenger: scaffoldMessenger,
-              ),
-            ),
+            builder: (_) => SignupCodeScreen(email: email, username: username),
           ),
         );
-      case CreateUserFailure(:final statusCode, :final body):
-        String message = 'No s\'ha pogut crear el compte.';
+      case RequestSignupCodeFailure(:final statusCode, :final body):
+        String message = 'No s\'ha pogut enviar el codi de verificació.';
         if (body != null) {
           if (body['email'] != null) {
             message = (body['email'] is List)
@@ -166,6 +115,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             message = (body['username'] is List)
                 ? (body['username'] as List).join(' ')
                 : body['username'].toString();
+          } else if (body['password'] != null) {
+            message = (body['password'] is List)
+                ? (body['password'] as List).join(' ')
+                : body['password'].toString();
           } else if (body['detail'] != null) {
             message = body['detail'].toString();
           }
@@ -174,53 +127,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         }
         _showSnackBar(message);
     }
-  }
-
-  // serveix per agafar el token i poder accedir a la API i afegir els seus interessos
-  Future<void> _prepareTemporaryRegistrationSession({
-    required Map<String, dynamic>? body,
-    required String username,
-    required String password,
-  }) async {
-    final token = createdAuthTokenFromBody(body);
-    final user = body?['user'];
-    if (user is Map<String, dynamic>) {
-      await setCurrentLoggedInUser(user);
-    }
-    if (token != null) {
-      await setCurrentAuthToken(token);
-      return;
-    }
-
-    final loginResult = await loginUser(
-      LoginUserRequest(username: username, password: password),
-    );
-    if (loginResult is LoginUserFailure) {
-      debugPrint(
-        '[SignUpScreen] Temporary login after signup failed: '
-        '${loginResult.statusCode}',
-      );
-    }
-  }
-
-  Future<void> _finishRegistration({
-    NavigatorState? navigator,
-    ScaffoldMessengerState? scaffoldMessenger,
-  }) async {
-    await logout();
-    final messenger = scaffoldMessenger ?? ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text(
-          'Compte creat correctament. Ara pots iniciar sessió.',
-        ),
-        backgroundColor: Colors.green.shade700,
-      ),
-    );
-    (navigator ?? Navigator.of(context)).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
