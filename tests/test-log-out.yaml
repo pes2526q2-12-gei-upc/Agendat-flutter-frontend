@@ -10,7 +10,7 @@ appId: com.example.agendat
 - inputText: Casteller123
 - tapOn: La teva contrasenya
 - inputText: k.87_oP[
-- tapOn: Inicia sessió
+- pressKey: Enter
 - assertNotVisible: Inicia sessió per continuar
 
 # Happy path

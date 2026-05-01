@@ -1,0 +1,41 @@
+# Fer aquest test després del sign up ja que així ja està el compte creat
+
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+# Happy path de login
+- tapOn: El teu nom d'usuari
+- inputText: Casteller123
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+- assertNotVisible: Inicia sessió per continuar
+
+# Happy path de interacció amb el mapa
+- tapOn: |-
+    Mapa
+    Pestanya 2 de 5
+# Testejar zoom in i zoom out
+- tapOn:
+    point: 8%,20%
+- tapOn:
+    point: 8%,26%
+- tapOn:
+    point: 8%,20%
+# Testejar clicar esdeveniment
+- tapOn:
+    point: 37%,56%
+- tapOn: Veure detalls
+- assertVisible: Detalls
+- tapOn: Enrere
+# Testejar moviment:
+- swipe:
+    direction: LEFT
+- swipe:
+    direction: UP
+- swipe:
+    direction: RIGHT
+- swipe:
+    direction: DOWN
