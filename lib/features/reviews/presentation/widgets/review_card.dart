@@ -253,8 +253,6 @@ class ReviewCard extends StatelessWidget {
   }
 
   /// Galeria horitzontal d'imatges adjuntes a la valoració.
-  /// TODO(backend): quan el servidor suporti també vídeos, distingir el
-  /// tipus de mitjà i mostrar un reproductor per als vídeos.
   Widget _buildImagesGallery() {
     return SizedBox(
       height: 70,

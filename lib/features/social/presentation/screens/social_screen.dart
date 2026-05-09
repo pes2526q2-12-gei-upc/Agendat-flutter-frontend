@@ -10,6 +10,7 @@ import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/features/chat/presentation/screens/chat_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
@@ -350,6 +351,16 @@ class _SocialScreenState extends State<SocialScreen>
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _openChatList() {
+    if (!_isAuthenticated) {
+      _guardAuthenticated();
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const ChatScreen()));
+  }
+
   void _openFriendsList() {
     if (!_isAuthenticated) {
       _guardAuthenticated();
@@ -432,6 +443,14 @@ class _SocialScreenState extends State<SocialScreen>
             children: [
               const Expanded(
                 child: Text('Social', style: AppThemeTokens.appBarTitle),
+              ),
+              IconButton(
+                tooltip: 'Missatges',
+                onPressed: _openChatList,
+                icon: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: Colors.black87,
+                ),
               ),
               IconButton(
                 tooltip: 'Els meus amics',
