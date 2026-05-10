@@ -2,17 +2,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/chat.dart';
+import 'package:agendat/core/models/chat_message.dart';
+import 'package:agendat/core/api/chats_api.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/features/chat/presentation/widgets/message.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 
-/// Llista de xats construïda a partir dels **amics** fins que existeixi API de converses (`ChatsApi`).
+/// Pantalla de llista de xats (dades reals des de backend via [ChatsQuery]).
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -23,7 +26,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   static const Color _accentRed = Color(0xFFB71C1C);
 
-  final _profileQuery = ProfileQuery.instance;
+  final _chatsQuery = ChatsQuery.instance;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
 
@@ -66,26 +69,6 @@ class _ChatScreenState extends State<ChatScreen> {
     return false;
   }
 
-  /// Construeix un [Chat] per amic (`Chat.id` = id de l’amic fins que hi hagi xat real al backend).
-  static List<Chat> _chatsFromFriends(List<UserSummary> friends) {
-    final sorted = [...friends]
-      ..sort(
-        (a, b) =>
-            a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
-      );
-    final now = DateTime.now();
-    return [
-      for (final f in sorted)
-        Chat(
-          id: f.id,
-          partner: f,
-          lastMessage: 'Sense missatges encara',
-          lastMessageTime: now,
-          unreadCount: 0,
-        ),
-    ];
-  }
-
   List<Chat> get _filtered {
     final q = _searchController.text.trim().toLowerCase();
     if (q.isEmpty) return _chats;
@@ -98,7 +81,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _reload({bool forceRefresh = false}) async {
     if (!_guardAuth()) return;
-    final myId = currentLoggedInUser!['id'] as int;
 
     setState(() {
       _loading = true;
@@ -106,13 +88,10 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      final friends = await _profileQuery.getFriends(
-        myId,
-        forceRefresh: forceRefresh,
-      );
+      final chats = await _chatsQuery.getChats(forceRefresh: forceRefresh);
       if (!mounted) return;
       setState(() {
-        _chats = _chatsFromFriends(friends);
+        _chats = chats;
         _loading = false;
       });
     } catch (e, st) {
@@ -131,10 +110,10 @@ class _ChatScreenState extends State<ChatScreen> {
     _searchFocus.unfocus();
   }
 
-  void _openChat(UserSummary partner) {
+  void _openChat(Chat chat) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => FriendConversationScreen(partner: partner),
+        builder: (_) => FriendConversationScreen(chat: chat),
       ),
     );
   }
@@ -166,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
               focusNode: _searchFocus,
               onChanged: (_) => setState(() {}),
               textInputAction: TextInputAction.search,
-              hintText: 'Cerca un amic per obrir el xat',
+              hintText: 'Cerca un xat',
               margin: EdgeInsets.zero,
               suffixIcon: _searchController.text.trim().isEmpty
                   ? null
@@ -221,10 +200,9 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: const EdgeInsets.all(24),
         children: [
           _emptyPane(
-            icon: Icons.handshake_outlined,
-            title: 'Encara no tens amics.',
-            subtitle:
-                'Afegeix amics des de Social per poder xatejar amb ells aquí.',
+            icon: Icons.chat_bubble_outline,
+            title: 'Encara no tens cap xat.',
+            subtitle: 'Quan iniciis una conversa, la veuràs aquí.',
           ),
         ],
       );
@@ -237,7 +215,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           _emptyPane(
             icon: Icons.search_off,
-            title: 'Cap amic coincideix amb la cerca.',
+            title: 'Cap xat coincideix amb la cerca.',
             subtitle:
                 'Prova un altre nom o esborra el text per veure tots els xats.',
             action: ('Esborra cerca', _clearSearch),
@@ -260,7 +238,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final chat = list[i];
         return ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: ChatRow(chat: chat, onTap: () => _openChat(chat.partner)),
+          child: ChatRow(chat: chat, onTap: () => _openChat(chat)),
         );
       },
     );
@@ -312,15 +290,102 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-/// Pantalla de conversa (contingut real quan hi hagi backend de xat).
-class FriendConversationScreen extends StatelessWidget {
-  const FriendConversationScreen({super.key, required this.partner});
+/// Pantalla de conversa amb càrrega real de missatges.
+class FriendConversationScreen extends StatefulWidget {
+  const FriendConversationScreen({super.key, required this.chat});
 
-  final UserSummary partner;
+  final Chat chat;
+
+  @override
+  State<FriendConversationScreen> createState() =>
+      _FriendConversationScreenState();
+}
+
+class _FriendConversationScreenState extends State<FriendConversationScreen> {
+  final _chatsQuery = ChatsQuery.instance;
+  final _inputController = TextEditingController();
+  final _inputFocus = FocusNode();
+
+  bool _loading = true;
+  bool _sending = false;
+  String? _error;
+  List<ChatMessage> _messages = const [];
+
+  UserSummary get _partner => widget.chat.partner;
+  int? get _myUserId => currentLoggedInUser?['id'] as int?;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reload(forceRefresh: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _inputFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reload({bool forceRefresh = false}) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final messages = await _chatsQuery.getMessages(
+        widget.chat.id,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _messages = messages;
+        _loading = false;
+      });
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('[friend_conversation] load: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'No s\'han pogut carregar els missatges.';
+      });
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    final myUserId = _myUserId;
+    final text = _inputController.text.trim();
+    if (text.isEmpty || _sending || myUserId == null) return;
+
+    setState(() => _sending = true);
+    try {
+      await _chatsQuery.sendMessage(
+        widget.chat.id,
+        request: SendMessageRequest(content: text),
+      );
+      _inputController.clear();
+      _inputFocus.requestFocus();
+      await _reload(forceRefresh: true);
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('[friend_conversation] send: $e\n$st');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No s\'ha pogut enviar el missatge.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final photoUrl = chatProfileImageUrl(partner.profileImage);
+    final photoUrl = chatProfileImageUrl(_partner.profileImage);
+    final messages = _messages;
+
     return Scaffold(
       backgroundColor: AppThemeTokens.screenBackground,
       appBar: AppBar(
@@ -335,7 +400,7 @@ class FriendConversationScreen extends StatelessWidget {
               backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
               child: photoUrl == null
                   ? Text(
-                      chatAvatarInitials(partner.displayName),
+                      chatAvatarInitials(_partner.displayName),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -351,7 +416,7 @@ class FriendConversationScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    partner.displayName,
+                    _partner.displayName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -361,7 +426,7 @@ class FriendConversationScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '@${partner.username}',
+                    '@${_partner.username}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
@@ -372,37 +437,129 @@ class FriendConversationScreen extends StatelessWidget {
           ],
         ),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.chat_bubble_outline,
-                size: 72,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Conversa amb ${partner.displayName}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Aquí es mostraran els missatges quan el servidor de xats estigui disponible.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-              ),
-            ],
+      body: Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => _reload(forceRefresh: true),
+              child: _buildMessagesBody(messages),
+            ),
           ),
-        ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController,
+                      focusNode: _inputFocus,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                      decoration: InputDecoration(
+                        hintText: 'Escriu un missatge...',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: _sending ? null : _sendMessage,
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildMessagesBody(List<ChatMessage> messages) {
+    if (_loading && messages.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 120),
+          Center(child: CircularProgressIndicator()),
+        ],
+      );
+    }
+
+    if (_error != null && messages.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: [
+          const SizedBox(height: 120),
+          Center(child: Text(_error!, textAlign: TextAlign.center)),
+        ],
+      );
+    }
+
+    if (messages.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: const [
+          SizedBox(height: 120),
+          Center(
+            child: Text(
+              'Encara no hi ha missatges. Envia el primer.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView.builder(
+      reverse: true,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[messages.length - 1 - index];
+        final isMine = message.senderId == _myUserId;
+        final myProfileImage = currentLoggedInUser == null
+            ? null
+            : currentLoggedInUser!['profile_image'] as String?;
+        final myUsername = currentLoggedInUser == null
+            ? null
+            : currentLoggedInUser!['username'] as String?;
+        return Message(
+          messageText: message.content.isEmpty
+              ? '(sense text)'
+              : message.content,
+          sentAt: message.sentAt,
+          isSentByMe: isMine,
+          avatarUrl: isMine ? myProfileImage : _partner.profileImage,
+          avatarLabel: isMine ? myUsername : _partner.displayName,
+        );
+      },
     );
   }
 }
