@@ -1,0 +1,37 @@
+import 'package:agendat/core/dto/chat_dto.dart';
+import 'package:agendat/core/dto/message_dto.dart';
+import 'package:agendat/core/models/chat.dart';
+import 'package:agendat/core/models/chat_message.dart';
+import 'package:agendat/core/utils/chat_utils.dart';
+import 'package:agendat/features/social/data/models/user_summary.dart';
+
+extension ChatDtoMapper on ChatDto {
+  Chat toDomain() {
+    return Chat(
+      id: id,
+      partner: UserSummary.fromJson(partnerJson),
+      lastMessage: lastMessage,
+      lastMessageTime: parseFlexibleDateTime(lastMessageTime),
+      unreadCount: unreadCount,
+    );
+  }
+}
+
+extension MessageDtoMapper on MessageDto {
+  ChatMessage toDomain() {
+    return ChatMessage(
+      id: id,
+      chatId: chatId,
+      senderId: senderId,
+      content: content,
+      type: type,
+      fileUrl: fileUrl,
+      sentAt: _parseDateTime(sentAt),
+      edited: edited,
+    );
+  }
+}
+
+DateTime _parseDateTime(String raw) {
+  return DateTime.tryParse(raw) ?? DateTime.fromMillisecondsSinceEpoch(0);
+}
