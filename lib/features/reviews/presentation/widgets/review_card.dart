@@ -27,6 +27,8 @@ class ReviewCard extends StatefulWidget {
     this.onLikeToggle,
     this.onLanguageChanged,
     this.isLikeBusy = false,
+    this.isTranslating = false,
+    this.translatedComment,
   });
 
   final Review review;
@@ -46,6 +48,12 @@ class ReviewCard extends StatefulWidget {
 
   /// Deshabilita el botó de like mentre hi ha una petició en curs.
   final bool isLikeBusy;
+
+  /// Indica si hi ha una petició de traducció en curs.
+  final bool isTranslating;
+
+  /// Comentari traduït retornat pel backend per a l'idioma seleccionat.
+  final String? translatedComment;
 
   @override
   State<ReviewCard> createState() => _ReviewCardState();
@@ -90,6 +98,18 @@ class _ReviewCardState extends State<ReviewCard> {
                 height: 1.4,
               ),
             ),
+            if (_hasTranslatedComment) ...[
+              const SizedBox(height: 8),
+              Text(
+                widget.translatedComment!.trim(),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade700,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ],
           ],
           if (widget.review.imageUrls.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -104,6 +124,10 @@ class _ReviewCardState extends State<ReviewCard> {
 
   bool get _hasComment =>
       widget.review.comment != null && widget.review.comment!.trim().isNotEmpty;
+
+  bool get _hasTranslatedComment =>
+      widget.translatedComment != null &&
+      widget.translatedComment!.trim().isNotEmpty;
 
   /// Capçalera: avatar (foto de perfil o inicial), nom, data i botons
   /// d'edició/esborrat (aquests últims només per valoracions pròpies).
@@ -260,6 +284,7 @@ class _ReviewCardState extends State<ReviewCard> {
         const Spacer(),
         PopupMenuButton<String>(
           tooltip: 'Traduïr',
+          enabled: !widget.isTranslating,
           onSelected: _handleLanguageChanged,
           itemBuilder: (context) => const [
             PopupMenuItem(value: 'CA', child: Text('CA')),
@@ -269,7 +294,17 @@ class _ReviewCardState extends State<ReviewCard> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.translate, size: 20, color: Colors.grey.shade600),
+              if (widget.isTranslating)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              else
+                Icon(Icons.translate, size: 20, color: Colors.grey.shade600),
               if (_language.isNotEmpty) ...[
                 const SizedBox(width: 4),
                 Text(

@@ -17,6 +17,32 @@ class SaveReviewResult {
   final bool acceptedForModeration;
 }
 
+class ReviewTranslationResult {
+  const ReviewTranslationResult({
+    required this.reviewId,
+    required this.sourceLanguage,
+    required this.targetLanguage,
+    required this.originalComment,
+    required this.translatedComment,
+  });
+
+  final int reviewId;
+  final String sourceLanguage;
+  final String targetLanguage;
+  final String originalComment;
+  final String translatedComment;
+
+  factory ReviewTranslationResult.fromJson(Map<String, dynamic> json) {
+    return ReviewTranslationResult(
+      reviewId: (json['review_id'] as num?)?.toInt() ?? 0,
+      sourceLanguage: (json['source_language'] as String? ?? '').trim(),
+      targetLanguage: (json['target_language'] as String? ?? '').trim(),
+      originalComment: (json['original_comment'] as String? ?? '').trim(),
+      translatedComment: (json['translated_comment'] as String? ?? '').trim(),
+    );
+  }
+}
+
 class ReviewsQuery {
   static final ReviewsQuery instance = ReviewsQuery._();
   ReviewsQuery._();
@@ -101,5 +127,19 @@ class ReviewsQuery {
     final trimmed = comment?.trim();
     if (trimmed == null || trimmed.isEmpty) return null;
     return trimmed;
+  }
+
+  Future<ReviewTranslationResult?> translateReview(
+    String eventCode,
+    int reviewId,
+    String language,
+  ) async {
+    final raw = await _api.translateReview(
+      eventCode.trim(),
+      reviewId,
+      language,
+    );
+    if (raw == null) return null;
+    return ReviewTranslationResult.fromJson(raw);
   }
 }

@@ -47,6 +47,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   /// Evita que l'usuari premi el cor dues vegades mentre la petició és viva.
   final Set<int> _busyLikeIds = <int>{};
+  final Set<int> _translatingReviewIds = <int>{};
+  final Map<int, String> _translatedCommentsByReviewId = <int, String>{};
+  final Map<int, String> _currentCommentLanguageByReviewId = <int, String>{};
 
   List<Review> _reviews = [];
 
@@ -85,9 +88,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _reviews = reviews;
         _isLoading = false;
       });
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._fetchReviews failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       // En mode silenciós no mostrem error: només era un refresc de fons.
       if (silent) return;
@@ -281,9 +282,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         username: username,
         eventCode: widget.eventCode,
       );
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._hasConfirmedAttendance failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       return true;
     }
   }
@@ -424,13 +423,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       // Refresc silenciós per sincronitzar id real, likes i data del backend.
       // ignore: unawaited_futures
       _fetchReviews(silent: true);
-    } on ReviewAttendanceRequiredException catch (e) {
-      debugPrint('ReviewsSection._submitReview attendance required: $e');
+    } on ReviewAttendanceRequiredException catch (_) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       _showAttendanceRequiredDialog();
-    } on ReviewAlreadyExistsException catch (e) {
-      debugPrint('ReviewsSection._submitReview duplicate: $e');
+    } on ReviewAlreadyExistsException catch (_) {
       if (!mounted) return;
       setState(() {
         _closeForm();
@@ -439,9 +436,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       _showAlreadyReviewedDialog();
       // Recarreguem per ensenyar la valoració existent.
       _fetchReviews();
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._submitReview failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       _showSnack(
@@ -488,9 +483,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         if (_editingIndex != null) _closeForm();
       });
       _showSnack('Valoració eliminada.');
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._deleteReview failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       _showSnack('No s\'ha pogut eliminar la valoració.');
     }
@@ -532,9 +525,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       }
       if (!mounted) return;
       setState(() => _busyLikeIds.remove(reviewId));
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._toggleLike failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         final current = _reviews.indexWhere((r) => r.id == reviewId);
@@ -542,6 +533,67 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _busyLikeIds.remove(reviewId);
       });
       _showSnack('No s\'ha pogut actualitzar el like.');
+    }
+  }
+
+  Future<void> _translateReview(Review review, String language) async {
+    final reviewId = review.id;
+    if (reviewId == null) return;
+    if (_translatingReviewIds.contains(reviewId)) return;
+    final currentComment = (review.comment ?? '').trim();
+    if (currentComment.isEmpty) {
+      _showSnack('Aquesta valoració no té comentari per traduir.');
+      return;
+    }
+    final selectedLanguage = language.trim().toUpperCase();
+    final knownCurrentLanguage = _currentCommentLanguageByReviewId[reviewId]
+        ?.trim()
+        .toUpperCase();
+    if (knownCurrentLanguage != null &&
+        knownCurrentLanguage == selectedLanguage) {
+      _showSnack('La valoració ja està en aquest idioma.');
+      return;
+    }
+
+    setState(() {
+      _translatingReviewIds.add(reviewId);
+      _translatedCommentsByReviewId.remove(reviewId);
+    });
+
+    try {
+      final result = await _reviewsQuery.translateReview(
+        widget.eventCode,
+        reviewId,
+        language,
+      );
+      if (!mounted) return;
+      final responseTargetLanguage = (result?.targetLanguage ?? '')
+          .trim()
+          .toUpperCase();
+      final translatedComment = (result?.translatedComment ?? '').trim();
+      final targetLanguageMismatch =
+          responseTargetLanguage.isNotEmpty &&
+          responseTargetLanguage != selectedLanguage;
+      final backendFallbackDetected =
+          result == null || translatedComment.isEmpty || targetLanguageMismatch;
+
+      setState(() {
+        if (!backendFallbackDetected) {
+          _translatedCommentsByReviewId[reviewId] = translatedComment;
+          _currentCommentLanguageByReviewId[reviewId] =
+              responseTargetLanguage.isEmpty
+              ? selectedLanguage
+              : responseTargetLanguage;
+        }
+        _translatingReviewIds.remove(reviewId);
+      });
+      if (backendFallbackDetected) {
+        _showSnack('Traducció no disponible temporalment.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _translatingReviewIds.remove(reviewId));
+      _showSnack('No s\'ha pogut traduir la valoració.');
     }
   }
 
@@ -578,7 +630,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         onEditReview: _isFormOpen ? null : _openEditForm,
         onDeleteReview: _isFormOpen ? null : _deleteReview,
         onToggleLike: _isLoggedIn ? _toggleLike : null,
+        onTranslateReview: _translateReview,
         busyLikeIds: _busyLikeIds,
+        translatingReviewIds: _translatingReviewIds,
+        translatedCommentsByReviewId: _translatedCommentsByReviewId,
       ),
     ];
   }

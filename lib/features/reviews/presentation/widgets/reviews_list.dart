@@ -19,7 +19,10 @@ class ReviewsList extends StatefulWidget {
     this.onEditReview,
     this.onDeleteReview,
     this.onToggleLike,
+    this.onTranslateReview,
     this.busyLikeIds = const {},
+    this.translatingReviewIds = const {},
+    this.translatedCommentsByReviewId = const {},
   });
 
   final List<Review> reviews;
@@ -40,9 +43,14 @@ class ReviewsList extends StatefulWidget {
   /// seu like. Si és `null` el botó queda deshabilitat.
   final void Function(Review review)? onToggleLike;
 
+  /// Es crida quan l'usuari demana traduir una valoració a un idioma.
+  final void Function(Review review, String language)? onTranslateReview;
+
   /// Conjunt d'`id` de valoracions amb una petició de like/unlike en curs
   /// per deshabilitar el botó i evitar doble click.
   final Set<int> busyLikeIds;
+  final Set<int> translatingReviewIds;
+  final Map<int, String> translatedCommentsByReviewId;
 
   @override
   State<ReviewsList> createState() => _ReviewsListState();
@@ -86,9 +94,25 @@ class _ReviewsListState extends State<ReviewsList> {
             onLikeToggle: widget.onToggleLike == null
                 ? null
                 : () => widget.onToggleLike!(visibleReviews[i].review),
+            onLanguageChanged: widget.onTranslateReview == null
+                ? null
+                : (language) => widget.onTranslateReview!(
+                    visibleReviews[i].review,
+                    language,
+                  ),
             isLikeBusy:
                 visibleReviews[i].review.id != null &&
                 widget.busyLikeIds.contains(visibleReviews[i].review.id),
+            isTranslating:
+                visibleReviews[i].review.id != null &&
+                widget.translatingReviewIds.contains(
+                  visibleReviews[i].review.id,
+                ),
+            translatedComment: visibleReviews[i].review.id == null
+                ? null
+                : widget.translatedCommentsByReviewId[visibleReviews[i]
+                      .review
+                      .id!],
           ),
         if (hasMore) _buildTextButton('Mostrar més', _showMore),
         if (canCollapse) _buildTextButton('Mostrar menys', _showLess),
