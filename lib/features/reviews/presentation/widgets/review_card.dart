@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/review.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
@@ -183,25 +184,42 @@ class _ReviewCardState extends State<ReviewCard> {
         ? widget.review.author[0].toUpperCase()
         : '?';
 
+    Widget fallbackAvatar() {
+      return CircleAvatar(
+        radius: 16,
+        backgroundColor: _brandRed,
+        child: Text(
+          initial,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      );
+    }
+
+    final child = hasAvatar
+        ? ClipOval(
+            child: SizedBox(
+              width: 32,
+              height: 32,
+              child: Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+                webHtmlElementStrategy: kIsWeb
+                    ? WebHtmlElementStrategy.prefer
+                    : WebHtmlElementStrategy.never,
+                errorBuilder: (_, __, ___) => fallbackAvatar(),
+              ),
+            ),
+          )
+        : fallbackAvatar();
+
     return InkWell(
       onTap: _canOpenAuthorProfile ? () => _openAuthorProfile(context) : null,
       borderRadius: BorderRadius.circular(18),
-      child: CircleAvatar(
-        radius: 16,
-        backgroundColor: _brandRed,
-        backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
-        onBackgroundImageError: hasAvatar ? (_, __) {} : null,
-        child: hasAvatar
-            ? null
-            : Text(
-                initial,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-      ),
+      child: child,
     );
   }
 

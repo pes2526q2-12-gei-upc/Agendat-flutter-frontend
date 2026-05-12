@@ -73,7 +73,6 @@ class ReviewDto {
           _nonEmptyString(reviewer?['username']),
       authorAvatarUrl:
           _nonEmptyString(json['profile_image']) ??
-          _nonEmptyString(json['reviewer_profile_image']) ??
           _nonEmptyString(reviewer?['profile_image']),
       general: _asInt(json['rating']),
       preu: _asInt(json['price_rating']),
