@@ -1,5 +1,6 @@
 import 'package:agendat/core/api/reviews_api.dart';
 import 'package:agendat/core/dto/review_dto.dart';
+import 'package:agendat/core/mappers/reviews_mapper.dart';
 import 'package:agendat/core/models/review.dart';
 import 'package:agendat/features/profile/data/profile_api.dart'
     show fetchUserSessions;
@@ -51,7 +52,7 @@ class ReviewsQuery {
 
   Future<List<Review>> fetchReviewsByEventCode(String eventCode) async {
     final dtos = await _api.fetchReviewsByEventCode(eventCode.trim());
-    return dtos.map((dto) => dto.toModel()).toList(growable: false);
+    return dtos.map((dto) => dto.toDomain()).toList(growable: false);
   }
 
   Future<SaveReviewResult> createReview({
@@ -72,7 +73,7 @@ class ReviewsQuery {
     );
     final saved = await _api.createReview(eventCode.trim(), dto);
     return SaveReviewResult(
-      review: saved.toModel(),
+      review: saved.toDomain(),
       acceptedForModeration: saved.acceptedForModeration,
     );
   }
@@ -97,7 +98,7 @@ class ReviewsQuery {
     );
     final saved = await _api.updateReview(eventCode.trim(), dto);
     return SaveReviewResult(
-      review: saved.toModel(),
+      review: saved.toDomain(),
       acceptedForModeration: saved.acceptedForModeration,
     );
   }
