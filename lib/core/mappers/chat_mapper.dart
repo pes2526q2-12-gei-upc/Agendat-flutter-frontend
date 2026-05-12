@@ -15,7 +15,7 @@ extension ChatDtoMapper on ChatDto {
       lastMessage: lastMessage,
       lastMessageTime: parseFlexibleDateTime(updatedAt),
       unreadCount: unreadCount,
-      canSend: canSend,
+      canSend: canSend && !blockedMe && !blockedByMe,
       blockedByMe: blockedByMe,
       blockedMe: blockedMe,
     );

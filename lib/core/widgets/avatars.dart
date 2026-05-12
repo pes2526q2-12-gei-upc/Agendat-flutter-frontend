@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:agendat/core/services/baseURL_api.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 
-/// Avatar circular amb foto de perfil ([resolveProfileImageUrl]) o inicials
+/// Avatar circular amb foto de perfil ([chatProfileImageUrl]) o inicials
 /// ([chatAvatarInitials]). Compatible amb web (`Image.network`).
 class ProfileCircleAvatar extends StatelessWidget {
   const ProfileCircleAvatar({
@@ -21,7 +20,7 @@ class ProfileCircleAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final resolved = resolveProfileImageUrl(profileImage);
+    final resolved = chatProfileImageUrl(profileImage);
     final size = radius * 2;
     final label = chatAvatarInitials(fallbackLabel);
     final textStyle =

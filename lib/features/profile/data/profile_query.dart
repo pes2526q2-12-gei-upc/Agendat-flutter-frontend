@@ -354,8 +354,9 @@ class ProfileQuery {
         userId,
         canSendMessages: true,
       );
-    } else if (status == FriendshipStatus.none ||
-        status == FriendshipStatus.blocked) {
+    } else if (status == FriendshipStatus.blocked) {
+      ChatsQuery.instance.removePartnerChatFromListCache(userId);
+    } else if (status == FriendshipStatus.none) {
       ChatsQuery.instance.syncPartnerMessagingInChatListCache(
         userId,
         canSendMessages: false,

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/query/chats_query.dart';
-import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';

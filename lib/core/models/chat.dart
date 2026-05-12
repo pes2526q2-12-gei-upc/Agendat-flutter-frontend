@@ -57,7 +57,10 @@ class Chat {
         json['updated_at'] ?? json['last_message_time'],
       ),
       unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
-      canSend: json['can_send'] != false,
+      canSend:
+          json['can_send'] != false &&
+          json['blocked_me'] != true &&
+          json['blocked_by_me'] != true,
       blockedByMe: json['blocked_by_me'] == true,
       blockedMe: json['blocked_me'] == true,
     );

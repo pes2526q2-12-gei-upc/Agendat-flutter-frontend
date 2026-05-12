@@ -7,6 +7,9 @@ import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/features/profile/data/profile_api.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 
+export 'package:agendat/core/api/chats_api.dart'
+    show ChatMessageType, SendMessageRequest;
+
 class ChatsQuery {
   static final ChatsQuery instance = ChatsQuery._();
   ChatsQuery._();
@@ -123,6 +126,30 @@ class ChatsQuery {
   }
 
   void invalidateAll() => _client.invalidatePrefix(_prefix);
+
+  /// Força un refetch de la llista de xats (p. ex. després de desbloquejar un usuari).
+  void invalidateChatsList() => _client.invalidate(_listKey);
+
+  /// Treu de la caché del llistat el xat amb [partnerUserId] (p. ex. després de
+  /// bloquejar l’altre: el xat s’elimina de la llista al client).
+  void removePartnerChatFromListCache(int partnerUserId) {
+    final cached = _client.getQueryData<List<Chat>>(_listKey);
+    if (cached == null) return;
+
+    final toRemove = cached
+        .where((c) => c.partner.id == partnerUserId)
+        .toList();
+    if (toRemove.isEmpty) return;
+
+    final next = cached.where((c) => c.partner.id != partnerUserId).toList();
+    _client.setQueryData(_listKey, next);
+    syncUnreadChatConversationsBadge(next);
+
+    for (final c in toRemove) {
+      _client.invalidate(_detailKey(c.id));
+      _client.invalidate(_messagesKey(c.id));
+    }
+  }
 
   void invalidateChat(int chatId) {
     _client.invalidate(_detailKey(chatId));

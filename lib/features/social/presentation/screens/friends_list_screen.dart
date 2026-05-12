@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';

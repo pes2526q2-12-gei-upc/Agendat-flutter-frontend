@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/review.dart';
-import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';

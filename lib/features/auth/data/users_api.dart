@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/state/auth_session.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/token_storage.dart';
@@ -9,6 +10,8 @@ import 'package:agendat/features/auth/data/models/forgot_password_request.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/models/reset_password_request.dart';
 import 'package:agendat/features/auth/data/models/signup_code_confirm_request.dart';
+
+export 'package:agendat/core/state/auth_session.dart';
 
 /// Resultat de la creació d'usuari.
 sealed class CreateUserResult {}
@@ -167,10 +170,6 @@ class LoginUserFailure extends LoginUserResult {
   final Map<String, dynamic>? body;
   final Object? error;
 }
-
-/// Dades de l'usuari actualment autenticat (durant l'execució de l'app).
-Map<String, dynamic>? currentLoggedInUser;
-String? currentAuthToken;
 
 Future<void> setCurrentLoggedInUser(Map<String, dynamic>? userJson) async {
   final normalizedUser = _normalizeLoggedInUser(userJson);

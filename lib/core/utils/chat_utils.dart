@@ -1,4 +1,4 @@
-import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:flutter/material.dart';
 
 /// URL per `NetworkImage` (via [resolveProfileImageUrl]) o `null` si no n’hi ha.

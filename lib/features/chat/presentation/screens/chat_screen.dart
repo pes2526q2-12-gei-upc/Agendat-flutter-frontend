@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
-import 'package:agendat/core/api/chats_api.dart';
+import 'package:agendat/core/state/auth_session.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/widgets/avatars.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
@@ -453,6 +452,18 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   UserSummary get _partner => _chat.partner;
   int? get _myUserId => currentLoggedInUser?['id'] as int?;
 
+  static const String _inactiveLikeUnfriendBanner =
+      'Conversa inactiva: el xat es manté al llistat però '
+      'només pots llegir els missatges anteriors.';
+
+  String _inactiveConversationBannerText() {
+    if (_chat.blockedByMe) {
+      return 'Has bloquejat aquest usuari. El xat ja no apareix al llistat de '
+          'converses.';
+    }
+    return _inactiveLikeUnfriendBanner;
+  }
+
   String? get _myAvatarLabel {
     final u = currentLoggedInUser;
     if (u == null) return null;
@@ -758,10 +769,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            _chat.blockedByMe || _chat.blockedMe
-                                ? 'No podeu enviar missatges en aquest xat.'
-                                : 'Conversa inactiva: el xat es manté al llistat però '
-                                      'només pots llegir els missatges anteriors.',
+                            _inactiveConversationBannerText(),
                             style: TextStyle(
                               fontSize: 14,
                               height: 1.35,

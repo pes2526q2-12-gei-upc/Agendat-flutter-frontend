@@ -53,8 +53,9 @@ class ChatsApi {
     final response = await ApiClient.get(_chatsPath);
     final jsonList = ApiClient.decodeListBody(response);
     final chats = jsonList.map(ChatDto.fromJson);
-    // Defensive filter: list should already come prefiltered by backend.
-    return chats.where((chat) => !chat.blockedByMe && !chat.blockedMe).toList();
+    // Els xats amb «jo he bloquejat l’altre» no es mostren (com eliminats).
+    // Si l’altre m’ha bloquejat, el xat es manté però ve inactiu (igual que sense amistat).
+    return chats.where((chat) => !chat.blockedByMe).toList();
   }
 
   /// Detall d'un xat concret.
