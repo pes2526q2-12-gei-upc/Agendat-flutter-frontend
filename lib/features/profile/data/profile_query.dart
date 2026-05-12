@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:agendat/core/models/session.dart';
+import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
@@ -346,6 +347,19 @@ class ProfileQuery {
     final myId = currentLoggedInUser?['id'];
     if (myId is int && myId != userId) {
       _syncFriendsCacheForUser(myId, userId, status, otherSummary);
+    }
+
+    if (status == FriendshipStatus.friends) {
+      ChatsQuery.instance.syncPartnerMessagingInChatListCache(
+        userId,
+        canSendMessages: true,
+      );
+    } else if (status == FriendshipStatus.none ||
+        status == FriendshipStatus.blocked) {
+      ChatsQuery.instance.syncPartnerMessagingInChatListCache(
+        userId,
+        canSendMessages: false,
+      );
     }
   }
 

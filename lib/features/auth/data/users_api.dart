@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/token_storage.dart';
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
@@ -205,6 +206,7 @@ Future<void> clearLocalSession() async {
   currentLoggedInUser = null;
   currentAuthToken = null;
   ApiClient.setAuthToken(null);
+  unreadChatConversationsNotifier.value = 0;
   await TokenStorage.clear();
 }
 

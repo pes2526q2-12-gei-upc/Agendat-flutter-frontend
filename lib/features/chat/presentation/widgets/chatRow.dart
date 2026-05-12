@@ -10,6 +10,7 @@ Aquest widget representa una fila de chat.
 
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
+import 'package:agendat/core/widgets/avatars.dart';
 import 'package:flutter/material.dart';
 
 class ChatRow extends StatelessWidget {
@@ -28,20 +29,11 @@ class ChatRow extends StatelessWidget {
       chat.lastMessageTime,
     );
 
-    final photoUrl = chatProfileImageUrl(chat.partner.profileImage);
-    final avatar = CircleAvatar(
-      radius: 26,
-      backgroundColor: Colors.grey.shade300,
-      backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-      child: photoUrl == null
-          ? Text(
-              chatAvatarInitials(partnerName),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.black54,
-              ),
-            )
-          : null,
+    const avatarRadius = 26.0;
+    final avatar = ProfileCircleAvatar(
+      radius: avatarRadius,
+      profileImage: chat.partner.profileImage,
+      fallbackLabel: partnerName,
     );
 
     final avatarWithBadge = SizedBox(
@@ -86,12 +78,19 @@ class ChatRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      chat.lastMessage,
+                      chat.canSend
+                          ? chat.lastMessage
+                          : (chat.lastMessage.isEmpty
+                                ? 'Conversa inactiva'
+                                : 'Conversa inactiva · ${chat.lastMessage}'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.black54,
+                        color: chat.canSend ? Colors.black54 : Colors.black45,
                         height: 1.25,
+                        fontStyle: chat.canSend
+                            ? FontStyle.normal
+                            : FontStyle.italic,
                       ),
                     ),
                   ],

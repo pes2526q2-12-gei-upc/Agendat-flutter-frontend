@@ -9,6 +9,7 @@ Aquest widget representa un missatge de chat.
 */
 
 import 'package:agendat/core/utils/chat_utils.dart';
+import 'package:agendat/core/widgets/avatars.dart';
 import 'package:flutter/material.dart';
 
 class Message extends StatelessWidget {
@@ -30,30 +31,20 @@ class Message extends StatelessWidget {
 
   /// Text per inicials si no hi ha foto.
   final String? avatarLabel;
+  static const Color _sentBubbleColor = Color(0xFFB71C1C);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bubbleColor = isSentByMe ? Colors.red : Colors.white;
+    final bubbleColor = isSentByMe ? _sentBubbleColor : Colors.white;
     final onBubble = isSentByMe ? Colors.white : Colors.black87;
     final timeLabel = ChatTimestampFormat.messageDetail(context, sentAt);
 
-    final avatarUrlResolved = chatProfileImageUrl(avatarUrl);
-    final avatar = CircleAvatar(
-      radius: 18,
-      backgroundColor: Colors.grey.shade300,
-      backgroundImage: avatarUrlResolved != null
-          ? NetworkImage(avatarUrlResolved)
-          : null,
-      child: avatarUrlResolved == null
-          ? Text(
-              chatAvatarInitials(avatarLabel ?? '?'),
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.black54,
-              ),
-            )
-          : null,
+    const avatarRadius = 18.0;
+    final avatar = ProfileCircleAvatar(
+      radius: avatarRadius,
+      profileImage: avatarUrl,
+      fallbackLabel: avatarLabel ?? '?',
     );
 
     final bubble = Container(

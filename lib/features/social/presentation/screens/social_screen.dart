@@ -3,18 +3,23 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/models/chat.dart';
+import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/widgets/app_search_bar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/features/chat/presentation/screens/chat_screen.dart'
+    show FriendConversationScreen;
+import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
-import 'package:agendat/features/chat/presentation/screens/chat_screen.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
-import 'package:agendat/core/theme/app_theme_tokens.dart';
-import 'package:agendat/core/widgets/app_search_bar.dart';
-import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/main.dart' show rootTabIndexNotifier, kSocialTabIndex;
 
 class SocialScreen extends StatefulWidget {
@@ -28,6 +33,7 @@ class _SocialScreenState extends State<SocialScreen>
     with SingleTickerProviderStateMixin {
   static const _kPrimaryRed = Color(0xFFB71C1C);
   static const Duration _debounceDuration = Duration(milliseconds: 350);
+  final ChatsQuery _chatsQuery = ChatsQuery.instance;
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -44,6 +50,11 @@ class _SocialScreenState extends State<SocialScreen>
   String? _requestsErrorMessage;
   List<PendingFriendRequest> _pendingRequests = const [];
   final Set<int> _busyRequestIds = <int>{};
+  bool _showPendingRequests = false;
+
+  bool _isLoadingChats = false;
+  String? _chatsErrorMessage;
+  List<Chat> _chats = const [];
 
   // Animació del pop-up del llistat d'amics. Es renderitza com a overlay
   // dins del cos de la pantalla i lliscà des de baix amb una animació
@@ -74,6 +85,7 @@ class _SocialScreenState extends State<SocialScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardAuthenticated();
       _loadPendingRequestsCount();
+      _loadChats();
     });
   }
 
@@ -93,6 +105,14 @@ class _SocialScreenState extends State<SocialScreen>
   void _onRootTabChanged() {
     if (rootTabIndexNotifier.value != kSocialTabIndex) {
       _closeFriendsPopup();
+    } else if (_isAuthenticated) {
+      final cached = _chatsQuery.peekCachedChatsList();
+      if (cached != null) {
+        setState(() => _chats = cached);
+        syncUnreadChatConversationsBadge(cached);
+      } else {
+        _loadChats(forceRefresh: false);
+      }
     }
   }
 
@@ -351,16 +371,6 @@ class _SocialScreenState extends State<SocialScreen>
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _openChatList() {
-    if (!_isAuthenticated) {
-      _guardAuthenticated();
-      return;
-    }
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const ChatScreen()));
-  }
-
   void _openFriendsList() {
     if (!_isAuthenticated) {
       _guardAuthenticated();
@@ -383,6 +393,53 @@ class _SocialScreenState extends State<SocialScreen>
       return;
     }
     _popupController.reverse();
+  }
+
+  Future<void> _loadChats({bool forceRefresh = false}) async {
+    if (!_isAuthenticated) return;
+    setState(() {
+      _isLoadingChats = true;
+      _chatsErrorMessage = null;
+    });
+    try {
+      final chats = await _chatsQuery.getChats(forceRefresh: forceRefresh);
+      if (!mounted) return;
+      setState(() {
+        _chats = chats;
+        _isLoadingChats = false;
+      });
+      syncUnreadChatConversationsBadge(chats);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingChats = false;
+        _chatsErrorMessage =
+            'No s\'ha pogut carregar els xats. Comprova la teva connexió.';
+      });
+    }
+  }
+
+  Future<void> _refreshSocialOverview() async {
+    await Future.wait([
+      _loadPendingRequestsCount(forceRefresh: true),
+      _loadChats(forceRefresh: true),
+    ]);
+  }
+
+  void _togglePendingRequestsView() {
+    setState(() {
+      _showPendingRequests = !_showPendingRequests;
+    });
+  }
+
+  Future<void> _openChat(Chat chat) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => FriendConversationScreen(chat: chat),
+      ),
+    );
+    if (!mounted) return;
+    await _loadChats(forceRefresh: true);
   }
 
   @override
@@ -445,12 +502,9 @@ class _SocialScreenState extends State<SocialScreen>
                 child: Text('Social', style: AppThemeTokens.appBarTitle),
               ),
               IconButton(
-                tooltip: 'Missatges',
-                onPressed: _openChatList,
-                icon: const Icon(
-                  Icons.chat_bubble_outline,
-                  color: Colors.black87,
-                ),
+                tooltip: 'Actualitza',
+                onPressed: _refreshSocialOverview,
+                icon: const Icon(Icons.refresh, color: Colors.black87),
               ),
               IconButton(
                 tooltip: 'Els meus amics',
@@ -484,11 +538,13 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   Widget _buildBody() {
-    if (_query.isEmpty && _isLoadingRequests) {
+    if (_query.isEmpty && _showPendingRequests && _isLoadingRequests) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_query.isEmpty && _requestsErrorMessage != null) {
+    if (_query.isEmpty &&
+        _showPendingRequests &&
+        _requestsErrorMessage != null) {
       return _buildCenteredMessage(
         icon: Icons.error_outline,
         title: _requestsErrorMessage!,
@@ -497,7 +553,7 @@ class _SocialScreenState extends State<SocialScreen>
       );
     }
 
-    if (_query.isEmpty && _pendingRequests.isNotEmpty) {
+    if (_query.isEmpty && _showPendingRequests && _pendingRequests.isNotEmpty) {
       return ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -526,9 +582,49 @@ class _SocialScreenState extends State<SocialScreen>
     }
 
     if (_query.isEmpty) {
-      return _buildCenteredMessage(
-        icon: Icons.inbox_outlined,
-        title: 'Encara no tens cap conversa activa.',
+      if (_isLoadingChats && _chats.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (_chatsErrorMessage != null && _chats.isEmpty) {
+        return _buildCenteredMessage(
+          icon: Icons.error_outline,
+          title: _chatsErrorMessage!,
+          actionLabel: 'Reintentar',
+          onAction: () => _loadChats(forceRefresh: true),
+        );
+      }
+      return RefreshIndicator(
+        color: _kPrimaryRed,
+        onRefresh: _refreshSocialOverview,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            AppScreenSpacing.horizontal,
+            AppScreenSpacing.xxs,
+            AppScreenSpacing.horizontal,
+            AppScreenSpacing.bottom,
+          ),
+          children: [
+            if (_pendingRequests.isNotEmpty) _buildPendingRequestsShortcut(),
+            if (_pendingRequests.isNotEmpty)
+              const SizedBox(height: AppScreenSpacing.xs),
+            if (_chats.isEmpty)
+              _buildCenteredMessage(
+                icon: Icons.chat_bubble_outline,
+                title: 'Encara no tens cap conversa activa.',
+              )
+            else
+              ..._chats.map(
+                (chat) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppScreenSpacing.xs),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ChatRow(chat: chat, onTap: () => _openChat(chat)),
+                  ),
+                ),
+              ),
+          ],
+        ),
       );
     }
 
@@ -565,6 +661,46 @@ class _SocialScreenState extends State<SocialScreen>
       ),
       separatorBuilder: (_, __) => const SizedBox(height: AppScreenSpacing.xs),
       itemCount: _results.length,
+    );
+  }
+
+  Widget _buildPendingRequestsShortcut() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: _kPrimaryRed.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.person_add_alt_1, color: _kPrimaryRed),
+        ),
+        title: const Text(
+          'Sol·licituds d\'amistat',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          '${_pendingRequests.length} pendents per revisar',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Icon(
+          _showPendingRequests ? Icons.expand_less : Icons.expand_more,
+        ),
+        onTap: _togglePendingRequestsView,
+      ),
     );
   }
 

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:agendat/core/query/chats_query.dart';
+import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
@@ -108,6 +110,21 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
     rootTabIndexNotifier.value = _selectedIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _primeUnreadBadge());
+  }
+
+  Future<void> _primeUnreadBadge() async {
+    if (currentAuthToken == null || currentAuthToken!.trim().isEmpty) {
+      unreadChatConversationsNotifier.value = 0;
+      return;
+    }
+    try {
+      final chats = await ChatsQuery.instance.getChats();
+      if (!mounted) return;
+      syncUnreadChatConversationsBadge(chats);
+    } catch (_) {
+      /* es manté el valor anterior */
+    }
   }
 
   void _onDestinationSelected(int index) {
@@ -123,9 +140,15 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: _screens),
-      bottomNavigationBar: AppNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onDestinationSelected,
+      bottomNavigationBar: ValueListenableBuilder<int>(
+        valueListenable: unreadChatConversationsNotifier,
+        builder: (context, unreadConversations, _) {
+          return AppNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onDestinationSelected,
+            socialUnreadConversationCount: unreadConversations,
+          );
+        },
       ),
     );
   }

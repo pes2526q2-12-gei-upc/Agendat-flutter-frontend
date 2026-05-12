@@ -5,15 +5,17 @@ import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/api/chats_api.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
-import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/chats_query.dart';
+import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
+import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
 import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 
 /// Pantalla de llista de xats (dades reals des de backend via [ChatsQuery]).
@@ -115,6 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _friends = friends;
         _loading = false;
       });
+      syncUnreadChatConversationsBadge(chats);
     } catch (e, st) {
       if (kDebugMode) debugPrint('[chat_screen] load: $e\n$st');
       if (!mounted) return;
@@ -131,12 +134,14 @@ class _ChatScreenState extends State<ChatScreen> {
     _searchFocus.unfocus();
   }
 
-  void _openChat(Chat chat) {
-    Navigator.of(context).push(
+  Future<void> _openChat(Chat chat) async {
+    await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => FriendConversationScreen(chat: chat),
       ),
     );
+    if (!mounted) return;
+    await _reload(forceRefresh: true);
   }
 
   Future<void> _startChatWithFriend(UserSummary friend) async {
@@ -393,12 +398,10 @@ class _ChatScreenState extends State<ChatScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            leading: CircleAvatar(
-              backgroundColor: Colors.grey.shade300,
-              child: Text(
-                chatAvatarInitials(friend.displayName),
-                style: const TextStyle(color: Colors.black54),
-              ),
+            leading: ProfileCircleAvatar(
+              radius: 22,
+              profileImage: friend.profileImage,
+              fallbackLabel: friend.displayName,
             ),
             title: Text(
               friend.displayName,
@@ -431,48 +434,132 @@ class FriendConversationScreen extends StatefulWidget {
 }
 
 class _FriendConversationScreenState extends State<FriendConversationScreen> {
+  static const double _stickToBottomThreshold = 80;
+
   final _chatsQuery = ChatsQuery.instance;
   final _inputController = TextEditingController();
   final _inputFocus = FocusNode();
+  final _listScrollController = ScrollController();
+
+  /// Si és cert, després de nous missatges es fa scroll al final (missatges recents).
+  bool _stickToBottom = true;
 
   bool _loading = true;
   bool _sending = false;
   String? _error;
   List<ChatMessage> _messages = const [];
+  late Chat _chat;
 
-  UserSummary get _partner => widget.chat.partner;
+  UserSummary get _partner => _chat.partner;
   int? get _myUserId => currentLoggedInUser?['id'] as int?;
+
+  String? get _myAvatarLabel {
+    final u = currentLoggedInUser;
+    if (u == null) return null;
+    final fn = u['first_name'] as String?;
+    final ln = u['last_name'] as String?;
+    final parts = [
+      fn,
+      ln,
+    ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
+    if (parts.isNotEmpty) return parts.join(' ');
+    return u['username'] as String?;
+  }
 
   @override
   void initState() {
     super.initState();
+    _chat = widget.chat;
+    _listScrollController.addListener(_onMessagesScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _reload(forceRefresh: true);
+      _reload(
+        forceRefresh: true,
+        scrollToNewest: true,
+        animateScrollToNewest: false,
+      );
     });
   }
 
   @override
   void dispose() {
+    _listScrollController.removeListener(_onMessagesScroll);
+    _listScrollController.dispose();
     _inputController.dispose();
     _inputFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _reload({bool forceRefresh = false}) async {
+  void _onMessagesScroll() {
+    if (!_listScrollController.hasClients) return;
+    final pos = _listScrollController.position;
+    final distFromBottom = pos.maxScrollExtent - pos.pixels;
+    _stickToBottom = distFromBottom <= _stickToBottomThreshold;
+  }
+
+  void _scrollMessagesToBottom({bool animated = false}) {
+    void jump() {
+      if (!mounted || !_listScrollController.hasClients) return;
+      final maxExtent = _listScrollController.position.maxScrollExtent;
+      if (animated) {
+        _listScrollController.animateTo(
+          maxExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _listScrollController.jumpTo(maxExtent);
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => jump());
+    });
+  }
+
+  Future<void> _reload({
+    bool forceRefresh = false,
+    bool? scrollToNewest,
+    bool animateScrollToNewest = false,
+  }) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
+      Chat refreshedChat = _chat;
+      try {
+        refreshedChat = await _chatsQuery.getChat(
+          widget.chat.id,
+          forceRefresh: forceRefresh,
+        );
+      } catch (e, st) {
+        if (kDebugMode) {
+          debugPrint('[friend_conversation] getChat: $e\n$st');
+        }
+      }
+
       final messages = await _chatsQuery.getMessages(
         widget.chat.id,
         forceRefresh: forceRefresh,
       );
       if (!mounted) return;
+      final shouldScrollToNewest = scrollToNewest ?? _stickToBottom;
       setState(() {
+        _chat = refreshedChat;
         _messages = messages;
         _loading = false;
+        if (scrollToNewest == true) {
+          _stickToBottom = true;
+        }
       });
+      if (shouldScrollToNewest && messages.isNotEmpty) {
+        _scrollMessagesToBottom(animated: animateScrollToNewest);
+      }
+      try {
+        await _chatsQuery.markRead(widget.chat.id);
+      } catch (e, st) {
+        if (kDebugMode) debugPrint('[friend_conversation] markRead: $e\n$st');
+      }
     } catch (e, st) {
       if (kDebugMode) debugPrint('[friend_conversation] load: $e\n$st');
       if (!mounted) return;
@@ -486,17 +573,32 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   Future<void> _sendMessage() async {
     final myUserId = _myUserId;
     final text = _inputController.text.trim();
-    if (text.isEmpty || _sending || myUserId == null) return;
+    if (text.isEmpty || _sending || myUserId == null || !_chat.canSend) {
+      if (text.isNotEmpty && !_chat.canSend && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Aquest xat està inactiu. Només podeu llegir la conversa.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _sending = true);
     try {
       await _chatsQuery.sendMessage(
-        widget.chat.id,
+        _chat.id,
         request: SendMessageRequest(content: text),
       );
       _inputController.clear();
       _inputFocus.requestFocus();
-      await _reload(forceRefresh: true);
+      await _reload(
+        forceRefresh: true,
+        scrollToNewest: true,
+        animateScrollToNewest: true,
+      );
     } catch (e, st) {
       if (kDebugMode) debugPrint('[friend_conversation] send: $e\n$st');
       if (!mounted) return;
@@ -510,9 +612,16 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     }
   }
 
+  void _openPartnerProfile() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileScreen(userId: _partner.id),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final photoUrl = chatProfileImageUrl(_partner.profileImage);
     final messages = _messages;
 
     return Scaffold(
@@ -521,49 +630,49 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
         backgroundColor: AppThemeTokens.appBarBackground,
         elevation: AppThemeTokens.appBarElevation,
         foregroundColor: Colors.black87,
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.grey.shade300,
-              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-              child: photoUrl == null
-                  ? Text(
-                      chatAvatarInitials(_partner.displayName),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.black54,
+        title: InkWell(
+          onTap: _openPartnerProfile,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                ProfileCircleAvatar(
+                  radius: 18,
+                  profileImage: _partner.profileImage,
+                  fallbackLabel: _partner.displayName,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _partner.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 17,
+                          color: Colors.black87,
+                        ),
                       ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _partner.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 17,
-                      color: Colors.black87,
-                    ),
+                      Text(
+                        '@${_partner.username}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '@${_partner.username}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
       body: Column(
@@ -574,54 +683,98 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
               child: _buildMessagesBody(messages),
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _inputController,
-                      focusNode: _inputFocus,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                      decoration: InputDecoration(
-                        hintText: 'Escriu un missatge...',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
+          if (_chat.canSend)
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _inputController,
+                        focusNode: _inputFocus,
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                        decoration: InputDecoration(
+                          hintText: 'Escriu un missatge...',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: _sending ? null : _sendMessage,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: _sending ? null : _sendMessage,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.hourglass_disabled_outlined,
+                          size: 22,
+                          color: Colors.grey.shade700,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _chat.blockedByMe || _chat.blockedMe
+                                ? 'No podeu enviar missatges en aquest xat.'
+                                : 'Conversa inactiva: el xat es manté al llistat però '
+                                      'només pots llegir els missatges anteriors.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.35,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -653,11 +806,13 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
-        children: const [
-          SizedBox(height: 120),
+        children: [
+          const SizedBox(height: 120),
           Center(
             child: Text(
-              'Encara no hi ha missatges. Envia el primer.',
+              _chat.canSend
+                  ? 'Encara no hi ha missatges. Envia el primer.'
+                  : 'Encara no hi ha missatges en aquest xat.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -665,20 +820,20 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       );
     }
 
+    final orderedMessages = [...messages]
+      ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+
     return ListView.builder(
-      reverse: true,
+      controller: _listScrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-      itemCount: messages.length,
+      itemCount: orderedMessages.length,
       itemBuilder: (context, index) {
-        final message = messages[messages.length - 1 - index];
+        final message = orderedMessages[index];
         final isMine = message.senderId == _myUserId;
         final myProfileImage = currentLoggedInUser == null
             ? null
             : currentLoggedInUser!['profile_image'] as String?;
-        final myUsername = currentLoggedInUser == null
-            ? null
-            : currentLoggedInUser!['username'] as String?;
         return Message(
           messageText: message.content.isEmpty
               ? '(sense text)'
@@ -686,7 +841,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
           sentAt: message.sentAt,
           isSentByMe: isMine,
           avatarUrl: isMine ? myProfileImage : _partner.profileImage,
-          avatarLabel: isMine ? myUsername : _partner.displayName,
+          avatarLabel: isMine ? (_myAvatarLabel ?? '?') : _partner.displayName,
         );
       },
     );

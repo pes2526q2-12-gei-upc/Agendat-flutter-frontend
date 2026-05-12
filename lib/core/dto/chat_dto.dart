@@ -51,11 +51,27 @@ class ChatDto {
       'username': json['partner_username'] ?? json['other_user_username'] ?? '',
       'first_name': json['partner_first_name'] ?? json['other_user_first_name'],
       'last_name': json['partner_last_name'] ?? json['other_user_last_name'],
-      'profile_image':
-          json['partner_profile_image'] ?? json['other_user_profile_image'],
+      'profile_image': _flattenedPartnerProfileImage(json),
       'description':
           json['partner_description'] ?? json['other_user_description'],
     };
+  }
+
+  static String? _flattenedPartnerProfileImage(Map<String, dynamic> json) {
+    const keys = <String>[
+      'partner_profile_image',
+      'other_user_profile_image',
+      'partner_profile_image_url',
+      'other_user_profile_image_url',
+      'partner_avatar',
+      'other_user_avatar',
+      'partner_profile_picture',
+    ];
+    for (final key in keys) {
+      final v = json[key];
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
+    return null;
   }
 
   static String _parseLastMessage(Map<String, dynamic> json) {
