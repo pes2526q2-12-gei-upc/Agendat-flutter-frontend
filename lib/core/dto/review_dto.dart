@@ -1,5 +1,3 @@
-import 'package:agendat/core/models/review.dart';
-
 /// DTO que es parla amb el backend per a les ressenyes.
 ///
 /// Els camps que el servidor pot no retornar (o que encara no existeixen
@@ -150,23 +148,4 @@ class ReviewDto {
 
   /// Cos per actualitzar una ressenya existent.
   Map<String, dynamic> toUpdateJson() => _editableFields();
-
-  /// Converteix el DTO al model de domini que fa servir la UI.
-  Review toModel() {
-    return Review(
-      id: id,
-      authorId: userId,
-      author: authorName ?? userId ?? '',
-      authorAvatarUrl: authorAvatarUrl,
-      general: general,
-      preu: preu,
-      ambient: ambient,
-      accessibilitat: accessibilitat,
-      comment: comment,
-      imageUrls: imageUrls,
-      date: createdAt ?? '',
-      likesCount: likesCount,
-      isLikedByMe: isLikedByMe,
-    );
-  }
 }

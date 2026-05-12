@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
-import 'package:agendat/core/api/reviews_api.dart';
-import 'package:agendat/core/dto/review_dto.dart';
 import 'package:agendat/core/models/review.dart';
-import 'package:agendat/features/profile/data/profile_api.dart'
-    show fetchUserSessions;
+import 'package:agendat/core/query/reviews_query.dart';
 import 'package:agendat/features/reviews/presentation/widgets/add_review_form.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_list.dart';
@@ -35,7 +32,7 @@ class ReviewsSection extends StatefulWidget {
 class _ReviewsSectionState extends State<ReviewsSection> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
 
-  final ReviewsApi _reviewsApi = ReviewsApi();
+  final ReviewsQuery _reviewsQuery = ReviewsQuery.instance;
 
   bool _isExpanded = false;
   bool _isFormOpen = false;
@@ -50,6 +47,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   /// Evita que l'usuari premi el cor dues vegades mentre la petició és viva.
   final Set<int> _busyLikeIds = <int>{};
+  final Set<int> _translatingReviewIds = <int>{};
+  final Map<int, String> _translatedCommentsByReviewId = <int, String>{};
+  final Map<int, String> _currentCommentLanguageByReviewId = <int, String>{};
 
   List<Review> _reviews = [];
 
@@ -69,10 +69,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       });
     }
     try {
-      final dtos = await _reviewsApi.fetchReviewsByEventCode(widget.eventCode);
+      final reviewsFromServer = await _reviewsQuery.fetchReviewsByEventCode(
+        widget.eventCode,
+      );
       if (!mounted) return;
-      final reviews = dtos
-          .map((dto) => dto.toModel())
+      final reviews = reviewsFromServer
           .map(
             (review) => _isOwnReview(review)
                 ? _withCurrentUserDefaults(review)
@@ -87,9 +88,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _reviews = reviews;
         _isLoading = false;
       });
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._fetchReviews failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       // En mode silenciós no mostrem error: només era un refresc de fons.
       if (silent) return;
@@ -279,17 +278,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final username = _currentUsername;
     if (username == null) return false;
     try {
-      final sessions = await fetchUserSessions(username: username);
-      final now = DateTime.now();
-      return sessions.any(
-        (s) =>
-            s.event == widget.eventCode &&
-            s.endTime != null &&
-            s.endTime!.isBefore(now),
+      return _reviewsQuery.hasConfirmedAttendance(
+        username: username,
+        eventCode: widget.eventCode,
       );
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._hasConfirmedAttendance failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       return true;
     }
   }
@@ -375,33 +368,40 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final editingIndex = _editingIndex;
     final existing = editingIndex != null ? _reviews[editingIndex] : null;
 
-    final dto = ReviewDto(
-      id: existing?.id,
-      eventCode: widget.eventCode,
-      general: generalRating,
-      preu: preuRating,
-      ambient: ambientRating,
-      accessibilitat: accessibilitatRating,
-      comment: comment.trim().isEmpty ? null : comment.trim(),
-    );
+    final submittedComment = comment.trim().isEmpty ? null : comment.trim();
 
     setState(() => _isSubmitting = true);
     try {
-      final ReviewDto saved;
-      if (existing != null) {
-        saved = await _reviewsApi.updateReview(widget.eventCode, dto);
+      final SaveReviewResult result;
+      if (existing?.id != null) {
+        result = await _reviewsQuery.updateReview(
+          eventCode: widget.eventCode,
+          reviewId: existing!.id!,
+          general: generalRating,
+          preu: preuRating,
+          ambient: ambientRating,
+          accessibilitat: accessibilitatRating,
+          comment: submittedComment,
+        );
       } else {
-        saved = await _reviewsApi.createReview(widget.eventCode, dto);
+        result = await _reviewsQuery.createReview(
+          eventCode: widget.eventCode,
+          general: generalRating,
+          preu: preuRating,
+          ambient: ambientRating,
+          accessibilitat: accessibilitatRating,
+          comment: submittedComment,
+        );
       }
       if (!mounted) return;
-      final hasSubmittedComment = dto.comment?.trim().isNotEmpty == true;
+      final hasSubmittedComment = submittedComment?.isNotEmpty == true;
       final commentNeedsModeration =
-          saved.acceptedForModeration && hasSubmittedComment;
+          result.acceptedForModeration && hasSubmittedComment;
       // Algunes respostes del backend no inclouen autor, foto o comentari.
       final savedReview = _withCurrentUserDefaults(
-        saved.toModel(),
+        result.review,
         existing: existing,
-        submittedComment: dto.comment,
+        submittedComment: submittedComment,
         hideSubmittedComment: commentNeedsModeration,
       );
       setState(() {
@@ -423,13 +423,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       // Refresc silenciós per sincronitzar id real, likes i data del backend.
       // ignore: unawaited_futures
       _fetchReviews(silent: true);
-    } on ReviewAttendanceRequiredException catch (e) {
-      debugPrint('ReviewsSection._submitReview attendance required: $e');
+    } on ReviewAttendanceRequiredException catch (_) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       _showAttendanceRequiredDialog();
-    } on ReviewAlreadyExistsException catch (e) {
-      debugPrint('ReviewsSection._submitReview duplicate: $e');
+    } on ReviewAlreadyExistsException catch (_) {
       if (!mounted) return;
       setState(() {
         _closeForm();
@@ -438,9 +436,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       _showAlreadyReviewedDialog();
       // Recarreguem per ensenyar la valoració existent.
       _fetchReviews();
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._submitReview failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       _showSnack(
@@ -480,16 +476,14 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     if (confirmed != true) return;
 
     try {
-      await _reviewsApi.deleteReview(widget.eventCode, reviewId);
+      await _reviewsQuery.deleteReview(widget.eventCode, reviewId);
       if (!mounted) return;
       setState(() {
         _reviews.removeWhere((r) => r.id == reviewId);
         if (_editingIndex != null) _closeForm();
       });
       _showSnack('Valoració eliminada.');
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._deleteReview failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       _showSnack('No s\'ha pogut eliminar la valoració.');
     }
@@ -525,15 +519,13 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
     try {
       if (wasLiked) {
-        await _reviewsApi.unlikeReview(widget.eventCode, reviewId);
+        await _reviewsQuery.unlikeReview(widget.eventCode, reviewId);
       } else {
-        await _reviewsApi.likeReview(widget.eventCode, reviewId);
+        await _reviewsQuery.likeReview(widget.eventCode, reviewId);
       }
       if (!mounted) return;
       setState(() => _busyLikeIds.remove(reviewId));
-    } catch (e, stack) {
-      debugPrint('ReviewsSection._toggleLike failed: $e');
-      debugPrintStack(stackTrace: stack);
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         final current = _reviews.indexWhere((r) => r.id == reviewId);
@@ -541,6 +533,67 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _busyLikeIds.remove(reviewId);
       });
       _showSnack('No s\'ha pogut actualitzar el like.');
+    }
+  }
+
+  Future<void> _translateReview(Review review, String language) async {
+    final reviewId = review.id;
+    if (reviewId == null) return;
+    if (_translatingReviewIds.contains(reviewId)) return;
+    final currentComment = (review.comment ?? '').trim();
+    if (currentComment.isEmpty) {
+      _showSnack('Aquesta valoració no té comentari per traduir.');
+      return;
+    }
+    final selectedLanguage = language.trim().toUpperCase();
+    final knownCurrentLanguage = _currentCommentLanguageByReviewId[reviewId]
+        ?.trim()
+        .toUpperCase();
+    if (knownCurrentLanguage != null &&
+        knownCurrentLanguage == selectedLanguage) {
+      _showSnack('La valoració ja està en aquest idioma.');
+      return;
+    }
+
+    setState(() {
+      _translatingReviewIds.add(reviewId);
+      _translatedCommentsByReviewId.remove(reviewId);
+    });
+
+    try {
+      final result = await _reviewsQuery.translateReview(
+        widget.eventCode,
+        reviewId,
+        language,
+      );
+      if (!mounted) return;
+      final responseTargetLanguage = (result?.targetLanguage ?? '')
+          .trim()
+          .toUpperCase();
+      final translatedComment = (result?.translatedComment ?? '').trim();
+      final targetLanguageMismatch =
+          responseTargetLanguage.isNotEmpty &&
+          responseTargetLanguage != selectedLanguage;
+      final backendFallbackDetected =
+          result == null || translatedComment.isEmpty || targetLanguageMismatch;
+
+      setState(() {
+        if (!backendFallbackDetected) {
+          _translatedCommentsByReviewId[reviewId] = translatedComment;
+          _currentCommentLanguageByReviewId[reviewId] =
+              responseTargetLanguage.isEmpty
+              ? selectedLanguage
+              : responseTargetLanguage;
+        }
+        _translatingReviewIds.remove(reviewId);
+      });
+      if (backendFallbackDetected) {
+        _showSnack('Traducció no disponible temporalment.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _translatingReviewIds.remove(reviewId));
+      _showSnack('No s\'ha pogut traduir la valoració.');
     }
   }
 
@@ -577,7 +630,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         onEditReview: _isFormOpen ? null : _openEditForm,
         onDeleteReview: _isFormOpen ? null : _deleteReview,
         onToggleLike: _isLoggedIn ? _toggleLike : null,
+        onTranslateReview: _translateReview,
         busyLikeIds: _busyLikeIds,
+        translatingReviewIds: _translatingReviewIds,
+        translatedCommentsByReviewId: _translatedCommentsByReviewId,
       ),
     ];
   }
