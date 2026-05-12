@@ -46,6 +46,13 @@ class Chat {
   /// L’altre usuari ha bloquejat l’usuari actual.
   final bool blockedMe;
 
+  /// Una línia curta que explica per què no es poden enviar missatges (p. ex. llista de xats).
+  String get inactiveMessagingReasonShort {
+    if (blockedByMe) return 'Has bloquejat aquest usuari';
+    if (blockedMe) return 'Aquest usuari t\'ha bloquejat';
+    return 'Ja no sou amics amb aquest usuari';
+  }
+
   factory Chat.fromJson(Map<String, dynamic> json) {
     return Chat(
       id: (json['id'] as num).toInt(),
