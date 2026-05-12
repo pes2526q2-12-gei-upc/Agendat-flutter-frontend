@@ -81,8 +81,8 @@ class ChatRow extends StatelessWidget {
                       chat.canSend
                           ? chat.lastMessage
                           : (chat.lastMessage.isEmpty
-                                ? 'Conversa inactiva'
-                                : 'Conversa inactiva · ${chat.lastMessage}'),
+                                ? chat.inactiveMessagingReasonShort
+                                : '${chat.inactiveMessagingReasonShort} · ${chat.lastMessage}'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(

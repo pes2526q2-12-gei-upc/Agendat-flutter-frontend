@@ -452,8 +452,12 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   UserSummary get _partner => _chat.partner;
   int? get _myUserId => currentLoggedInUser?['id'] as int?;
 
-  static const String _inactiveLikeUnfriendBanner =
-      'Conversa inactiva: el xat es manté al llistat però '
+  static const String _inactiveUnfriendBanner =
+      'Ja no sou amics amb aquest usuari. El xat es manté al llistat però '
+      'només pots llegir els missatges anteriors.';
+
+  static const String _inactiveBlockedByPartnerBanner =
+      'Aquest usuari t\'ha bloquejat. El xat es manté al llistat però '
       'només pots llegir els missatges anteriors.';
 
   String _inactiveConversationBannerText() {
@@ -461,7 +465,10 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       return 'Has bloquejat aquest usuari. El xat ja no apareix al llistat de '
           'converses.';
     }
-    return _inactiveLikeUnfriendBanner;
+    if (_chat.blockedMe) {
+      return _inactiveBlockedByPartnerBanner;
+    }
+    return _inactiveUnfriendBanner;
   }
 
   String? get _myAvatarLabel {
