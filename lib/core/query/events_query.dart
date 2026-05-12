@@ -4,13 +4,40 @@ import 'package:agendat/core/mappers/event_mapper.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/query_client.dart';
+import 'package:agendat/core/services/app_language.dart';
+
+/// Result of a single paginated request to `/api/events/`.
+class PaginatedEvents {
+  /// Total amount of events that match the current filters across all pages.
+  final int count;
+
+  /// `true` when there are more pages to fetch after this one.
+  final bool hasMore;
+
+  /// Events returned by this specific page.
+  final List<Event> events;
+
+  const PaginatedEvents({
+    required this.count,
+    required this.hasMore,
+    required this.events,
+  });
+}
 
 class EventsQuery {
   static final EventsQuery instance = EventsQuery._();
   EventsQuery._();
 
   static const Duration staleTime = Duration(minutes: 5);
+  static const int defaultPageSize = EventsApi.defaultPageSize;
+  static const int translatedPageSize = EventsApi.translatedPageSize;
   static const String _prefix = 'events';
+
+  /// Returns the page size that should be used for the current app language.
+  ///
+  /// Small (3) when the backend will translate events, normal (20) otherwise.
+  static int pageSizeForCurrentLanguage() =>
+      EventsApi.pageSizeForLang(AppLanguage.code);
 
   final EventsApi _api = EventsApi();
   final QueryClient _client = QueryClient.instance;
@@ -29,17 +56,66 @@ class EventsQuery {
     _persistedFiltersNotifier.value = filters;
   }
 
+  /// Returns every event for [filters] (iterating all pages under the hood).
+  ///
+  /// Intended for callers that need the full dataset, like the map view.
+  /// UIs that scroll should use [getEventsPage] instead.
+  ///
+  /// [lang] defaults to [AppLanguage.code]. Pass `'CA'` (or
+  /// [AppLanguage.defaultCode]) explicitly if you want untranslated content.
   Future<List<Event>> getEvents({
     EventFilters? filters,
     bool forceRefresh = false,
+    String? lang,
   }) {
+    final effectiveLang = lang ?? AppLanguage.code;
     return _client.query<List<Event>>(
-      key: _listKey(filters),
+      key: _listKey(filters, effectiveLang),
       staleTime: staleTime,
       forceRefresh: forceRefresh,
       queryFn: () async {
-        final dtos = await _api.fetchEvents(filters: filters);
+        final dtos = await _api.fetchEvents(
+          filters: filters,
+          lang: effectiveLang,
+        );
         return dtos.map((dto) => dto.toDomain()).toList();
+      },
+    );
+  }
+
+  /// Fetches a single page of events.
+  ///
+  /// [offset] is the number of events to skip. For an infinite-scroll list the
+  /// first call uses `offset: 0` and subsequent calls pass the amount of
+  /// events already loaded.
+  ///
+  /// If [limit] is left as `null` it defaults to the right size for the
+  /// current language (20 for Catalan, 3 for translated languages).
+  Future<PaginatedEvents> getEventsPage({
+    EventFilters? filters,
+    int offset = 0,
+    int? limit,
+    bool forceRefresh = false,
+    String? lang,
+  }) {
+    final effectiveLang = lang ?? AppLanguage.code;
+    final effectiveLimit = limit ?? EventsApi.pageSizeForLang(effectiveLang);
+    return _client.query<PaginatedEvents>(
+      key: _pageKey(filters, offset, effectiveLimit, effectiveLang),
+      staleTime: staleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () async {
+        final dto = await _api.fetchEventsPage(
+          filters: filters,
+          offset: offset,
+          limit: effectiveLimit,
+          lang: effectiveLang,
+        );
+        return PaginatedEvents(
+          count: dto.count,
+          hasMore: dto.hasNext,
+          events: dto.results.map((d) => d.toDomain()).toList(),
+        );
       },
     );
   }
@@ -60,15 +136,30 @@ class EventsQuery {
   /// Invalidates every cached events query (lists + details).
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 
-  /// Invalidates only the cached list queries (every filter combination).
+  /// Invalidates only the cached list queries (every filter combination,
+  /// including the per-page entries used by infinite scroll).
   void invalidateLists() => _client.invalidatePrefix('$_prefix:list');
 
   /// Invalidates the cached detail for a specific event code.
   void invalidateDetail(String eventCode) =>
       _client.invalidate(_detailKey(eventCode.trim()));
 
-  String _listKey(EventFilters? filters) {
-    if (filters == null || filters.isEmpty) return '$_prefix:list';
+  String _listKey(EventFilters? filters, String lang) {
+    final langPart = lang.toUpperCase();
+    if (filters == null || filters.isEmpty) {
+      return '$_prefix:list:$langPart';
+    }
+    return '$_prefix:list:$langPart:${_filterSignature(filters)}';
+  }
+
+  String _pageKey(EventFilters? filters, int offset, int limit, String lang) {
+    final signature = (filters == null || filters.isEmpty)
+        ? ''
+        : _filterSignature(filters);
+    return '$_prefix:list:page:${lang.toUpperCase()}:$offset:$limit:$signature';
+  }
+
+  String _filterSignature(EventFilters filters) {
     final params =
         filters
             .toQueryParams()
@@ -76,7 +167,7 @@ class EventsQuery {
             .map((e) => '${e.key}=${e.value}')
             .toList()
           ..sort();
-    return '$_prefix:list:${params.join('&')}';
+    return params.join('&');
   }
 
   String _detailKey(String eventCode) => '$_prefix:detail:$eventCode';

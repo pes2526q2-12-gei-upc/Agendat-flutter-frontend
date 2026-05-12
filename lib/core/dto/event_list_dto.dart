@@ -1,5 +1,52 @@
 import 'package:agendat/core/dto/category_dto.dart';
 
+/// DTO for the paginated `/api/events/` response.
+///
+/// Mirrors the DRF pagination envelope: `count` is the total amount of
+/// events matching the filters, `next`/`previous` are URLs (null when
+/// there isn't a next/previous page) and `results` holds the current page.
+class PaginatedEventsDto {
+  final int count;
+  final String? next;
+  final String? previous;
+  final List<EventListDto> results;
+
+  const PaginatedEventsDto({
+    required this.count,
+    this.next,
+    this.previous,
+    this.results = const [],
+  });
+
+  bool get hasNext => next != null && next!.isNotEmpty;
+
+  factory PaginatedEventsDto.fromJson(Map<String, dynamic> json) {
+    final rawResults = json['results'] ?? json['events'];
+    final results = rawResults is List
+        ? rawResults
+              .whereType<Map<String, dynamic>>()
+              .map(EventListDto.fromJson)
+              .toList()
+        : <EventListDto>[];
+
+    final rawCount = json['count'];
+    final count = rawCount is num ? rawCount.toInt() : results.length;
+
+    return PaginatedEventsDto(
+      count: count,
+      next: _stringOrNull(json['next']),
+      previous: _stringOrNull(json['previous']),
+      results: results,
+    );
+  }
+
+  static String? _stringOrNull(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+}
+
 class EventListDto {
   final String code;
   final String? denomination;

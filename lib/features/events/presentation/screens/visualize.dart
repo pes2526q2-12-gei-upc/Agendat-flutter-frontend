@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
@@ -18,11 +19,35 @@ class VisualizeScreen extends StatefulWidget {
 }
 
 class _VisualizeScreenState extends State<VisualizeScreen> {
+  /// Píxels per damunt del final de la llista a partir dels quals dispararem
+  /// la càrrega de la pàgina següent (com fa Instagram).
+  static const double _loadMoreThresholdPx = 300;
+
+  /// Quants esdeveniments demanem en cada crida al backend.
+  ///
+  /// Depèn de l'idioma actiu:
+  /// - **CA**: 20 (no es tradueix, podem ser generosos).
+  /// - **ES/EN**: 3 (es tradueix; limitem caràcters traduïts per crida).
+  int get _pageSize => EventsQuery.pageSizeForCurrentLanguage();
+
   final EventsQuery _eventsQuery = EventsQuery.instance;
-  late Future<List<Event>> _eventsFuture;
+  final ScrollController _scrollController = ScrollController();
+
   late final EventFilters _defaultFilters;
-  String _query = '';
   EventFilters _activeFilters = const EventFilters();
+
+  final List<Event> _events = <Event>[];
+  bool _isInitialLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  Object? _error;
+
+  /// Epoch incremented every time we kick off a fresh first-page load so we
+  /// can ignore the results of in-flight requests that were superseded
+  /// (filters changed, pull-to-refresh, etc.).
+  int _requestEpoch = 0;
+
+  String _query = '';
 
   DateTime get _todayAtMidnight {
     final now = DateTime.now();
@@ -38,23 +63,31 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     if (_eventsQuery.persistedFilters == null) {
       _eventsQuery.setPersistedFilters(_activeFilters);
     }
-    _eventsFuture = _eventsQuery.getEvents(
-      filters: _activeFilters.isEmpty ? null : _activeFilters,
-      forceRefresh: true,
-    );
-    // Escoltem: si canvia al mapa, aquí també s'actualitza.
     _eventsQuery.persistedFiltersListenable.addListener(
       _onSharedFiltersChanged,
     );
+    // Si l'usuari canvia l'idioma de l'app, hem de tornar a començar des
+    // de l'offset 0 (les pàgines de l'idioma anterior ja no encaixen amb
+    // les del nou idioma, i a més el page size canvia).
+    AppLanguage.listenable.addListener(_onLanguageChanged);
+    _scrollController.addListener(_onScroll);
+    _loadFirstPage(forceRefresh: true);
   }
 
   @override
   void dispose() {
-    // Traiem el listener en sortir
     _eventsQuery.persistedFiltersListenable.removeListener(
       _onSharedFiltersChanged,
     );
+    AppLanguage.listenable.removeListener(_onLanguageChanged);
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (!mounted) return;
+    _loadFirstPage(forceRefresh: true);
   }
 
   void _onSharedFiltersChanged() {
@@ -64,25 +97,94 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       _activeFilters.toQueryParams(),
       sharedFilters.toQueryParams(),
     );
-    // Si és igual, no toquem res.
     if (!hasChanged) return;
 
+    _activeFilters = sharedFilters;
+    _loadFirstPage();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    // Sense distància màxima coneguda encara (per ex. abans del primer
+    // layout), evitem disparar la càrrega.
+    if (!position.hasContentDimensions) return;
+    final distanceToBottom = position.maxScrollExtent - position.pixels;
+    if (distanceToBottom <= _loadMoreThresholdPx) {
+      _loadNextPage();
+    }
+  }
+
+  Future<void> _loadFirstPage({bool forceRefresh = false}) async {
+    final epoch = ++_requestEpoch;
     setState(() {
-      // Ens quedem amb el filtre nou i recarreguem la llista.
-      _activeFilters = sharedFilters;
-      _eventsFuture = _eventsQuery.getEvents(
-        filters: _activeFilters.isEmpty ? null : _activeFilters,
-      );
+      _isInitialLoading = true;
+      _isLoadingMore = false;
+      _hasMore = true;
+      _error = null;
+      _events.clear();
     });
+
+    // Quan és un refresc manual, descartem totes les pàgines cacheades del
+    // llistat per assegurar que cada pàgina nova torna a fer xarxa.
+    if (forceRefresh) {
+      _eventsQuery.invalidateLists();
+    }
+
+    try {
+      final page = await _eventsQuery.getEventsPage(
+        filters: _activeFilters.isEmpty ? null : _activeFilters,
+        offset: 0,
+        limit: _pageSize,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted || epoch != _requestEpoch) return;
+      setState(() {
+        _events
+          ..clear()
+          ..addAll(page.events);
+        _hasMore = page.hasMore;
+        _isInitialLoading = false;
+      });
+    } catch (e) {
+      if (!mounted || epoch != _requestEpoch) return;
+      setState(() {
+        _error = e;
+        _isInitialLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isLoadingMore || !_hasMore || _isInitialLoading) return;
+    final epoch = _requestEpoch;
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final page = await _eventsQuery.getEventsPage(
+        filters: _activeFilters.isEmpty ? null : _activeFilters,
+        offset: _events.length,
+        limit: _pageSize,
+      );
+      if (!mounted || epoch != _requestEpoch) return;
+      setState(() {
+        _events.addAll(page.events);
+        _hasMore = page.hasMore;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted || epoch != _requestEpoch) return;
+      setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No s\'han pogut carregar més esdeveniments: $e'),
+        ),
+      );
+    }
   }
 
   void _refresh() {
-    setState(() {
-      _eventsFuture = _eventsQuery.getEvents(
-        filters: _activeFilters.isEmpty ? null : _activeFilters,
-        forceRefresh: true,
-      );
-    });
+    _loadFirstPage(forceRefresh: true);
   }
 
   void _onApplyFilters(EventFilters filters) {
@@ -141,64 +243,81 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               ),
             ),
           ),
-          Expanded(
-            child: FutureBuilder<List<Event>>(
-              future: _eventsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Error: ${snapshot.error}',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 10),
-                          ElevatedButton(
-                            onPressed: _refresh,
-                            child: const Text('Reintentar'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                final events = _applySearch(snapshot.data ?? const []);
-                if (events.isEmpty) {
-                  return const Center(child: Text('No hi ha esdeveniments.'));
-                }
-
-                return eventsList(events);
-              },
-            ),
-          ),
+          Expanded(child: _buildBody()),
         ],
       ),
     );
   }
 
+  Widget _buildBody() {
+    if (_isInitialLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Error: $_error', textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _refresh,
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final filtered = _applySearch(_events);
+    if (filtered.isEmpty && !_isLoadingMore) {
+      return RefreshIndicator(
+        onRefresh: () async => _refresh(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text('No hi ha esdeveniments.')),
+          ],
+        ),
+      );
+    }
+
+    return eventsList(filtered);
+  }
+
   Widget eventsList(List<Event> events) {
+    // Afegim un slot extra al final per dibuixar la rodeta mentre arriben més.
+    final showLoader = _isLoadingMore;
+    final itemCount = events.length + (showLoader ? 1 : 0);
+
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: ListView.separated(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           AppScreenSpacing.horizontal,
           0,
           AppScreenSpacing.horizontal,
           AppScreenSpacing.bottom,
         ),
-        itemCount: events.length,
+        itemCount: itemCount,
         separatorBuilder: (_, __) =>
             const SizedBox(height: AppScreenSpacing.sm),
-        itemBuilder: (context, index) => eventCard(events[index]),
+        itemBuilder: (context, index) {
+          if (showLoader && index == events.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return eventCard(events[index]);
+        },
       ),
     );
   }
