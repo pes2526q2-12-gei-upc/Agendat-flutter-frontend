@@ -26,6 +26,9 @@ class ReviewsApi {
   static String _eventReviewLikePath(String eventCode, int reviewId) =>
       '/api/events/$eventCode/reviews/$reviewId/like/';
 
+  static String _eventReviewTranslatePath(String eventCode, int reviewId) =>
+      '/api/events/$eventCode/reviews/$reviewId/translate/';
+
   /// Llista les ressenyes d'un esdeveniment.
   /// Si el backend retorna 404 (endpoint sense dades) es considera com a
   /// llista buida enlloc de propagar l'error.
@@ -128,6 +131,27 @@ class ReviewsApi {
       _eventReviewLikePath(eventCode, reviewId),
       acceptedStatusCodes: const {200, 202, 204},
     );
+  }
+
+  /// Tradueix el comentari d'una ressenya al llenguatge destí.
+  ///
+  /// Body de request: `{ "target_language": "CA" }`
+  /// Resposta esperada (200): objecte amb camps de traducció.
+  Future<Map<String, dynamic>?> translateReview(
+    String eventCode,
+    int reviewId,
+    String targetLanguage,
+  ) async {
+    final normalizedTargetLanguage = targetLanguage.trim().toUpperCase();
+    final response = await ApiClient.postJson(
+      _eventReviewTranslatePath(eventCode, reviewId),
+      body: {'target_language': normalizedTargetLanguage},
+      acceptedStatusCodes: const {200, 201, 204},
+    );
+
+    final decoded = ApiClient.decodeBody(response);
+    if (decoded is Map<String, dynamic>) return decoded;
+    return null;
   }
 
   /// Parser del format real del backend:

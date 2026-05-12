@@ -18,14 +18,17 @@ import 'package:agendat/main.dart' show RootNavigationScreen;
 /// Si es passa [onEdit] (i la valoració és de l'usuari loggejat) apareix
 /// una icona de llapis a la capçalera. Si es passa [onDelete] (també
 /// només per valoracions pròpies) apareix una icona de paperera.
-class ReviewCard extends StatelessWidget {
+class ReviewCard extends StatefulWidget {
   const ReviewCard({
     super.key,
     required this.review,
     this.onEdit,
     this.onDelete,
     this.onLikeToggle,
+    this.onLanguageChanged,
     this.isLikeBusy = false,
+    this.isTranslating = false,
+    this.translatedComment,
   });
 
   final Review review;
@@ -40,10 +43,30 @@ class ReviewCard extends StatelessWidget {
   /// (p. ex. quan l'usuari no està autenticat).
   final VoidCallback? onLikeToggle;
 
+  /// Callback quan l'usuari canvia l'idioma del menú.
+  final ValueChanged<String>? onLanguageChanged;
+
   /// Deshabilita el botó de like mentre hi ha una petició en curs.
   final bool isLikeBusy;
 
+  /// Indica si hi ha una petició de traducció en curs.
+  final bool isTranslating;
+
+  /// Comentari traduït retornat pel backend per a l'idioma seleccionat.
+  final String? translatedComment;
+
+  @override
+  State<ReviewCard> createState() => _ReviewCardState();
+}
+
+class _ReviewCardState extends State<ReviewCard> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
+  String _language = '';
+
+  void _handleLanguageChanged(String value) {
+    setState(() => _language = value);
+    widget.onLanguageChanged?.call(value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,19 +84,34 @@ class ReviewCard extends StatelessWidget {
         children: [
           _buildHeader(context),
           const SizedBox(height: 10),
-          ReviewRatingRow(label: 'Valoració general', rating: review.general),
+          ReviewRatingRow(
+            label: 'Valoració general',
+            rating: widget.review.general,
+          ),
           if (_hasComment) ...[
             const SizedBox(height: 8),
             Text(
-              review.comment!.trim(),
+              widget.review.comment!.trim(),
               style: const TextStyle(
                 fontSize: 13,
                 color: Colors.black87,
                 height: 1.4,
               ),
             ),
+            if (_hasTranslatedComment) ...[
+              const SizedBox(height: 8),
+              Text(
+                widget.translatedComment!.trim(),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade700,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ],
           ],
-          if (review.imageUrls.isNotEmpty) ...[
+          if (widget.review.imageUrls.isNotEmpty) ...[
             const SizedBox(height: 8),
             _buildImagesGallery(),
           ],
@@ -85,7 +123,11 @@ class ReviewCard extends StatelessWidget {
   }
 
   bool get _hasComment =>
-      review.comment != null && review.comment!.trim().isNotEmpty;
+      widget.review.comment != null && widget.review.comment!.trim().isNotEmpty;
+
+  bool get _hasTranslatedComment =>
+      widget.translatedComment != null &&
+      widget.translatedComment!.trim().isNotEmpty;
 
   /// Capçalera: avatar (foto de perfil o inicial), nom, data i botons
   /// d'edició/esborrat (aquests últims només per valoracions pròpies).
@@ -103,7 +145,7 @@ class ReviewCard extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                review.author,
+                widget.review.author,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -114,16 +156,19 @@ class ReviewCard extends StatelessWidget {
           ),
         ),
         Text(
-          _formatDate(review.date),
+          _formatDate(widget.review.date),
           style: TextStyle(fontSize: 12, color: Colors.grey[500]),
         ),
-        if (onEdit != null) ...[
+        if (widget.onEdit != null) ...[
           const SizedBox(width: 4),
-          _iconButton(icon: Icons.edit_rounded, onTap: onEdit!),
+          _iconButton(icon: Icons.edit_rounded, onTap: widget.onEdit!),
         ],
-        if (onDelete != null) ...[
+        if (widget.onDelete != null) ...[
           const SizedBox(width: 2),
-          _iconButton(icon: Icons.delete_outline_rounded, onTap: onDelete!),
+          _iconButton(
+            icon: Icons.delete_outline_rounded,
+            onTap: widget.onDelete!,
+          ),
         ],
       ],
     );
@@ -132,10 +177,10 @@ class ReviewCard extends StatelessWidget {
   /// Avatar circular. Si hi ha foto de perfil la pintem; altrament mostrem
   /// la inicial del nom com a fallback.
   Widget _buildAuthorAvatar(BuildContext context) {
-    final avatarUrl = resolveProfileImageUrl(review.authorAvatarUrl);
+    final avatarUrl = resolveProfileImageUrl(widget.review.authorAvatarUrl);
     final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
-    final initial = review.author.isNotEmpty
-        ? review.author[0].toUpperCase()
+    final initial = widget.review.author.isNotEmpty
+        ? widget.review.author[0].toUpperCase()
         : '?';
 
     return InkWell(
@@ -160,7 +205,7 @@ class ReviewCard extends StatelessWidget {
     );
   }
 
-  int? get _authorUserId => int.tryParse(review.authorId ?? '');
+  int? get _authorUserId => int.tryParse(widget.review.authorId ?? '');
 
   int? get _currentUserId => (currentLoggedInUser?['id'] as num?)?.toInt();
 
@@ -201,14 +246,14 @@ class ReviewCard extends StatelessWidget {
 
   /// Peu de la targeta amb el botó de like i el comptador.
   Widget _buildFooter() {
-    final liked = review.isLikedByMe;
-    final count = review.likesCount;
-    final isDisabled = onLikeToggle == null || isLikeBusy;
+    final liked = widget.review.isLikedByMe;
+    final count = widget.review.likesCount;
+    final isDisabled = widget.onLikeToggle == null || widget.isLikeBusy;
 
     return Row(
       children: [
         InkWell(
-          onTap: isDisabled ? null : onLikeToggle,
+          onTap: isDisabled ? null : widget.onLikeToggle,
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(6),
@@ -224,7 +269,6 @@ class ReviewCard extends StatelessWidget {
                       ? Colors.grey.shade400
                       : (liked ? _brandRed : Colors.grey.shade600),
                 ),
-                const SizedBox(width: 6),
                 Text(
                   '$count',
                   style: TextStyle(
@@ -235,6 +279,40 @@ class ReviewCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+        const Spacer(),
+        PopupMenuButton<String>(
+          tooltip: 'Traduïr',
+          enabled: !widget.isTranslating,
+          onSelected: _handleLanguageChanged,
+          itemBuilder: (context) => const [
+            PopupMenuItem(value: 'CA', child: Text('CA')),
+            PopupMenuItem(value: 'ES', child: Text('ES')),
+            PopupMenuItem(value: 'EN', child: Text('EN')),
+          ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.isTranslating)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              else
+                Icon(Icons.translate, size: 20, color: Colors.grey.shade600),
+              if (_language.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(
+                  _language,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ],
+            ],
           ),
         ),
       ],
@@ -258,13 +336,13 @@ class ReviewCard extends StatelessWidget {
       height: 70,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: review.imageUrls.length,
+        itemCount: widget.review.imageUrls.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              review.imageUrls[index],
+              widget.review.imageUrls[index],
               width: 70,
               height: 70,
               fit: BoxFit.cover,
