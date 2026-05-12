@@ -25,6 +25,7 @@ class ReviewCard extends StatefulWidget {
     this.onEdit,
     this.onDelete,
     this.onLikeToggle,
+    this.onLanguageChanged,
     this.isLikeBusy = false,
   });
 
@@ -40,6 +41,9 @@ class ReviewCard extends StatefulWidget {
   /// (p. ex. quan l'usuari no està autenticat).
   final VoidCallback? onLikeToggle;
 
+  /// Callback quan l'usuari canvia l'idioma del menú.
+  final ValueChanged<String>? onLanguageChanged;
+
   /// Deshabilita el botó de like mentre hi ha una petició en curs.
   final bool isLikeBusy;
 
@@ -50,6 +54,11 @@ class ReviewCard extends StatefulWidget {
 class _ReviewCardState extends State<ReviewCard> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
   String _language = '';
+
+  void _handleLanguageChanged(String value) {
+    setState(() => _language = value);
+    widget.onLanguageChanged?.call(value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +260,7 @@ class _ReviewCardState extends State<ReviewCard> {
         const Spacer(),
         PopupMenuButton<String>(
           tooltip: 'Traduïr',
-          onSelected: (value) => setState(() => _language = value),
+          onSelected: _handleLanguageChanged,
           itemBuilder: (context) => const [
             PopupMenuItem(value: 'CA', child: Text('CA')),
             PopupMenuItem(value: 'ES', child: Text('ES')),

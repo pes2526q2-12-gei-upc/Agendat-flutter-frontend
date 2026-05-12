@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
-import 'package:agendat/core/api/reviews_api.dart';
-import 'package:agendat/core/dto/review_dto.dart';
 import 'package:agendat/core/models/review.dart';
-import 'package:agendat/features/profile/data/profile_api.dart'
-    show fetchUserSessions;
+import 'package:agendat/core/query/reviews_query.dart';
 import 'package:agendat/features/reviews/presentation/widgets/add_review_form.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_list.dart';
@@ -35,7 +32,7 @@ class ReviewsSection extends StatefulWidget {
 class _ReviewsSectionState extends State<ReviewsSection> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
 
-  final ReviewsApi _reviewsApi = ReviewsApi();
+  final ReviewsQuery _reviewsQuery = ReviewsQuery.instance;
 
   bool _isExpanded = false;
   bool _isFormOpen = false;
@@ -69,10 +66,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       });
     }
     try {
-      final dtos = await _reviewsApi.fetchReviewsByEventCode(widget.eventCode);
+      final reviewsFromServer = await _reviewsQuery.fetchReviewsByEventCode(
+        widget.eventCode,
+      );
       if (!mounted) return;
-      final reviews = dtos
-          .map((dto) => dto.toModel())
+      final reviews = reviewsFromServer
           .map(
             (review) => _isOwnReview(review)
                 ? _withCurrentUserDefaults(review)
@@ -279,13 +277,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final username = _currentUsername;
     if (username == null) return false;
     try {
-      final sessions = await fetchUserSessions(username: username);
-      final now = DateTime.now();
-      return sessions.any(
-        (s) =>
-            s.event == widget.eventCode &&
-            s.endTime != null &&
-            s.endTime!.isBefore(now),
+      return _reviewsQuery.hasConfirmedAttendance(
+        username: username,
+        eventCode: widget.eventCode,
       );
     } catch (e, stack) {
       debugPrint('ReviewsSection._hasConfirmedAttendance failed: $e');
@@ -375,33 +369,40 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final editingIndex = _editingIndex;
     final existing = editingIndex != null ? _reviews[editingIndex] : null;
 
-    final dto = ReviewDto(
-      id: existing?.id,
-      eventCode: widget.eventCode,
-      general: generalRating,
-      preu: preuRating,
-      ambient: ambientRating,
-      accessibilitat: accessibilitatRating,
-      comment: comment.trim().isEmpty ? null : comment.trim(),
-    );
+    final submittedComment = comment.trim().isEmpty ? null : comment.trim();
 
     setState(() => _isSubmitting = true);
     try {
-      final ReviewDto saved;
-      if (existing != null) {
-        saved = await _reviewsApi.updateReview(widget.eventCode, dto);
+      final SaveReviewResult result;
+      if (existing?.id != null) {
+        result = await _reviewsQuery.updateReview(
+          eventCode: widget.eventCode,
+          reviewId: existing!.id!,
+          general: generalRating,
+          preu: preuRating,
+          ambient: ambientRating,
+          accessibilitat: accessibilitatRating,
+          comment: submittedComment,
+        );
       } else {
-        saved = await _reviewsApi.createReview(widget.eventCode, dto);
+        result = await _reviewsQuery.createReview(
+          eventCode: widget.eventCode,
+          general: generalRating,
+          preu: preuRating,
+          ambient: ambientRating,
+          accessibilitat: accessibilitatRating,
+          comment: submittedComment,
+        );
       }
       if (!mounted) return;
-      final hasSubmittedComment = dto.comment?.trim().isNotEmpty == true;
+      final hasSubmittedComment = submittedComment?.isNotEmpty == true;
       final commentNeedsModeration =
-          saved.acceptedForModeration && hasSubmittedComment;
+          result.acceptedForModeration && hasSubmittedComment;
       // Algunes respostes del backend no inclouen autor, foto o comentari.
       final savedReview = _withCurrentUserDefaults(
-        saved.toModel(),
+        result.review,
         existing: existing,
-        submittedComment: dto.comment,
+        submittedComment: submittedComment,
         hideSubmittedComment: commentNeedsModeration,
       );
       setState(() {
@@ -480,7 +481,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     if (confirmed != true) return;
 
     try {
-      await _reviewsApi.deleteReview(widget.eventCode, reviewId);
+      await _reviewsQuery.deleteReview(widget.eventCode, reviewId);
       if (!mounted) return;
       setState(() {
         _reviews.removeWhere((r) => r.id == reviewId);
@@ -525,9 +526,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
     try {
       if (wasLiked) {
-        await _reviewsApi.unlikeReview(widget.eventCode, reviewId);
+        await _reviewsQuery.unlikeReview(widget.eventCode, reviewId);
       } else {
-        await _reviewsApi.likeReview(widget.eventCode, reviewId);
+        await _reviewsQuery.likeReview(widget.eventCode, reviewId);
       }
       if (!mounted) return;
       setState(() => _busyLikeIds.remove(reviewId));
