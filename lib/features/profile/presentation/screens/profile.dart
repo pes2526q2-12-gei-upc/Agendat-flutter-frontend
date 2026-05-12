@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/profile/data/models/user_profile.dart';
@@ -13,6 +13,7 @@ import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
+import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -690,6 +691,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       successMessage: 'Has desbloquejat aquest usuari.',
       genericErrorMessage: 'No s\'ha pogut desbloquejar l\'usuari.',
       isUnblock: true,
+      refreshChatsListOnSuccess: true,
     );
   }
 
@@ -701,6 +703,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     required String successMessage,
     required String genericErrorMessage,
     required bool isUnblock,
+    bool refreshChatsListOnSuccess = false,
   }) async {
     setState(() => _isBlockActionInProgress = true);
 
@@ -713,6 +716,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         _applyBlockStateChange(
           newStatus: successStatus,
           message: successMessage,
+          refreshChatsListOnSuccess: refreshChatsListOnSuccess,
         );
       case BlockActionUnauthorized():
         setState(() => _isBlockActionInProgress = false);
@@ -736,6 +740,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               (isUnblock
                   ? 'Aquest usuari ja no estava bloquejat.'
                   : 'Aquest usuari ja estava bloquejat.'),
+          refreshChatsListOnSuccess: refreshChatsListOnSuccess,
         );
       case BlockActionFailure(:final statusCode, :final message, :final error):
         setState(() => _isBlockActionInProgress = false);
@@ -754,6 +759,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _applyBlockStateChange({
     required FriendshipStatus newStatus,
     required String message,
+    bool refreshChatsListOnSuccess = false,
   }) {
     setState(() {
       _friendshipStatus = newStatus;
@@ -783,6 +789,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (myId != null) {
       _profileQuery.invalidateFriendshipLists(myId);
       _profileQuery.invalidateBlockedUsers(myId);
+    }
+
+    if (refreshChatsListOnSuccess) {
+      ChatsQuery.instance.invalidateChatsList();
     }
 
     ScaffoldMessenger.of(

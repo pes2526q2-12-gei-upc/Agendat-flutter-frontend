@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:agendat/core/services/baseURL_api.dart';
+import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/screens/deleteAccount.dart';

@@ -23,9 +23,25 @@ class UserSummary {
       username: (json['username'] as String?) ?? '',
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
-      profileImage: json['profile_image'] as String?,
+      profileImage: _profileImageFromJson(json),
       description: json['description'] as String?,
     );
+  }
+
+  static String? _profileImageFromJson(Map<String, dynamic> json) {
+    const keys = <String>[
+      'profile_image',
+      'profile_image_url',
+      'profile_picture',
+      'avatar',
+      'photo',
+      'image',
+    ];
+    for (final key in keys) {
+      final v = json[key];
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
+    return null;
   }
 
   String get displayName {
@@ -34,5 +50,23 @@ class UserSummary {
       lastName,
     ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
     return parts.isNotEmpty ? parts.join(' ') : username;
+  }
+
+  UserSummary copyWith({
+    int? id,
+    String? username,
+    String? firstName,
+    String? lastName,
+    String? profileImage,
+    String? description,
+  }) {
+    return UserSummary(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      profileImage: profileImage ?? this.profileImage,
+      description: description ?? this.description,
+    );
   }
 }
