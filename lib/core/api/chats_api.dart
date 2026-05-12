@@ -52,7 +52,9 @@ class ChatsApi {
   Future<List<ChatDto>> fetchChats() async {
     final response = await ApiClient.get(_chatsPath);
     final jsonList = ApiClient.decodeListBody(response);
-    return jsonList.map(ChatDto.fromJson).toList();
+    final chats = jsonList.map(ChatDto.fromJson);
+    // Defensive filter: list should already come prefiltered by backend.
+    return chats.where((chat) => !chat.blockedByMe && !chat.blockedMe).toList();
   }
 
   /// Detall d'un xat concret.
@@ -70,6 +72,15 @@ class ChatsApi {
     final response = await ApiClient.get('$_chatsPath$chatId/messages/');
     final jsonList = ApiClient.decodeListBody(response);
     return jsonList.map(MessageDto.fromJson).toList();
+  }
+
+  /// Marca com a llegits els missatges rebuts pendents del xat.
+  Future<void> markRead(int chatId) async {
+    await ApiClient.postJson(
+      '$_chatsPath$chatId/mark-read/',
+      body: const <String, dynamic>{},
+      acceptedStatusCodes: const {200, 204},
+    );
   }
 
   /// Envia un missatge al xat.

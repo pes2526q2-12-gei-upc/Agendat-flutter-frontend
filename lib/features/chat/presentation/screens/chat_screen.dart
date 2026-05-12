@@ -13,6 +13,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
+import 'package:agendat/features/profile/data/profile_query.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 
 /// Pantalla de llista de xats (dades reals des de backend via [ChatsQuery]).
@@ -27,12 +28,15 @@ class _ChatScreenState extends State<ChatScreen> {
   static const Color _accentRed = Color(0xFFB71C1C);
 
   final _chatsQuery = ChatsQuery.instance;
+  final _profileQuery = ProfileQuery.instance;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
 
   bool _loading = true;
   String? _error;
   List<Chat> _chats = const [];
+  List<UserSummary> _friends = const [];
+  bool _loadingFriends = false;
 
   @override
   void initState() {
@@ -89,9 +93,26 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       final chats = await _chatsQuery.getChats(forceRefresh: forceRefresh);
+      final myId = currentLoggedInUser?['id'];
+      List<UserSummary> friends = _friends;
+      if (myId is int) {
+        _loadingFriends = true;
+        try {
+          friends = await _profileQuery.getFriends(
+            myId,
+            forceRefresh: forceRefresh,
+          );
+        } catch (_) {
+          // Best effort: si falla, mantenim la darrera llista d'amics.
+          friends = _friends;
+        } finally {
+          _loadingFriends = false;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _chats = chats;
+        _friends = friends;
         _loading = false;
       });
     } catch (e, st) {
@@ -116,6 +137,41 @@ class _ChatScreenState extends State<ChatScreen> {
         builder: (_) => FriendConversationScreen(chat: chat),
       ),
     );
+  }
+
+  Future<void> _startChatWithFriend(UserSummary friend) async {
+    try {
+      final refreshedChats = await _chatsQuery.getChats(forceRefresh: true);
+      Chat? chat;
+      for (final candidate in refreshedChats) {
+        if (candidate.partner.id == friend.id) {
+          chat = candidate;
+          break;
+        }
+      }
+      if (chat == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Aquest xat encara no està disponible. Torna-ho a provar en uns segons.',
+            ),
+          ),
+        );
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _chats = refreshedChats);
+      _openChat(chat);
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('[chat_screen] start chat failed: $e\n$st');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No s\'ha pogut obrir el xat amb aquest amic.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -202,8 +258,10 @@ class _ChatScreenState extends State<ChatScreen> {
           _emptyPane(
             icon: Icons.chat_bubble_outline,
             title: 'Encara no tens cap xat.',
-            subtitle: 'Quan iniciis una conversa, la veuràs aquí.',
+            subtitle: 'Pots iniciar una conversa amb qualsevol amic.',
           ),
+          const SizedBox(height: 12),
+          ..._buildFriendsStarters(),
         ],
       );
     }
@@ -287,6 +345,77 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildFriendsStarters() {
+    if (_loadingFriends) {
+      return const [
+        Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
+    }
+    if (_friends.isEmpty) {
+      return const [
+        Padding(
+          padding: EdgeInsets.only(top: 4),
+          child: Center(
+            child: Text(
+              'No tens amics disponibles per iniciar un xat.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ];
+    }
+
+    final sorted = [..._friends]
+      ..sort(
+        (a, b) =>
+            a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+      );
+    return [
+      Text(
+        'Inicia xat amb amics',
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade800,
+        ),
+      ),
+      const SizedBox(height: 10),
+      ...sorted.map(
+        (friend) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            tileColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            leading: CircleAvatar(
+              backgroundColor: Colors.grey.shade300,
+              child: Text(
+                chatAvatarInitials(friend.displayName),
+                style: const TextStyle(color: Colors.black54),
+              ),
+            ),
+            title: Text(
+              friend.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              '@${friend.username}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chat_outlined),
+            onTap: () => _startChatWithFriend(friend),
+          ),
+        ),
+      ),
+    ];
   }
 }
 

@@ -2,28 +2,39 @@ class ChatDto {
   const ChatDto({
     required this.id,
     required this.partnerJson,
+    required this.createdAt,
+    required this.updatedAt,
     required this.lastMessage,
-    required this.lastMessageTime,
     required this.unreadCount,
+    required this.canSend,
+    required this.blockedByMe,
+    required this.blockedMe,
   });
 
   final int id;
   final Map<String, dynamic> partnerJson;
+  final String createdAt;
+  final String updatedAt;
   final String lastMessage;
-  final String lastMessageTime;
   final int unreadCount;
+  final bool canSend;
+  final bool blockedByMe;
+  final bool blockedMe;
 
   factory ChatDto.fromJson(Map<String, dynamic> json) {
     final partner = _parsePartner(json);
     final lastMessage = _parseLastMessage(json);
-    final lastMessageTime = _parseLastMessageTime(json);
 
     return ChatDto(
       id: ((json['id_chat'] ?? json['id']) as num).toInt(),
       partnerJson: partner,
+      createdAt: _parseDateLike(json['created_at']),
+      updatedAt: _parseDateLike(json['updated_at']),
       lastMessage: lastMessage,
-      lastMessageTime: lastMessageTime,
       unreadCount: ((json['unread_count'] ?? 0) as num).toInt(),
+      canSend: json['can_send'] != false,
+      blockedByMe: json['blocked_by_me'] == true,
+      blockedMe: json['blocked_me'] == true,
     );
   }
 
@@ -56,10 +67,12 @@ class ChatDto {
     return '';
   }
 
-  static String _parseLastMessageTime(Map<String, dynamic> json) {
-    final candidate = json['last_message_time'] ?? json['updated_at'];
-    if (candidate == null)
+  static String _parseDateLike(dynamic value) {
+    if (value == null)
       return DateTime.fromMillisecondsSinceEpoch(0).toIso8601String();
-    return candidate.toString().trim();
+    final text = value.toString().trim();
+    return text.isEmpty
+        ? DateTime.fromMillisecondsSinceEpoch(0).toIso8601String()
+        : text;
   }
 }

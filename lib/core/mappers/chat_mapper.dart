@@ -10,9 +10,14 @@ extension ChatDtoMapper on ChatDto {
     return Chat(
       id: id,
       partner: UserSummary.fromJson(partnerJson),
+      createdAt: parseFlexibleDateTime(createdAt),
+      updatedAt: parseFlexibleDateTime(updatedAt),
       lastMessage: lastMessage,
-      lastMessageTime: parseFlexibleDateTime(lastMessageTime),
+      lastMessageTime: parseFlexibleDateTime(updatedAt),
       unreadCount: unreadCount,
+      canSend: canSend,
+      blockedByMe: blockedByMe,
+      blockedMe: blockedMe,
     );
   }
 }

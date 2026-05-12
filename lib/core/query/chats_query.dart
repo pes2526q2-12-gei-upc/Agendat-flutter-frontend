@@ -68,6 +68,13 @@ class ChatsQuery {
     return sent;
   }
 
+  Future<void> markRead(int chatId) async {
+    await _api.markRead(chatId);
+    _client.invalidate(_detailKey(chatId));
+    _client.invalidate(_listKey);
+    _client.invalidate(_messagesKey(chatId));
+  }
+
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 
   void invalidateChat(int chatId) {
