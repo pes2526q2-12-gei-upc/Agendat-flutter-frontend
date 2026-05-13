@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
@@ -15,7 +19,6 @@ import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
 import 'package:agendat/features/map/presentation/widgets/map_selected_event_card.dart';
-import 'dart:math' as math;
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -25,6 +28,14 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  /// A partir de quants caràcters val la pena enviar la cerca al backend per
+  /// ampliar els marcadors. Per sota d'aquest llindar només es manté el
+  /// filtre local instantani.
+  static const int _minServerSearchLength = 3;
+
+  /// Debounce de la cerca al servidor (per evitar una crida per tecla).
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 400);
+
   final MapController _mapController = MapController();
   final Distance _distanceCalculator = const Distance();
   final EventsQuery _eventsQuery = EventsQuery.instance;
@@ -37,10 +48,22 @@ class _MapScreenState extends State<MapScreen> {
   List<MapEventMarkerData> _events = <MapEventMarkerData>[];
   MapEventMarkerData? _selectedEvent;
   String _searchQuery = '';
+
+  /// Text de cerca actualment aplicat al backend (paràmetre `name`). Pot
+  /// quedar enrere respecte a `_searchQuery` mentre s'aplica el debounce.
+  String _appliedServerSearch = '';
+
   bool _isLoadingEvents = false;
   String? _eventsLoadError;
   bool _isFiltersOpen = false;
   EventFilters _activeFilters = const EventFilters();
+
+  /// Epoch incrementat cada vegada que disparem una nova càrrega de
+  /// marcadors. Ens permet ignorar respostes lentes que han quedat
+  /// obsoletes (canvi de filtre, nova cerca, etc.).
+  int _loadEpoch = 0;
+
+  Timer? _searchDebounceTimer;
 
   final double _minZoom = 8.0;
   final double _maxZoom = 18.0;
@@ -61,6 +84,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     // Traiem listener
     _eventsQuery.persistedFiltersListenable.removeListener(
       _onSharedFiltersChanged,
@@ -87,29 +111,46 @@ class _MapScreenState extends State<MapScreen> {
     _loadEvents();
   }
 
+  /// Combina els filtres compartits amb el text de cerca actualment enviat
+  /// al backend. Retorna `null` si no cal cap filtre.
+  EventFilters? _buildFiltersForRequest() {
+    final trimmed = _appliedServerSearch.trim();
+    final combined = _activeFilters.copyWith(
+      name: () => trimmed.isEmpty ? null : trimmed,
+    );
+    return combined.isEmpty ? null : combined;
+  }
+
   Future<void> _loadEvents({bool forceRefresh = false}) async {
+    final epoch = ++_loadEpoch;
     setState(() {
       _isLoadingEvents = true;
       _eventsLoadError = null;
     });
 
     try {
+      // Forcem CA: el mapa només mostra el títol curt al marcador, i si
+      // demanéssim l'idioma actiu la mida de pàgina baixaria a 3 (límit
+      // de traducció) i el mapa faria moltíssimes crides per cobrir tots
+      // els marcadors. El detall (EventScreen) es carrega a part i pot
+      // traduir-se quan calgui.
       final events = await _eventsQuery.getEvents(
-        filters: _activeFilters.isEmpty ? null : _activeFilters,
+        filters: _buildFiltersForRequest(),
         forceRefresh: forceRefresh,
+        lang: AppLanguage.defaultCode,
       );
 
-      if (!mounted) return;
+      if (!mounted || epoch != _loadEpoch) return;
 
       setState(() {
         _events = buildMarkersFromEvents(events);
         _selectedEvent = null;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || epoch != _loadEpoch) return;
       setState(() => _eventsLoadError = e.toString());
     } finally {
-      if (mounted) {
+      if (mounted && epoch == _loadEpoch) {
         setState(() => _isLoadingEvents = false);
       }
     }
@@ -178,6 +219,29 @@ class _MapScreenState extends State<MapScreen> {
       if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
         _selectedEvent = null;
       }
+    });
+    _scheduleServerSearch(value);
+  }
+
+  /// Programa (amb debounce) una crida al backend per ampliar els
+  /// marcadors quan la cerca és prou llarga. Per sota del llindar
+  /// [_minServerSearchLength] només es manté el filtre local instantani i,
+  /// si abans ja havíem aplicat una cerca al servidor, la retirem
+  /// (tornem a tenir els marcadors complets dels filtres actuals).
+  void _scheduleServerSearch(String value) {
+    _searchDebounceTimer?.cancel();
+
+    final trimmed = value.trim();
+    final shouldQueryServer = trimmed.length >= _minServerSearchLength;
+    final targetServerQuery = shouldQueryServer ? trimmed : '';
+
+    if (targetServerQuery == _appliedServerSearch) return;
+
+    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
+      if (!mounted) return;
+      if (targetServerQuery == _appliedServerSearch) return;
+      _appliedServerSearch = targetServerQuery;
+      _loadEvents();
     });
   }
 

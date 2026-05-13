@@ -5,6 +5,7 @@ class EventFilters {
   final String? provincia;
   final String? comarca;
   final String? municipi;
+  final String? name;
 
   const EventFilters({
     this.category,
@@ -13,6 +14,7 @@ class EventFilters {
     this.provincia,
     this.comarca,
     this.municipi,
+    this.name,
   });
 
   bool get isEmpty =>
@@ -21,7 +23,8 @@ class EventFilters {
       dateTo == null &&
       provincia == null &&
       comarca == null &&
-      municipi == null;
+      municipi == null &&
+      (name == null || name!.isEmpty);
 
   EventFilters copyWith({
     String? Function()? category,
@@ -30,6 +33,7 @@ class EventFilters {
     String? Function()? provincia,
     String? Function()? comarca,
     String? Function()? municipi,
+    String? Function()? name,
   }) {
     return EventFilters(
       category: category != null ? category() : this.category,
@@ -38,6 +42,7 @@ class EventFilters {
       provincia: provincia != null ? provincia() : this.provincia,
       comarca: comarca != null ? comarca() : this.comarca,
       municipi: municipi != null ? municipi() : this.municipi,
+      name: name != null ? name() : this.name,
     );
   }
 
@@ -49,6 +54,7 @@ class EventFilters {
     if (provincia != null) params['provincia'] = provincia!;
     if (comarca != null) params['comarca'] = comarca!;
     if (municipi != null) params['municipi'] = municipi!;
+    if (name != null && name!.isNotEmpty) params['name'] = name!;
     return params;
   }
 
@@ -62,5 +68,6 @@ class EventFilters {
   @override
   String toString() =>
       'EventFilters(category: $category, dateFrom: $dateFrom, dateTo: $dateTo, '
-      'provincia: $provincia, comarca: $comarca, municipi: $municipi)';
+      'provincia: $provincia, comarca: $comarca, municipi: $municipi, '
+      'name: $name)';
 }

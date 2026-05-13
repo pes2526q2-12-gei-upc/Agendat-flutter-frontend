@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:agendat/core/models/event.dart';
@@ -23,6 +25,10 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   /// la càrrega de la pàgina següent (com fa Instagram).
   static const double _loadMoreThresholdPx = 300;
 
+  /// Temps que esperem entre la darrera pulsació de tecla i la crida al
+  /// backend per cercar pel paràmetre `name`.
+  static const Duration _searchDebounce = Duration(milliseconds: 300);
+
   /// Quants esdeveniments demanem en cada crida al backend.
   ///
   /// Depèn de l'idioma actiu:
@@ -47,7 +53,16 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   /// (filters changed, pull-to-refresh, etc.).
   int _requestEpoch = 0;
 
+  /// Text actual del cercador (filtrat local instantani).
   String _query = '';
+
+  /// Text de cerca enviat al backend (com a paràmetre `name`). Pot estar
+  /// "endarrerit" respecte a `_query` mentre s'aplica el debounce.
+  String _appliedNameQuery = '';
+
+  /// Timer que ens permet enviar la cerca al backend només quan l'usuari
+  /// para d'escriure (debounce).
+  Timer? _searchDebounceTimer;
 
   DateTime get _todayAtMidnight {
     final now = DateTime.now();
@@ -76,6 +91,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     _eventsQuery.persistedFiltersListenable.removeListener(
       _onSharedFiltersChanged,
     );
@@ -115,6 +131,16 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     }
   }
 
+  /// Combina els filtres compartits actuals amb el text del cercador actiu
+  /// (`name`). Retorna `null` quan no cal enviar cap filtre a l'API.
+  EventFilters? _buildFiltersForRequest() {
+    final trimmed = _appliedNameQuery.trim();
+    final combined = _activeFilters.copyWith(
+      name: () => trimmed.isEmpty ? null : trimmed,
+    );
+    return combined.isEmpty ? null : combined;
+  }
+
   Future<void> _loadFirstPage({bool forceRefresh = false}) async {
     final epoch = ++_requestEpoch;
     setState(() {
@@ -133,7 +159,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
     try {
       final page = await _eventsQuery.getEventsPage(
-        filters: _activeFilters.isEmpty ? null : _activeFilters,
+        filters: _buildFiltersForRequest(),
         offset: 0,
         limit: _pageSize,
         forceRefresh: forceRefresh,
@@ -162,7 +188,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
     try {
       final page = await _eventsQuery.getEventsPage(
-        filters: _activeFilters.isEmpty ? null : _activeFilters,
+        filters: _buildFiltersForRequest(),
         offset: _events.length,
         limit: _pageSize,
       );
@@ -181,6 +207,23 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         ),
       );
     }
+  }
+
+  /// Crida al backend per cercar pel paràmetre `name`. Es dispara amb
+  /// debounce des de [_onSearchChanged] perquè no enviem una crida per
+  /// cada pulsació.
+  void _onSearchChanged(String value) {
+    setState(() => _query = value);
+
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(_searchDebounce, () {
+      final trimmed = value.trim();
+      // Si el text que volem enviar és el mateix que ja vam aplicar, no fem
+      // res: el filtre local sobre `_events` ja respon al canvi visualment.
+      if (trimmed == _appliedNameQuery) return;
+      _appliedNameQuery = trimmed;
+      _loadFirstPage();
+    });
   }
 
   void _refresh() {
@@ -216,11 +259,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       body: Column(
         children: [
           bar.AppSearchBar(
-            onChanged: (value) {
-              setState(() {
-                _query = value;
-              });
-            },
+            onChanged: _onSearchChanged,
             margin: const EdgeInsets.fromLTRB(
               AppScreenSpacing.horizontal,
               AppScreenSpacing.section,
