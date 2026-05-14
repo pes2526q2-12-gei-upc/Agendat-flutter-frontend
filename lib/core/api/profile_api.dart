@@ -5,7 +5,7 @@ import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/dto/session_dto.dart';
 import 'package:agendat/core/mappers/session_mapper.dart';
 import 'package:agendat/core/models/session.dart';
-import 'package:agendat/features/profile/data/models/user_profile.dart';
+import 'package:agendat/core/models/user_profile.dart';
 
 sealed class DeleteAccountResult {}
 

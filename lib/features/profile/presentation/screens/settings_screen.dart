@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/services/user_preferences_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/profile/data/models/user_profile.dart';
-import 'package:agendat/features/profile/data/profile_api.dart';
+import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/features/profile/presentation/screens/blockedUsers.dart';
+import 'package:agendat/features/profile/presentation/widgets/notification_alerts_block.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.currentProfile});
@@ -264,10 +266,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFFB71C1C).withValues(alpha: 0.08),
+            color: EventTextUtils.kPrimaryRed.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.block, color: Color(0xFFB71C1C)),
+          child: const Icon(Icons.block, color: EventTextUtils.kPrimaryRed),
         ),
         title: const Text(
           'Usuaris bloquejats',
@@ -292,7 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildNotificationBlock() {
-    return _NotificationBlock(
+    return NotificationAlertsBlock(
       notificationsAllowed: _notificationsAllowed,
       enabled: !_isSaving,
       onToggleNotifications: _updateNotificationsAllowed,
@@ -304,7 +306,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         firstChild: const SizedBox.shrink(),
         secondChild: Column(
           children: [
-            _SubalertTile(
+            SubalertSwitchTile(
               title: 'Recordatoris d\'esdeveniments',
               subtitle: 'Avisos previs per no perdre sessions o activitats.',
               value: _eventRemindersAllowed,
@@ -316,7 +318,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             ),
-            _SubalertTile(
+            SubalertSwitchTile(
               title: 'Canvis en esdeveniments',
               subtitle: 'Actualitzacions d\'horari, ubicació o cancel·lacions.',
               value: _eventUpdatesAllowed,
@@ -328,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             ),
-            _SubalertTile(
+            SubalertSwitchTile(
               title: 'Alertes socials',
               subtitle:
                   'Notificacions relacionades amb amistats i activitat social.',
@@ -371,7 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         value: _calendarSyncAllowed,
         onChanged: !_isSaving ? _updateCalendarSyncAllowed : null,
-        activeThumbColor: const Color(0xFFB71C1C),
+        activeThumbColor: EventTextUtils.kPrimaryRed,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       ),
     );
@@ -387,101 +389,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: CircularProgressIndicator(),
         ),
       ),
-    );
-  }
-}
-
-class _NotificationBlock extends StatelessWidget {
-  const _NotificationBlock({
-    required this.notificationsAllowed,
-    required this.enabled,
-    required this.onToggleNotifications,
-    required this.child,
-  });
-
-  final bool notificationsAllowed;
-  final bool enabled;
-  final ValueChanged<bool> onToggleNotifications;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          SwitchListTile.adaptive(
-            title: const Text(
-              'Notificacions permeses',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            subtitle: Text(
-              notificationsAllowed
-                  ? 'Si les actives, els tipus d\'alerta queden disponibles a sota.'
-                  : 'Si les desactives, tots els tipus d\'alerta s\'apaguen i s\'amaguen.',
-            ),
-            value: notificationsAllowed,
-            onChanged: enabled ? onToggleNotifications : null,
-            activeThumbColor: const Color(0xFFB71C1C),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 8,
-            ),
-          ),
-          if (notificationsAllowed)
-            Column(
-              children: [
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: child,
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SubalertTile extends StatelessWidget {
-  const _SubalertTile({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SwitchListTile.adaptive(
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Text(subtitle),
-      ),
-      value: value,
-      onChanged: enabled ? onChanged : null,
-      activeThumbColor: const Color(0xFFB71C1C),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 }

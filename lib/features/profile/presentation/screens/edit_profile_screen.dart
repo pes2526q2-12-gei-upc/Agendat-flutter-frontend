@@ -1,14 +1,14 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/screens/deleteAccount.dart';
-import 'package:agendat/features/profile/data/models/user_profile.dart';
-import 'package:agendat/features/profile/data/profile_api.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/core/query/profile_query.dart';
+import 'package:agendat/features/profile/presentation/widgets/edit_profile_form_widgets.dart';
 
 @visibleForTesting
 class ProfileFullNameParts {
@@ -238,40 +238,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildLabel('Foto de perfil'),
+            EditProfileFieldLabel(text: 'Foto de perfil'),
             const SizedBox(height: 8),
             Center(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _buildAvatar(),
-                  Positioned(
-                    right: -6,
-                    bottom: -6,
-                    child: Material(
-                      color: EventTextUtils.kPrimaryRed,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: _isLoading ? null : _pickProfileImage,
-                        child: const Padding(
-                          padding: EdgeInsets.all(10),
-                          child: Icon(
-                            Icons.camera_alt_outlined,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: EditProfileAvatarEditor(
+                currentProfile: widget.currentProfile,
+                selectedImageBytes: _selectedProfileImageBytes,
+                isLoading: _isLoading,
+                onPickImage: _pickProfileImage,
               ),
             ),
             const SizedBox(height: 24),
-            _buildLabel('Nom d\'usuari'),
+            EditProfileFieldLabel(text: 'Nom d\'usuari'),
             const SizedBox(height: 8),
-            _buildTextField(
+            EditProfileStyledTextField(
               controller: _usernameController,
               focusNode: _usernameFocusNode,
               hintText: 'El teu nom d\'usuari',
@@ -281,9 +261,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               },
             ),
             const SizedBox(height: 20),
-            _buildLabel('Nom complet'),
+            EditProfileFieldLabel(text: 'Nom complet'),
             const SizedBox(height: 8),
-            _buildTextField(
+            EditProfileStyledTextField(
               controller: _fullNameController,
               focusNode: _fullNameFocusNode,
               hintText: 'El teu nom',
@@ -294,9 +274,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               },
             ),
             const SizedBox(height: 20),
-            _buildLabel('Correu electrònic'),
+            EditProfileFieldLabel(text: 'Correu electrònic'),
             const SizedBox(height: 8),
-            _buildTextField(
+            EditProfileStyledTextField(
               controller: _emailController,
               focusNode: _emailFocusNode,
               hintText: 'exemple@correu.com',
@@ -307,9 +287,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               },
             ),
             const SizedBox(height: 20),
-            _buildLabel('Descripció'),
+            EditProfileFieldLabel(text: 'Descripció'),
             const SizedBox(height: 8),
-            _buildTextField(
+            EditProfileStyledTextField(
               controller: _descriptionController,
               focusNode: _descriptionFocusNode,
               hintText: 'Escriu una descripció sobre tu...',
@@ -404,110 +384,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    required String hintText,
-    TextInputType keyboardType = TextInputType.text,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    int maxLines = 1,
-    TextInputAction? textInputAction,
-    ValueChanged<String>? onSubmitted,
-  }) {
-    return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      keyboardType: maxLines == 1 ? keyboardType : TextInputType.multiline,
-      obscureText: obscureText,
-      maxLines: maxLines,
-      textInputAction: maxLines == 1
-          ? textInputAction
-          : TextInputAction.newline,
-      onSubmitted: maxLines == 1 ? onSubmitted : null,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey.shade400),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: EventTextUtils.kPrimaryRed, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        suffixIcon: suffixIcon,
-      ),
-    );
-  }
-
-  Widget _buildAvatar() {
-    const radius = 52.0;
-    const size = radius * 2;
-
-    if (_selectedProfileImageBytes != null &&
-        _selectedProfileImageBytes!.isNotEmpty) {
-      return ClipOval(
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Image.memory(
-            _selectedProfileImageBytes!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildAvatarFallback(radius),
-          ),
-        ),
-      );
-    }
-
-    final imageUrl = resolveProfileImageUrl(widget.currentProfile.profileImage);
-    if (imageUrl == null) return _buildAvatarFallback(radius);
-
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) => _buildAvatarFallback(radius),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatarFallback(double radius) {
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.grey.shade200,
-      child: Icon(Icons.person, size: 56, color: Colors.grey.shade400),
     );
   }
 }
