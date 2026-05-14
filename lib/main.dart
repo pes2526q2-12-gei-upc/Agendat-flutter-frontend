@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:agendat/core/query/chats_query.dart';
+import 'package:agendat/core/realtime/chat_realtime_event.dart';
+import 'package:agendat/core/realtime/chat_realtime_service.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
@@ -105,13 +107,29 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   ];
 
   late int _selectedIndex;
+  StreamSubscription<ChatRealtimeEvent>? _chatRealtimeSubscription;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
     rootTabIndexNotifier.value = _selectedIndex;
+    ChatRealtimeService.instance.connect(token: currentAuthToken);
+    _chatRealtimeSubscription = ChatRealtimeService.instance.events.listen(
+      _onChatRealtimeEvent,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) => _primeUnreadBadge());
+  }
+
+  @override
+  void dispose() {
+    _chatRealtimeSubscription?.cancel();
+    ChatRealtimeService.instance.disconnect();
+    super.dispose();
+  }
+
+  void _onChatRealtimeEvent(ChatRealtimeEvent event) {
+    ChatsQuery.instance.applyRealtimeEvent(event);
   }
 
   Future<void> _primeUnreadBadge() async {

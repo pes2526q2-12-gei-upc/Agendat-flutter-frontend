@@ -3,6 +3,7 @@ import 'package:agendat/core/mappers/chat_mapper.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/query/query_client.dart';
+import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/profile_query.dart';
@@ -125,6 +126,18 @@ class ChatsQuery {
     _client.invalidate(_messagesKey(chatId));
   }
 
+  void applyRealtimeEvent(ChatRealtimeEvent event) {
+    switch (event) {
+      case ChatMessageCreatedEvent():
+        _upsertChatSummary(event.chat);
+        _appendMessageToCache(event.chatId, event.message);
+      case ChatMessagesReadEvent():
+        _upsertChatSummary(event.chat);
+      case ChatRealtimeErrorEvent():
+        break;
+    }
+  }
+
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 
   /// Força un refetch de la llista de xats (p. ex. després de desbloquejar un usuari).
@@ -155,6 +168,34 @@ class ChatsQuery {
     _client.invalidate(_detailKey(chatId));
     _client.invalidate(_messagesKey(chatId));
     _client.invalidate(_listKey);
+  }
+
+  void _upsertChatSummary(Chat chat) {
+    if (!chat.blockedByMe) {
+      _client.setQueryData(_detailKey(chat.id), chat);
+    } else {
+      _client.invalidate(_detailKey(chat.id));
+    }
+
+    final cached = _client.getQueryData<List<Chat>>(_listKey);
+    if (cached == null) return;
+
+    final withoutCurrent = cached.where((item) => item.id != chat.id).toList();
+    final next = chat.blockedByMe ? withoutCurrent : [chat, ...withoutCurrent];
+    next.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+    _client.setQueryData(_listKey, next);
+    syncUnreadChatConversationsBadge(next);
+  }
+
+  void _appendMessageToCache(int chatId, ChatMessage message) {
+    final cached = _client.getQueryData<List<ChatMessage>>(
+      _messagesKey(chatId),
+    );
+    if (cached == null || cached.any((item) => item.id == message.id)) return;
+
+    final next = [...cached, message]
+      ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+    _client.setQueryData(_messagesKey(chatId), next);
   }
 
   /// Actualitza només la caché local del llistat de xats: quan canvii
