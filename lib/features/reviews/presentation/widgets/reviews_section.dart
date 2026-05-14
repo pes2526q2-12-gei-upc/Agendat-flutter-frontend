@@ -278,10 +278,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final username = _currentUsername;
     if (username == null) return false;
     try {
-      return _reviewsQuery.hasConfirmedAttendance(
-        username: username,
-        eventCode: widget.eventCode,
-      );
+      return _reviewsQuery.hasConfirmedAttendance(eventCode: widget.eventCode);
     } catch (_) {
       return true;
     }
@@ -332,6 +329,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   void _openEditForm(int index) {
     setState(() {
+      debugPrint('openEditForm: $index');
       _isFormOpen = true;
       _editingIndex = index;
     });
