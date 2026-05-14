@@ -1,0 +1,233 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/utils/profile_image_url.dart';
+
+class ProfileSummaryCard extends StatelessWidget {
+  const ProfileSummaryCard({
+    super.key,
+    required this.profile,
+    required this.stats,
+    required this.isOwnProfile,
+    required this.onEditProfile,
+    required this.friendshipSection,
+  });
+
+  final UserProfile profile;
+  final UserStats? stats;
+  final bool isOwnProfile;
+  final VoidCallback onEditProfile;
+  final Widget friendshipSection;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          const BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ProfileViewAvatar(profile: profile),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _ProfileInfoHeader(
+                  profile: profile,
+                  reputation: stats?.reputation,
+                ),
+              ),
+              if (isOwnProfile)
+                IconButton(
+                  icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600),
+                  onPressed: onEditProfile,
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _ProfileStatsRow(stats: stats),
+          if (!isOwnProfile) ...[const SizedBox(height: 16), friendshipSection],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileViewAvatar extends StatelessWidget {
+  const _ProfileViewAvatar({required this.profile});
+
+  final UserProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = resolveProfileImageUrl(profile.profileImage);
+    const radius = 45.0;
+    const size = radius * 2;
+
+    if (imageUrl == null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: Colors.grey.shade200,
+        child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
+      );
+    }
+
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          webHtmlElementStrategy: kIsWeb
+              ? WebHtmlElementStrategy.prefer
+              : WebHtmlElementStrategy.never,
+          errorBuilder: (_, __, ___) {
+            return Container(
+              color: Colors.grey.shade200,
+              alignment: Alignment.center,
+              child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileInfoHeader extends StatelessWidget {
+  const _ProfileInfoHeader({required this.profile, required this.reputation});
+
+  final UserProfile profile;
+  final double? reputation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          profile.displayName,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        _ReputationChip(reputation: reputation),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                profile.displayDescription,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ReputationChip extends StatelessWidget {
+  const _ReputationChip({required this.reputation});
+
+  final double? reputation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.star, size: 16, color: Colors.amber.shade700),
+          const SizedBox(width: 4),
+          Text(
+            reputation == null ? '—' : reputation!.toStringAsFixed(1),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileStatsRow extends StatelessWidget {
+  const _ProfileStatsRow({required this.stats});
+
+  final UserStats? stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _ProfileStatItem(
+          value: '${stats?.eventCount ?? 0}',
+          label: 'Esdeveniments',
+        ),
+        _ProfileStatItem(
+          value: '${stats?.reviewCount ?? 0}',
+          label: 'Valoracions',
+        ),
+        _ProfileStatItem(
+          value: stats == null ? '—' : stats!.reputation.toStringAsFixed(1),
+          label: 'Reputació',
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileStatItem extends StatelessWidget {
+  const _ProfileStatItem({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: EventTextUtils.kPrimaryRed,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+}

@@ -2,8 +2,7 @@ import 'package:agendat/core/api/reviews_api.dart';
 import 'package:agendat/core/dto/review_dto.dart';
 import 'package:agendat/core/mappers/reviews_mapper.dart';
 import 'package:agendat/core/models/review.dart';
-import 'package:agendat/features/profile/data/profile_api.dart'
-    show fetchUserSessions;
+import 'package:agendat/core/query/sessions_query.dart';
 
 export 'package:agendat/core/api/reviews_api.dart'
     show ReviewAlreadyExistsException, ReviewAttendanceRequiredException;
@@ -112,11 +111,10 @@ class ReviewsQuery {
   Future<void> unlikeReview(String eventCode, int reviewId) =>
       _api.unlikeReview(eventCode.trim(), reviewId);
 
-  Future<bool> hasConfirmedAttendance({
-    required String username,
-    required String eventCode,
-  }) async {
-    final sessions = await fetchUserSessions(username: username);
+  Future<bool> hasConfirmedAttendance({required String eventCode}) async {
+    // Les sessions de l'usuari autenticat venen de GET /api/sessions/
+    // (sense query); el backend rebutja ?user=<username> amb 400.
+    final sessions = await SessionsQuery.instance.getSessions();
     final now = DateTime.now();
     return sessions.any(
       (s) =>

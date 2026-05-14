@@ -10,6 +10,21 @@ import 'package:agendat/core/widgets/rating_stars.dart';
 ///
 /// Si [onRatingChanged] és `null` la fila es pinta com a no editable.
 class ReviewRatingRow extends StatelessWidget {
+  /// Fila General al formulari d'afegir/editar valoració (una mica més gran).
+  static const double formGeneralStarSize = 34;
+
+  /// Preu, ambient i accessibilitat al formulari.
+  static const double formOtherCategoriesStarSize = 30;
+
+  /// General a la mitjana de la secció VALORACIONS (mateix accent relatiu).
+  static const double summaryGeneralStarSize = 24;
+
+  /// Altres categories a la mitjana de la secció.
+  static const double summaryOtherCategoriesStarSize = 20;
+
+  /// Valoració general dins la targeta de ressenya (lectura).
+  static const double cardGeneralStarSize = summaryGeneralStarSize;
+
   const ReviewRatingRow({
     super.key,
     required this.label,

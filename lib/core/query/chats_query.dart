@@ -4,8 +4,8 @@ import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
-import 'package:agendat/features/profile/data/profile_api.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/core/query/profile_query.dart';
 
 export 'package:agendat/core/api/chats_api.dart'
     show ChatMessageType, SendMessageRequest;

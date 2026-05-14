@@ -94,3 +94,7 @@ Automàticament, s'executaran les revisions configurades (neteja d'espais, forma
     * Si l'error era de format (com espais sobrants), el pre-commit els haurà arreglat per tu automàticament. Només hauràs de fer un altre git add . i tornar a intentar el commit.
 
     * Si l'error és de sintaxi, hauràs de corregir-lo manualment abans de poder fer el commit.
+
+
+Comanda per executar: 
+flutter run --dart-define=API_BASE_URL=http://nattech.fib.upc.edu:40410 -d chrome --web-port=5555

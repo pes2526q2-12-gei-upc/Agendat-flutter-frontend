@@ -2,6 +2,8 @@ import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
+import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -78,9 +80,21 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
           },
         ),
       ),
-      bottomNavigationBar: AppNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onDestinationSelected,
+      bottomNavigationBar: ValueListenableBuilder<int>(
+        valueListenable: unreadChatConversationsNotifier,
+        builder: (context, unreadConversations, _) {
+          return ValueListenableBuilder<int>(
+            valueListenable: pendingFriendRequestsNotifier,
+            builder: (context, pendingFriendRequests, _) {
+              return AppNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: _onDestinationSelected,
+                socialUnreadConversationCount: unreadConversations,
+                socialPendingFriendRequestsCount: pendingFriendRequests,
+              );
+            },
+          );
+        },
       ),
     );
   }

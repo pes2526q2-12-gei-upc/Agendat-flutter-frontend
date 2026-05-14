@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:agendat/features/profile/data/models/user_profile.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
@@ -99,6 +100,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
         _received = pendingReceived;
         _isLoading = false;
       });
+      syncPendingFriendRequestsBadge(pendingReceived.length);
     } catch (e) {
       if (kDebugMode) debugPrint('[friend-requests] load failed: $e');
       if (!mounted) return;
@@ -166,6 +168,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
           _busyRequestIds.remove(request.id);
           _received = _received.where((r) => r.id != request.id).toList();
         });
+        syncPendingFriendRequestsBadge(_received.length);
         // Sincronitza la caché del client amb el nou estat: actualitza el
         // perfil cachejat de l'altre usuari, els conjunts locals
         // (eliminats/refets) i la llista d'amics. Si acceptem, és clau
@@ -222,6 +225,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
       _received = _received.where((r) => r.id != requestId).toList();
       _busyRequestIds.remove(requestId);
     });
+    syncPendingFriendRequestsBadge(_received.length);
   }
 
   /// Invalida només la caché de sol·licituds. La fem servir després

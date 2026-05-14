@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:agendat/features/profile/data/models/user_profile.dart';
-import 'package:agendat/features/profile/data/profile_api.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
-import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:flutter/foundation.dart';
+import 'package:agendat/features/profile/presentation/widgets/profile_attended_sessions_tab.dart';
+import 'package:agendat/features/profile/presentation/widgets/profile_friendship_section.dart';
+import 'package:agendat/features/profile/presentation/widgets/profile_interests_section.dart';
+import 'package:agendat/features/profile/presentation/widgets/profile_reviews_tab.dart';
+import 'package:agendat/features/profile/presentation/widgets/profile_summary_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
@@ -32,8 +35,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
-  static const _kPrimaryRed = Color(0xFFB71C1C);
-
   late TabController _tabController;
   bool _isLoading = true;
   bool _isLoggingOut = false;
@@ -381,7 +382,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: const Text('Cancel·lar'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _kPrimaryRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: EventTextUtils.kPrimaryRed,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Eliminar amistat'),
             ),
@@ -555,7 +558,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Icon(
                   actionIcon,
                   size: 20,
-                  color: isBlocked ? Colors.green.shade700 : _kPrimaryRed,
+                  color: isBlocked
+                      ? Colors.green.shade700
+                      : EventTextUtils.kPrimaryRed,
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -563,7 +568,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: isBlocked ? Colors.green.shade800 : _kPrimaryRed,
+                    color: isBlocked
+                        ? Colors.green.shade800
+                        : EventTextUtils.kPrimaryRed,
                   ),
                 ),
               ],
@@ -633,7 +640,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: const Text('Cancel·lar'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _kPrimaryRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: EventTextUtils.kPrimaryRed,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Bloquejar'),
             ),
@@ -806,31 +815,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
-              const SizedBox(height: AppScreenSpacing.section),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: AppScreenSpacing.section),
-              ElevatedButton(
-                onPressed: () => _loadProfile(forceRefresh: true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kPrimaryRed,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Reintentar'),
-              ),
-            ],
-          ),
-        ),
+      return _ProfileLoadErrorBody(
+        message: _errorMessage!,
+        onRetry: () => _loadProfile(forceRefresh: true),
       );
     }
 
@@ -843,391 +830,42 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProfileCard(profile),
+            ProfileSummaryCard(
+              profile: profile,
+              stats: _stats,
+              isOwnProfile: _isOwnProfile,
+              onEditProfile: _navigateToEditProfile,
+              friendshipSection: ProfileFriendshipSection(
+                currentUserId: _currentUserId,
+                viewedUserId: widget.userId,
+                status: _friendshipStatus ?? FriendshipStatus.none,
+                isFriendshipBusy: _isFriendshipActionInProgress,
+                isBlockBusy: _isBlockActionInProgress,
+                onSendFriendRequest: _sendFriendRequest,
+                onCancelFriendRequest: _cancelFriendRequest,
+                onAcceptFriendRequest: _acceptFriendRequest,
+                onRejectFriendRequest: _rejectFriendRequest,
+                onUnfriend: _confirmAndUnfriendUser,
+                onUnblock: _confirmAndUnblockUser,
+              ),
+            ),
             const SizedBox(height: AppScreenSpacing.section),
-            _buildInterestsSection(_interests),
+            ProfileInterestsSection(
+              isOwnProfile: _isOwnProfile,
+              interests: _interests,
+              onEditTap: _navigateToEditInterests,
+            ),
             const SizedBox(height: AppScreenSpacing.section),
             _buildTabSection(reviewsResponse: _reviewsResponse),
             if (_isOwnProfile) ...[
               const SizedBox(height: AppScreenSpacing.section),
-              _buildLogoutButton(),
+              _ProfileLogoutButton(
+                isLoggingOut: _isLoggingOut,
+                onPressed: _isLoggingOut ? null : _requestLogOut,
+              ),
             ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildProfileCard(UserProfile profile) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          const BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildAvatar(profile),
-              const SizedBox(width: 16),
-              Expanded(child: _buildProfileInfo(profile)),
-              if (_isOwnProfile)
-                IconButton(
-                  icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600),
-                  onPressed: _navigateToEditProfile,
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildStatsRow(_stats),
-          if (!_isOwnProfile) ...[
-            const SizedBox(height: 16),
-            _buildFriendshipSection(),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFriendshipSection() {
-    if (_currentUserId == null || widget.userId == _currentUserId) {
-      return const SizedBox.shrink();
-    }
-
-    final status = _friendshipStatus ?? FriendshipStatus.none;
-    final busy = _isFriendshipActionInProgress;
-
-    switch (status) {
-      case FriendshipStatus.none:
-        return _buildFriendshipPrimaryButton(
-          onPressed: busy ? null : _sendFriendRequest,
-          icon: Icons.person_add_alt_1,
-          label: 'Enviar sol·licitud d\'amistat',
-          busy: busy,
-        );
-      case FriendshipStatus.requestSent:
-        return _buildFriendshipOutlinedButton(
-          onPressed: busy ? null : _cancelFriendRequest,
-          icon: Icons.hourglass_top,
-          label: 'Sol·licitud enviada · Cancel·lar',
-          busy: busy,
-        );
-      case FriendshipStatus.requestReceived:
-        return Row(
-          children: [
-            Expanded(
-              child: _buildFriendshipPrimaryButton(
-                onPressed: busy ? null : _acceptFriendRequest,
-                icon: Icons.check,
-                label: 'Acceptar',
-                busy: busy,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildFriendshipOutlinedButton(
-                onPressed: busy ? null : _rejectFriendRequest,
-                icon: Icons.close,
-                label: 'Rebutjar',
-                busy: false,
-              ),
-            ),
-          ],
-        );
-      case FriendshipStatus.friends:
-        return _buildFriendshipOutlinedButton(
-          onPressed: busy ? null : _confirmAndUnfriendUser,
-          icon: Icons.person_remove_outlined,
-          label: 'Eliminar amistat',
-          busy: busy,
-        );
-      case FriendshipStatus.blocked:
-        // Substituïm la badge informativa per un botó d'acció: l'única
-        // operació útil sobre un usuari bloquejat és tornar-lo a desbloquejar,
-        // i així evitem haver d'obrir el menú de tres punts. La confirmació
-        // continua sent obligatòria abans de fer la crida POST `/unblock/`.
-        // Fem servir `_isBlockActionInProgress` (no el d'amistat) com a
-        // indicador d'ocupació, perquè correspon a l'acció subjacent.
-        return _buildFriendshipOutlinedButton(
-          onPressed: _isBlockActionInProgress ? null : _confirmAndUnblockUser,
-          icon: Icons.lock_open,
-          label: 'Desbloquejar',
-          busy: _isBlockActionInProgress,
-        );
-    }
-  }
-
-  Widget _buildFriendshipPrimaryButton({
-    required VoidCallback? onPressed,
-    required IconData icon,
-    required String label,
-    required bool busy,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 44,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: busy
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Icon(icon, size: 18),
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _kPrimaryRed,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: _kPrimaryRed.withValues(alpha: 0.6),
-          disabledForegroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFriendshipOutlinedButton({
-    required VoidCallback? onPressed,
-    required IconData icon,
-    required String label,
-    required bool busy,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 44,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: busy
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Icon(icon, size: 18),
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: _kPrimaryRed,
-          side: const BorderSide(color: _kPrimaryRed),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar(UserProfile profile) {
-    final imageUrl = resolveProfileImageUrl(profile.profileImage);
-    const radius = 45.0;
-    const size = radius * 2;
-
-    if (imageUrl == null) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: Colors.grey.shade200,
-        child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
-      );
-    }
-
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) {
-            return Container(
-              color: Colors.grey.shade200,
-              alignment: Alignment.center,
-              child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileInfo(UserProfile profile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          profile.displayName,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        _buildRatingBadge(_stats?.reputation),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                profile.displayDescription,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRatingBadge(double? reputation) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.star, size: 16, color: Colors.amber.shade700),
-          const SizedBox(width: 4),
-          Text(
-            reputation == null ? '—' : reputation.toStringAsFixed(1),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsRow(UserStats? stats) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _buildStatItem('${stats?.eventCount ?? 0}', 'Esdeveniments'),
-        _buildStatItem('${stats?.reviewCount ?? 0}', 'Valoracions'),
-        _buildStatItem(
-          stats == null ? '—' : stats.reputation.toStringAsFixed(1),
-          'Reputació',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: _kPrimaryRed,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInterestsSection(List<UserInterest> interests) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          const BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _isOwnProfile ? 'Els meus interessos' : 'Interessos',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (_isOwnProfile)
-                GestureDetector(
-                  onTap: _navigateToEditInterests,
-                  child: const Text(
-                    'Editar',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _kPrimaryRed,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (interests.isEmpty)
-            Text(
-              'Cap interès afegit',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-                fontStyle: FontStyle.italic,
-              ),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: interests
-                  .map(
-                    (i) => Chip(
-                      label: Text(i.name),
-                      backgroundColor: Colors.grey.shade100,
-                      side: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  )
-                  .toList(),
-            ),
-        ],
       ),
     );
   }
@@ -1249,9 +887,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         children: [
           TabBar(
             controller: _tabController,
-            labelColor: _kPrimaryRed,
+            labelColor: EventTextUtils.kPrimaryRed,
             unselectedLabelColor: Colors.grey.shade600,
-            indicatorColor: _kPrimaryRed,
+            indicatorColor: EventTextUtils.kPrimaryRed,
             indicatorWeight: 3,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -1261,7 +899,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             labelPadding: const EdgeInsets.symmetric(horizontal: 12),
             tabs: [
-              Tab(child: _buildAttendedTabLabel()),
+              Tab(
+                child: _ProfileAttendedTabLabel(
+                  isOwnProfile: _isOwnProfile,
+                  sessionsQuery: _sessionsQuery,
+                ),
+              ),
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1296,141 +939,21 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildAttendedSessionsTab(),
-                _buildReviewsTab(reviewsResponse),
+                ProfileAttendedSessionsTab(
+                  isOwnProfile: _isOwnProfile,
+                  sessionsQuery: _sessionsQuery,
+                  eventsQuery: _eventsQuery,
+                  onOpenSession: _openSessionEvent,
+                ),
+                ProfileReviewsTab(
+                  response: reviewsResponse,
+                  onReviewTap: _openReviewEvent,
+                ),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAttendedSessionsTab() {
-    // Les assistències només les mostrem al perfil propi.
-    if (!_isOwnProfile) {
-      return _buildEmptyTabContent(
-        'Assistències només disponibles al teu perfil',
-        Icons.event_outlined,
-      );
-    }
-
-    return FutureBuilder<List<Session>>(
-      future: _sessionsQuery.getSessions(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return _buildEmptyTabContent(
-            'No s\'han pogut carregar les assistències',
-            Icons.error_outline,
-          );
-        }
-
-        final sessions = _sortedAttendedSessions(snapshot.data ?? const []);
-        if (sessions.isEmpty) {
-          return _buildEmptyTabContent(
-            'Encara no tens assistències registrades',
-            Icons.event_outlined,
-          );
-        }
-
-        return ListView.separated(
-          padding: const EdgeInsets.all(12),
-          itemCount: sessions.length,
-          separatorBuilder: (_, __) => const Divider(height: 16),
-          itemBuilder: (context, index) {
-            final session = sessions[index];
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.event_available, color: Colors.grey.shade600),
-              title: _buildSessionEventTitle(session.event),
-              // Mostrem data/hora
-              subtitle: Text(_formatSessionDateTime(session.startTime)),
-              onTap: () => _openSessionEvent(session),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildAttendedTabLabel() {
-    if (!_isOwnProfile) {
-      return const Text('Assistits');
-    }
-
-    return FutureBuilder<List<Session>>(
-      // Mateixa font de dades que la pestanya de contingut.
-      future: _sessionsQuery.getSessions(),
-      builder: (context, snapshot) {
-        final count = snapshot.data?.length ?? 0;
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Assistits'),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildReviewsTab(UserReviewsResponse? response) {
-    final reviews = response?.reviews ?? const <UserReview>[];
-    if (reviews.isEmpty) {
-      return _buildEmptyTabContent(
-        'No hi ha ressenyes',
-        Icons.rate_review_outlined,
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: reviews.length,
-      separatorBuilder: (_, __) => const Divider(height: 16),
-      itemBuilder: (context, index) {
-        final r = reviews[index];
-        return ListTile(
-          onTap: () => _openReviewEvent(r),
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.rate_review, color: Colors.grey.shade600),
-          title: Text(
-            r.reviewerUsername.isEmpty ? 'Usuari' : r.reviewerUsername,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Text(r.comment.isEmpty ? '—' : r.comment),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Text(
-              '${r.rating}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -1460,68 +983,62 @@ class _ProfileScreenState extends State<ProfileScreen>
       MaterialPageRoute(builder: (_) => EventScreen(eventCode: session.event)),
     );
   }
+}
 
-  List<Session> _sortedAttendedSessions(List<Session> sessions) {
-    final sorted = [...sessions];
-    sorted.sort((left, right) {
-      // Primer les sessions més recents; empat resolt per codi d'event.
-      final byDate = right.startTime.compareTo(left.startTime);
-      if (byDate != 0) return byDate;
-      return left.event.toLowerCase().compareTo(right.event.toLowerCase());
-    });
-    return sorted;
-  }
+class _ProfileLoadErrorBody extends StatelessWidget {
+  const _ProfileLoadErrorBody({required this.message, required this.onRetry});
 
-  Widget _buildSessionEventTitle(String eventCode) {
-    return FutureBuilder<EventExtended>(
-      // Carrega el detall per mostrar títol humà en lloc del codi.
-      future: _eventsQuery.getEventByCode(eventCode),
-      builder: (context, snapshot) {
-        final title = snapshot.data?.title.trim();
-        final display = (title == null || title.isEmpty) ? eventCode : title;
-        return Text(
-          display,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        );
-      },
-    );
-  }
+  final String message;
+  final VoidCallback onRetry;
 
-  String _formatSessionDateTime(DateTime dateTime) {
-    final localDateTime = dateTime.toLocal();
-    final day = localDateTime.day.toString().padLeft(2, '0');
-    final month = localDateTime.month.toString().padLeft(2, '0');
-    final year = localDateTime.year.toString();
-    final hour = localDateTime.hour.toString().padLeft(2, '0');
-    final minute = localDateTime.minute.toString().padLeft(2, '0');
-    return '$day/$month/$year · $hour:$minute';
-  }
-
-  Widget _buildEmptyTabContent(String message, IconData icon) {
+  @override
+  Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: Colors.grey.shade300),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: AppScreenSpacing.section),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: AppScreenSpacing.section),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EventTextUtils.kPrimaryRed,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildLogoutButton() {
+class _ProfileLogoutButton extends StatelessWidget {
+  const _ProfileLogoutButton({
+    required this.isLoggingOut,
+    required this.onPressed,
+  });
+
+  final bool isLoggingOut;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: OutlinedButton.icon(
-        onPressed: _isLoggingOut ? null : _requestLogOut,
-        icon: _isLoggingOut
+        onPressed: onPressed,
+        icon: isLoggingOut
             ? const SizedBox(
                 height: 18,
                 width: 18,
@@ -1529,8 +1046,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               )
             : const Icon(Icons.logout_outlined),
         style: OutlinedButton.styleFrom(
-          foregroundColor: _kPrimaryRed,
-          side: const BorderSide(color: _kPrimaryRed),
+          foregroundColor: EventTextUtils.kPrimaryRed,
+          side: const BorderSide(color: EventTextUtils.kPrimaryRed),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -1540,6 +1057,52 @@ class _ProfileScreenState extends State<ProfileScreen>
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
+    );
+  }
+}
+
+class _ProfileAttendedTabLabel extends StatelessWidget {
+  const _ProfileAttendedTabLabel({
+    required this.isOwnProfile,
+    required this.sessionsQuery,
+  });
+
+  final bool isOwnProfile;
+  final SessionsQuery sessionsQuery;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isOwnProfile) {
+      return const Text('Assistits');
+    }
+
+    return FutureBuilder<List<Session>>(
+      future: sessionsQuery.getSessions(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.length ?? 0;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Assistits'),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
