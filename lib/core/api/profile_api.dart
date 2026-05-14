@@ -146,12 +146,11 @@ Future<UserReviewsResponse> fetchUserReviews(int userId) async {
 }
 
 /// "Attended events" are represented by Sessions.
-/// Uses GET /api/sessions/?user=<username>
+///
+/// El backend exposa les sessions de l'usuari autenticat amb GET
+/// `/api/sessions/` (sense filtre per query); `?user=` provoca 400.
 Future<List<Session>> fetchUserSessions({required String username}) async {
-  final response = await ApiClient.get(
-    '/api/sessions/',
-    queryParams: {'user': username},
-  );
+  final response = await ApiClient.get('/api/sessions/');
   final decoded = jsonDecode(response.body) as dynamic;
   final rawSessions = _extractSessionList(decoded);
   return rawSessions
