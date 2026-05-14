@@ -762,7 +762,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: generalAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryGeneralStarSize,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
@@ -770,7 +770,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: preuAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryOtherCategoriesStarSize,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
@@ -778,7 +778,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: ambientAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryOtherCategoriesStarSize,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
@@ -786,7 +786,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: accessAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryOtherCategoriesStarSize,
           bottomSpacing: 0,
         ),
       ],
