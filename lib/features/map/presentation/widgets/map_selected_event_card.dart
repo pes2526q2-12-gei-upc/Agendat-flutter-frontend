@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/models/event.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
 
 class MapSelectedEventCard extends StatelessWidget {
@@ -11,18 +12,47 @@ class MapSelectedEventCard extends StatelessWidget {
     required this.onRoutePressed,
     required this.onMoreDetailsPressed,
     required this.onClosePressed,
+    this.detail,
+    this.isLoading = false,
     super.key,
   });
 
+  /// Dades bàsiques del marcador (sempre en català, surt del llistat de la
+  /// home). Es fa servir com a fallback fins que arriba el detall traduït.
   final MapEventMarkerData event;
+
+  /// Detall traduït retornat per `/api/events/{code}/`. Mentre és `null`
+  /// es mostren els valors d'[event] (o l'esquelet si [isLoading]).
+  final EventExtended? detail;
+
+  /// `true` mentre s'està carregant el detall i encara no hi ha resposta.
+  final bool isLoading;
+
   final bool hasCurrentLocation;
   final double distanceKm;
   final VoidCallback onRoutePressed;
   final VoidCallback onMoreDetailsPressed;
   final VoidCallback onClosePressed;
 
+  String get _displayTitle {
+    final fromDetail = detail?.title.trim();
+    if (fromDetail != null && fromDetail.isNotEmpty) return fromDetail;
+    return event.title;
+  }
+
+  String get _displayDateRange {
+    final fromDetail = detail?.displayDateRange;
+    if (fromDetail != null && fromDetail.isNotEmpty) return fromDetail;
+    return event.startDateLabel == event.endDateLabel
+        ? event.startDateLabel
+        : '${event.startDateLabel} - ${event.endDateLabel}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showSkeleton = isLoading && detail == null;
+    final buttonsEnabled = !showSkeleton;
+
     return Container(
       height: _kStaticCardHeight,
       padding: const EdgeInsets.all(10),
@@ -45,26 +75,30 @@ class MapSelectedEventCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 6),
-                Text(
-                  event.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+                if (showSkeleton) ...[
+                  _skeletonLine(width: double.infinity, height: 18),
+                  const SizedBox(height: 6),
+                  _skeletonLine(width: 160, height: 14),
+                ] else ...[
+                  Text(
+                    _displayTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  event.startDateLabel == event.endDateLabel
-                      ? event.startDateLabel
-                      : '${event.startDateLabel} - ${event.endDateLabel}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
+                  Text(
+                    _displayDateRange,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
                 if (hasCurrentLocation) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -79,7 +113,7 @@ class MapSelectedEventCard extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: onRoutePressed,
+                    onPressed: buttonsEnabled ? onRoutePressed : null,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size.fromHeight(38),
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -91,7 +125,7 @@ class MapSelectedEventCard extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: onMoreDetailsPressed,
+                    onPressed: buttonsEnabled ? onMoreDetailsPressed : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF8B1E1E),
                       foregroundColor: Colors.white,
@@ -117,6 +151,17 @@ class MapSelectedEventCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _skeletonLine({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }
