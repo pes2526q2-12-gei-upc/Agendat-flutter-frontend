@@ -1,6 +1,6 @@
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:agendat/features/profile/data/profile_api.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/material.dart';
 

@@ -2,8 +2,7 @@ import 'package:agendat/core/api/reviews_api.dart';
 import 'package:agendat/core/dto/review_dto.dart';
 import 'package:agendat/core/mappers/reviews_mapper.dart';
 import 'package:agendat/core/models/review.dart';
-import 'package:agendat/features/profile/data/profile_api.dart'
-    show fetchUserSessions;
+import 'package:agendat/core/api/profile_api.dart' show fetchUserSessions;
 
 export 'package:agendat/core/api/reviews_api.dart'
     show ReviewAlreadyExistsException, ReviewAttendanceRequiredException;

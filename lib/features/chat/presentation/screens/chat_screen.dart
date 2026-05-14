@@ -13,7 +13,7 @@ import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 

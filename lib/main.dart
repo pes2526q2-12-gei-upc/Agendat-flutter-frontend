@@ -9,7 +9,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 import 'package:flutter/material.dart';

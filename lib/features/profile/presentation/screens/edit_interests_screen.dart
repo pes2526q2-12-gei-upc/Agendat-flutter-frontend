@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
-import 'package:agendat/features/profile/data/models/user_profile.dart';
-import 'package:agendat/features/profile/data/profile_api.dart';
-import 'package:agendat/features/profile/data/profile_query.dart';
+import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/core/query/profile_query.dart';
+import 'package:agendat/features/profile/presentation/widgets/edit_interests_widgets.dart';
 
 class EditInterestsScreen extends StatefulWidget {
   const EditInterestsScreen({
@@ -158,93 +159,23 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeaderCard(),
+          EditInterestsHeaderCard(selectedCount: _selectedIds.length),
           const SizedBox(height: 18),
           Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: _categories.map(_buildCategoryChip).toList(),
+            children: _categories
+                .map(
+                  (c) => EditInterestsCategoryChip(
+                    category: c,
+                    selected: _selectedIds.contains(c.id),
+                    onToggle: _toggleCategory,
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeaderCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: EventTextUtils.kPrimaryRed.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.tune_rounded,
-              color: EventTextUtils.kPrimaryRed,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '${_selectedIds.length} seleccionats',
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryChip(CategoryDto category) {
-    final id = category.id;
-    if (id == null) return const SizedBox.shrink();
-    final categoryLabel =
-        EventTextUtils.labelOrNull(category.name) ?? category.name;
-
-    final selected = _selectedIds.contains(id);
-    return ChoiceChip(
-      selected: selected,
-      showCheckmark: false,
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (selected) ...[
-            const Icon(Icons.check_rounded, size: 17, color: Colors.white),
-            const SizedBox(width: 6),
-          ],
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220),
-            child: Text(categoryLabel, overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-      labelStyle: TextStyle(
-        color: selected ? Colors.white : Colors.grey.shade800,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-      ),
-      selectedColor: EventTextUtils.kPrimaryRed,
-      backgroundColor: Colors.white,
-      side: BorderSide(
-        color: selected ? EventTextUtils.kPrimaryRed : Colors.grey.shade300,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      onSelected: (_) => _toggleCategory(id),
     );
   }
 
