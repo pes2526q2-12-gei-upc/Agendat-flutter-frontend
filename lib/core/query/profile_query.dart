@@ -284,6 +284,25 @@ class ProfileQuery {
     );
   }
 
+  /// GET /api/users/friend-recommendations/ — recomanacions per a l'usuari
+  /// autenticat. La clau inclou el meu id per evitar barrejar recomanacions
+  /// si canvia la sessió dins la mateixa instància de l'app.
+  Future<FriendRecommendationsData> getFriendRecommendations({
+    bool forceRefresh = false,
+  }) {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is! int) {
+      return Future.value(FriendRecommendationsData.empty);
+    }
+
+    return _client.query<FriendRecommendationsData>(
+      key: '$_prefix:friend-recommendations:$myId',
+      staleTime: _friendshipStaleTime,
+      forceRefresh: forceRefresh,
+      queryFn: fetchFriendRecommendations,
+    );
+  }
+
   /// Neteja les llistes d'amistat i sol·licituds de l'usuari actual per forçar
   /// un refetch la propera vegada. Cal cridar-lo quan envies/canceles/acceptes
   /// una sol·licitud o quan l'estat d'amistat canvia des del backend.
@@ -298,6 +317,14 @@ class ProfileQuery {
   /// sincronitzat optimísticament per altres camins.
   void invalidateFriendRequestsList(int userId) {
     _client.invalidate('$_prefix:friend-requests:$userId');
+  }
+
+  /// Invalida les recomanacions d'amistat de l'usuari autenticat.
+  void invalidateFriendRecommendations() {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is int) {
+      _client.invalidate('$_prefix:friend-recommendations:$myId');
+    }
   }
 
   /// Sincronitza la caché del client després d'un canvi confirmat (per crida
