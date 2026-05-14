@@ -1,11 +1,9 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
-import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
@@ -28,14 +26,6 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  /// A partir de quants caràcters val la pena enviar la cerca al backend per
-  /// ampliar els marcadors. Per sota d'aquest llindar només es manté el
-  /// filtre local instantani.
-  static const int _minServerSearchLength = 3;
-
-  /// Debounce de la cerca al servidor (per evitar una crida per tecla).
-  static const Duration _searchDebounceDuration = Duration(milliseconds: 400);
-
   final MapController _mapController = MapController();
   final Distance _distanceCalculator = const Distance();
   final EventsQuery _eventsQuery = EventsQuery.instance;
@@ -45,25 +35,29 @@ class _MapScreenState extends State<MapScreen> {
   final LatLng _center = const LatLng(41.3851, 2.1734);
   LatLng? _currentUserLocation;
 
+  /// Marcadors derivats de la llista d'events que publica la home via
+  /// [EventsQuery.publishedEvents].
   List<MapEventMarkerData> _events = <MapEventMarkerData>[];
+
   MapEventMarkerData? _selectedEvent;
+
+  /// Detall traduït retornat per `/api/events/{code}/` quan l'usuari toca
+  /// una xinxeta. Mentre està a `null` i [_isLoadingDetail] és `true` la
+  /// targeta mostra l'esquelet de càrrega.
+  EventExtended? _selectedDetail;
+  bool _isLoadingDetail = false;
+
+  /// Epoch incrementat cada vegada que es selecciona una nova xinxeta. Ens
+  /// permet ignorar respostes lentes que han quedat obsoletes (l'usuari ha
+  /// canviat de marcador abans que arribés la resposta).
+  int _detailEpoch = 0;
+
+  /// Text de cerca aplicat al filtre local dels marcadors. Només
+  /// s'actualitza quan l'usuari prem Enter / botó de cerca.
   String _searchQuery = '';
 
-  /// Text de cerca actualment aplicat al backend (paràmetre `name`). Pot
-  /// quedar enrere respecte a `_searchQuery` mentre s'aplica el debounce.
-  String _appliedServerSearch = '';
-
-  bool _isLoadingEvents = false;
-  String? _eventsLoadError;
   bool _isFiltersOpen = false;
   EventFilters _activeFilters = const EventFilters();
-
-  /// Epoch incrementat cada vegada que disparem una nova càrrega de
-  /// marcadors. Ens permet ignorar respostes lentes que han quedat
-  /// obsoletes (canvi de filtre, nova cerca, etc.).
-  int _loadEpoch = 0;
-
-  Timer? _searchDebounceTimer;
 
   final double _minZoom = 8.0;
   final double _maxZoom = 18.0;
@@ -72,88 +66,54 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    // Entrem amb el filtre compartit actual (si n'hi ha).
     _activeFilters = _eventsQuery.persistedFilters ?? const EventFilters();
-    _loadEvents();
-    _loadCurrentLocation();
-    // Si canvia el filtre a una altra vista, ens posem al dia aquí.
+    // Inicialitzem amb el que la home ja hagi publicat (pot ser buit si
+    // l'usuari ha obert el mapa abans de visitar la home).
+    _events = buildMarkersFromEvents(_eventsQuery.publishedEvents.value);
+    _eventsQuery.publishedEvents.addListener(_onPublishedEventsChanged);
     _eventsQuery.persistedFiltersListenable.addListener(
       _onSharedFiltersChanged,
     );
+    _loadCurrentLocation();
   }
 
   @override
   void dispose() {
-    _searchDebounceTimer?.cancel();
-    // Traiem listener
+    _eventsQuery.publishedEvents.removeListener(_onPublishedEventsChanged);
     _eventsQuery.persistedFiltersListenable.removeListener(
       _onSharedFiltersChanged,
     );
     super.dispose();
   }
 
+  void _onPublishedEventsChanged() {
+    if (!mounted) return;
+    final markers = buildMarkersFromEvents(_eventsQuery.publishedEvents.value);
+    setState(() {
+      _events = markers;
+      // Si l'event seleccionat ja no apareix als marcadors actuals, el
+      // descartem perquè no quedi una targeta orfe.
+      if (_selectedEvent != null &&
+          !markers.any((m) => m.id == _selectedEvent!.id)) {
+        _clearSelection();
+      }
+    });
+  }
+
   void _onSharedFiltersChanged() {
     if (!mounted) return;
     final sharedFilters = _eventsQuery.persistedFilters ?? const EventFilters();
-    final hasChanged = !mapEquals(
-      _activeFilters.toQueryParams(),
-      sharedFilters.toQueryParams(),
-    );
-    // Si no hi ha canvi real, no recarreguem.
-    if (!hasChanged) return;
-
-    setState(() {
-      // Apliquem el filtre compartit i netegem selecció de targeta del mapa.
-      _activeFilters = sharedFilters;
-      _selectedEvent = null;
-    });
-    // Recarreguem marcadors amb el filtre nou.
-    _loadEvents();
-  }
-
-  /// Combina els filtres compartits amb el text de cerca actualment enviat
-  /// al backend. Retorna `null` si no cal cap filtre.
-  EventFilters? _buildFiltersForRequest() {
-    final trimmed = _appliedServerSearch.trim();
-    final combined = _activeFilters.copyWith(
-      name: () => trimmed.isEmpty ? null : trimmed,
-    );
-    return combined.isEmpty ? null : combined;
-  }
-
-  Future<void> _loadEvents({bool forceRefresh = false}) async {
-    final epoch = ++_loadEpoch;
-    setState(() {
-      _isLoadingEvents = true;
-      _eventsLoadError = null;
-    });
-
-    try {
-      // Forcem CA: el mapa només mostra el títol curt al marcador, i si
-      // demanéssim l'idioma actiu la mida de pàgina baixaria a 3 (límit
-      // de traducció) i el mapa faria moltíssimes crides per cobrir tots
-      // els marcadors. El detall (EventScreen) es carrega a part i pot
-      // traduir-se quan calgui.
-      final events = await _eventsQuery.getEvents(
-        filters: _buildFiltersForRequest(),
-        forceRefresh: forceRefresh,
-        lang: AppLanguage.defaultCode,
-      );
-
-      if (!mounted || epoch != _loadEpoch) return;
-
-      setState(() {
-        _events = buildMarkersFromEvents(events);
-        _selectedEvent = null;
-      });
-    } catch (e) {
-      if (!mounted || epoch != _loadEpoch) return;
-      setState(() => _eventsLoadError = e.toString());
-    } finally {
-      if (mounted && epoch == _loadEpoch) {
-        setState(() => _isLoadingEvents = false);
-      }
+    if (_activeFilters.toQueryParams().toString() ==
+        sharedFilters.toQueryParams().toString()) {
+      return;
     }
+    setState(() {
+      _activeFilters = sharedFilters;
+      _clearSelection();
+    });
+    // No recarreguem res aquí: la home reaccionarà al canvi de filtre,
+    // farà la seva crida i tornarà a publicar events; nosaltres els
+    // captem amb `_onPublishedEventsChanged`.
   }
 
   Future<void> _loadCurrentLocation() async {
@@ -202,8 +162,35 @@ class _MapScreenState extends State<MapScreen> {
     ).push(MaterialPageRoute(builder: (_) => EventScreen(eventCode: event.id)));
   }
 
+  void _clearSelection() {
+    _selectedEvent = null;
+    _selectedDetail = null;
+    _isLoadingDetail = false;
+  }
+
   void _closeSelectedEventCard() {
-    setState(() => _selectedEvent = null);
+    setState(_clearSelection);
+  }
+
+  Future<void> _onMarkerTap(MapEventMarkerData event) async {
+    final epoch = ++_detailEpoch;
+    setState(() {
+      _selectedEvent = event;
+      _selectedDetail = null;
+      _isLoadingDetail = true;
+    });
+
+    try {
+      final detail = await _eventsQuery.getEventByCode(event.id);
+      if (!mounted || epoch != _detailEpoch) return;
+      setState(() {
+        _selectedDetail = detail;
+        _isLoadingDetail = false;
+      });
+    } catch (_) {
+      if (!mounted || epoch != _detailEpoch) return;
+      setState(() => _isLoadingDetail = false);
+    }
   }
 
   bool _eventMatchesSearch(MapEventMarkerData event, String query) {
@@ -212,41 +199,23 @@ class _MapScreenState extends State<MapScreen> {
     return event.title.toLowerCase().contains(q);
   }
 
-  void _onSearchChanged(String value) {
+  /// Actualitza el filtre local dels marcadors només quan l'usuari prem
+  /// Enter / botó de cerca. El mapa mai fa crides a `/api/events/` per
+  /// cerca: tot el filtratge és sobre els marcadors ja carregats per la
+  /// home.
+  void _onSearchSubmitted(String value) {
     setState(() {
       _searchQuery = value;
       final selected = _selectedEvent;
       if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
-        _selectedEvent = null;
+        _clearSelection();
       }
-    });
-    _scheduleServerSearch(value);
-  }
-
-  /// Programa (amb debounce) una crida al backend per ampliar els
-  /// marcadors quan la cerca és prou llarga. Per sota del llindar
-  /// [_minServerSearchLength] només es manté el filtre local instantani i,
-  /// si abans ja havíem aplicat una cerca al servidor, la retirem
-  /// (tornem a tenir els marcadors complets dels filtres actuals).
-  void _scheduleServerSearch(String value) {
-    _searchDebounceTimer?.cancel();
-
-    final trimmed = value.trim();
-    final shouldQueryServer = trimmed.length >= _minServerSearchLength;
-    final targetServerQuery = shouldQueryServer ? trimmed : '';
-
-    if (targetServerQuery == _appliedServerSearch) return;
-
-    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
-      if (!mounted) return;
-      if (targetServerQuery == _appliedServerSearch) return;
-      _appliedServerSearch = targetServerQuery;
-      _loadEvents();
     });
   }
 
   void _onApplyFilters(EventFilters filters) {
-    // Publica el filtre compartit; la recàrrega la gestiona el listener.
+    // Publica el filtre compartit; la home recarregarà i el notifier ens
+    // farà arribar els nous events automàticament.
     _eventsQuery.setPersistedFilters(filters);
   }
 
@@ -261,7 +230,7 @@ class _MapScreenState extends State<MapScreen> {
 
     final eventMarkers = buildEventMarkers(
       events: filteredEvents,
-      onMarkerTap: (event) => setState(() => _selectedEvent = event),
+      onMarkerTap: _onMarkerTap,
     );
 
     final selectedEvent = _selectedEvent;
@@ -311,7 +280,8 @@ class _MapScreenState extends State<MapScreen> {
               child: SizedBox(
                 width: mapContentWidth,
                 child: AppSearchBar(
-                  onChanged: _onSearchChanged,
+                  onSubmitted: _onSearchSubmitted,
+                  textInputAction: TextInputAction.search,
                   margin: const EdgeInsets.fromLTRB(
                     AppScreenSpacing.horizontal,
                     AppScreenSpacing.section,
@@ -324,31 +294,6 @@ class _MapScreenState extends State<MapScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  if (_isLoadingEvents) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (_eventsLoadError != null) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Error loading events: $_eventsLoadError',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: () => _loadEvents(forceRefresh: true),
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
                   final maxMapWidth = math.min(
                     constraints.maxWidth,
                     mapContentWidth,
@@ -408,6 +353,26 @@ class _MapScreenState extends State<MapScreen> {
                                   ],
                                 ),
                               ),
+                              if (_events.isEmpty)
+                                const Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: Text(
+                                          'No hi ha esdeveniments per mostrar.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               Positioned(
                                 top: 12,
                                 left: 12,
@@ -443,6 +408,8 @@ class _MapScreenState extends State<MapScreen> {
                                   bottom: 12,
                                   child: MapSelectedEventCard(
                                     event: selectedEvent,
+                                    detail: _selectedDetail,
+                                    isLoading: _isLoadingDetail,
                                     hasCurrentLocation: hasCurrentLocation,
                                     distanceKm: distanceKm,
                                     onRoutePressed: () =>

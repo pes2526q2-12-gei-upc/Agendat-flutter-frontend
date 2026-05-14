@@ -5,32 +5,14 @@ import 'package:agendat/core/dto/event_list_dto.dart';
 import 'package:agendat/core/mappers/event_mapper.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
-import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/services/events_response_parser.dart';
 
 class EventsApi {
   static const String _path = '/api/events/';
 
-  /// Default page size when the backend returns the original Catalan content.
-  ///
-  /// The backend accepts up to 50, but we stick to 20 to keep the UI snappy.
+  /// Mida de pàgina per defecte. El backend accepta fins a 50, però
+  /// 20 manté la UI lleugera.
   static const int defaultPageSize = 20;
-
-  /// Page size used when the backend has to translate events.
-  ///
-  /// We have a hard limit on translation API characters, so when the user
-  /// requests another language we ask for fewer events per call.
-  static const int translatedPageSize = 3;
-
-  /// Returns the page size to use for [lang]: small when translation kicks in,
-  /// the regular size otherwise.
-  static int pageSizeForLang(String? lang) {
-    final normalized = (lang ?? '').trim().toUpperCase();
-    if (normalized.isEmpty || normalized == AppLanguage.defaultCode) {
-      return defaultPageSize;
-    }
-    return translatedPageSize;
-  }
 
   Future<EventExtended> fetchEventByCode(String eventCode) async {
     final code = eventCode.trim();
@@ -52,24 +34,14 @@ class EventsApi {
   /// Use this for paginated UIs (infinite scroll). The first page should be
   /// requested with `offset: 0`; subsequent pages must pass `offset` equal to
   /// the amount of events already shown.
-  ///
-  /// When [lang] is provided and is not [AppLanguage.defaultCode], the
-  /// backend will translate the event content into that language. Callers
-  /// should pair non-Catalan requests with a smaller [limit] (see
-  /// [translatedPageSize]).
   Future<PaginatedEventsDto> fetchEventsPage({
     EventFilters? filters,
     int offset = 0,
     int limit = defaultPageSize,
-    String? lang,
   }) async {
     final params = _buildQueryParams(filters);
     params['limit'] = limit.toString();
     params['offset'] = offset.toString();
-    final normalizedLang = _normalizeLang(lang);
-    if (normalizedLang != null) {
-      params['lang'] = normalizedLang;
-    }
 
     final response = await ApiClient.get(_path, queryParams: params);
     final decoded = jsonDecode(response.body);
@@ -97,24 +69,16 @@ class EventsApi {
   /// Fetches every event that matches [filters] by iterating the paginated
   /// endpoint until there are no more pages.
   ///
-  /// Used by callers that genuinely need the full dataset (e.g. the map view
-  /// to place every marker). Prefer [fetchEventsPage] for list UIs.
-  ///
-  /// When [lang] is non-Catalan the per-call page size is reduced to
-  /// [translatedPageSize] to respect the translation budget.
-  Future<List<EventListDto>> fetchEvents({
-    EventFilters? filters,
-    String? lang,
-  }) async {
-    final pageSize = pageSizeForLang(lang);
+  /// Used by callers that genuinely need the full dataset. Prefer
+  /// [fetchEventsPage] for list UIs.
+  Future<List<EventListDto>> fetchEvents({EventFilters? filters}) async {
     final accumulated = <EventListDto>[];
     int offset = 0;
     while (true) {
       final page = await fetchEventsPage(
         filters: filters,
         offset: offset,
-        limit: pageSize,
-        lang: lang,
+        limit: defaultPageSize,
       );
       accumulated.addAll(page.results);
       if (!page.hasNext || page.results.isEmpty) break;
@@ -122,16 +86,6 @@ class EventsApi {
       offset = accumulated.length;
     }
     return accumulated;
-  }
-
-  static String? _normalizeLang(String? lang) {
-    if (lang == null) return null;
-    final upper = lang.trim().toUpperCase();
-    if (upper.isEmpty) return null;
-    if (!AppLanguage.supported.contains(upper)) return null;
-    // Catalan is the backend default — no need to send the param.
-    if (upper == AppLanguage.defaultCode) return null;
-    return upper;
   }
 
   Map<String, String> _buildQueryParams(EventFilters? filters) {
