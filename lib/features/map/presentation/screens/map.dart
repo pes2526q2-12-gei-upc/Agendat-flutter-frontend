@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:agendat/core/models/event.dart';
-import 'package:agendat/core/models/event_filters.dart';
+import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/features/map/data/device_location_service.dart';
@@ -10,12 +9,13 @@ import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
-import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/features/map/presentation/models/map_filters.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
+import 'package:agendat/features/map/presentation/widgets/map_filter_button.dart';
 import 'package:agendat/features/map/presentation/widgets/map_selected_event_card.dart';
 
 class MapScreen extends StatefulWidget {
@@ -35,29 +35,39 @@ class _MapScreenState extends State<MapScreen> {
   final LatLng _center = const LatLng(41.3851, 2.1734);
   LatLng? _currentUserLocation;
 
-  /// Marcadors derivats de la llista d'events que publica la home via
-  /// [EventsQuery.publishedEvents].
-  List<MapEventMarkerData> _events = <MapEventMarkerData>[];
+  /// Filtres locals del mapa: per defecte avui i sense categoria.
+  late MapFilters _filters;
 
-  MapEventMarkerData? _selectedEvent;
+  /// Text de cerca aplicat al backend (paràmetre `name` de `/api/events/map/`).
+  /// Només s'actualitza quan l'usuari prem Enter / botó de cerca.
+  String _submittedName = '';
 
-  /// Detall traduït retornat per `/api/events/{code}/` quan l'usuari toca
-  /// una xinxeta. Mentre està a `null` i [_isLoadingDetail] és `true` la
-  /// targeta mostra l'esquelet de càrrega.
-  EventExtended? _selectedDetail;
-  bool _isLoadingDetail = false;
+  /// Marcadors actuals construïts a partir de l'última crida a
+  /// `/api/events/map/`.
+  List<MapEventMarker> _markers = const <MapEventMarker>[];
+
+  /// Estat de càrrega de la llista de pins.
+  bool _isLoadingPins = true;
+  Object? _pinsError;
+
+  /// Epoch incrementat cada vegada que disparem una nova càrrega de pins
+  /// per descartar respostes obsoletes.
+  int _pinsEpoch = 0;
+
+  MapEventMarker? _selectedMarker;
+
+  /// Preview retornada per `/api/events/{code}/preview/` quan l'usuari
+  /// toca una xinxeta. Mentre està a `null` i [_isLoadingPreview] és
+  /// `true` la targeta mostra l'esquelet de càrrega.
+  EventPreview? _selectedPreview;
+  bool _isLoadingPreview = false;
 
   /// Epoch incrementat cada vegada que es selecciona una nova xinxeta. Ens
   /// permet ignorar respostes lentes que han quedat obsoletes (l'usuari ha
   /// canviat de marcador abans que arribés la resposta).
-  int _detailEpoch = 0;
-
-  /// Text de cerca aplicat al filtre local dels marcadors. Només
-  /// s'actualitza quan l'usuari prem Enter / botó de cerca.
-  String _searchQuery = '';
+  int _previewEpoch = 0;
 
   bool _isFiltersOpen = false;
-  EventFilters _activeFilters = const EventFilters();
 
   final double _minZoom = 8.0;
   final double _maxZoom = 18.0;
@@ -66,60 +76,50 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    _activeFilters = _eventsQuery.persistedFilters ?? const EventFilters();
-    // Inicialitzem amb el que la home ja hagi publicat (pot ser buit si
-    // l'usuari ha obert el mapa abans de visitar la home).
-    _events = buildMarkersFromEvents(_eventsQuery.publishedEvents.value);
-    _eventsQuery.publishedEvents.addListener(_onPublishedEventsChanged);
-    _eventsQuery.persistedFiltersListenable.addListener(
-      _onSharedFiltersChanged,
-    );
+    _filters = MapFilters.today();
     _loadCurrentLocation();
-  }
-
-  @override
-  void dispose() {
-    _eventsQuery.publishedEvents.removeListener(_onPublishedEventsChanged);
-    _eventsQuery.persistedFiltersListenable.removeListener(
-      _onSharedFiltersChanged,
-    );
-    super.dispose();
-  }
-
-  void _onPublishedEventsChanged() {
-    if (!mounted) return;
-    final markers = buildMarkersFromEvents(_eventsQuery.publishedEvents.value);
-    setState(() {
-      _events = markers;
-      // Si l'event seleccionat ja no apareix als marcadors actuals, el
-      // descartem perquè no quedi una targeta orfe.
-      if (_selectedEvent != null &&
-          !markers.any((m) => m.id == _selectedEvent!.id)) {
-        _clearSelection();
-      }
-    });
-  }
-
-  void _onSharedFiltersChanged() {
-    if (!mounted) return;
-    final sharedFilters = _eventsQuery.persistedFilters ?? const EventFilters();
-    if (_activeFilters.toQueryParams().toString() ==
-        sharedFilters.toQueryParams().toString()) {
-      return;
-    }
-    setState(() {
-      _activeFilters = sharedFilters;
-      _clearSelection();
-    });
-    // No recarreguem res aquí: la home reaccionarà al canvi de filtre,
-    // farà la seva crida i tornarà a publicar events; nosaltres els
-    // captem amb `_onPublishedEventsChanged`.
+    _loadPins(forceRefresh: true);
   }
 
   Future<void> _loadCurrentLocation() async {
     final location = await _deviceLocationService.getCurrentLocation();
     if (location == null || !mounted) return;
     setState(() => _currentUserLocation = location);
+  }
+
+  Future<void> _loadPins({bool forceRefresh = false}) async {
+    final epoch = ++_pinsEpoch;
+    setState(() {
+      _isLoadingPins = true;
+      _pinsError = null;
+    });
+
+    try {
+      final pins = await _eventsQuery.getEventMapPins(
+        date: _filters.date,
+        category: _filters.category,
+        name: _submittedName.isEmpty ? null : _submittedName,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted || epoch != _pinsEpoch) return;
+      final markers = buildMarkersFromPins(pins);
+      setState(() {
+        _markers = markers;
+        _isLoadingPins = false;
+        // Si l'event seleccionat ja no apareix als marcadors actuals, el
+        // descartem perquè no quedi una targeta orfe.
+        if (_selectedMarker != null &&
+            !markers.any((m) => m.code == _selectedMarker!.code)) {
+          _clearSelection();
+        }
+      });
+    } catch (e) {
+      if (!mounted || epoch != _pinsEpoch) return;
+      setState(() {
+        _pinsError = e;
+        _isLoadingPins = false;
+      });
+    }
   }
 
   void _zoomIn() {
@@ -143,11 +143,11 @@ class _MapScreenState extends State<MapScreen> {
     _mapController.move(location, targetZoom);
   }
 
-  Future<void> _openNavigationToEvent(MapEventMarkerData event) async {
+  Future<void> _openNavigationToEvent(MapEventMarker marker) async {
     final origin = _currentUserLocation ?? _center;
     final launched = await _mapNavigationService.openNavigation(
       origin: origin,
-      destination: event.point,
+      destination: marker.point,
     );
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -156,67 +156,59 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _openEventDetails(MapEventMarkerData event) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => EventScreen(eventCode: event.id)));
+  void _openEventDetails(MapEventMarker marker) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => EventScreen(eventCode: marker.code)),
+    );
   }
 
   void _clearSelection() {
-    _selectedEvent = null;
-    _selectedDetail = null;
-    _isLoadingDetail = false;
+    _selectedMarker = null;
+    _selectedPreview = null;
+    _isLoadingPreview = false;
   }
 
   void _closeSelectedEventCard() {
     setState(_clearSelection);
   }
 
-  Future<void> _onMarkerTap(MapEventMarkerData event) async {
-    final epoch = ++_detailEpoch;
+  Future<void> _onMarkerTap(MapEventMarker marker) async {
+    final epoch = ++_previewEpoch;
     setState(() {
-      _selectedEvent = event;
-      _selectedDetail = null;
-      _isLoadingDetail = true;
+      _selectedMarker = marker;
+      _selectedPreview = null;
+      _isLoadingPreview = true;
     });
 
     try {
-      final detail = await _eventsQuery.getEventByCode(event.id);
-      if (!mounted || epoch != _detailEpoch) return;
+      final preview = await _eventsQuery.getEventPreview(marker.code);
+      if (!mounted || epoch != _previewEpoch) return;
       setState(() {
-        _selectedDetail = detail;
-        _isLoadingDetail = false;
+        _selectedPreview = preview;
+        _isLoadingPreview = false;
       });
     } catch (_) {
-      if (!mounted || epoch != _detailEpoch) return;
-      setState(() => _isLoadingDetail = false);
+      if (!mounted || epoch != _previewEpoch) return;
+      setState(() => _isLoadingPreview = false);
     }
   }
 
-  bool _eventMatchesSearch(MapEventMarkerData event, String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return true;
-    return event.title.toLowerCase().contains(q);
-  }
-
-  /// Actualitza el filtre local dels marcadors només quan l'usuari prem
-  /// Enter / botó de cerca. El mapa mai fa crides a `/api/events/` per
-  /// cerca: tot el filtratge és sobre els marcadors ja carregats per la
-  /// home.
+  /// Actualitza el paràmetre `name` enviat al backend i recarrega els pins.
+  /// Només es dispara quan l'usuari prem Enter / botó de cerca.
   void _onSearchSubmitted(String value) {
-    setState(() {
-      _searchQuery = value;
-      final selected = _selectedEvent;
-      if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
-        _clearSelection();
-      }
-    });
+    final trimmed = value.trim();
+    if (trimmed == _submittedName) return;
+    _submittedName = trimmed;
+    _loadPins();
   }
 
-  void _onApplyFilters(EventFilters filters) {
-    // Publica el filtre compartit; la home recarregarà i el notifier ens
-    // farà arribar els nous events automàticament.
-    _eventsQuery.setPersistedFilters(filters);
+  void _onApplyFilters(MapFilters filters) {
+    if (filters == _filters) return;
+    setState(() {
+      _filters = filters;
+      _clearSelection();
+    });
+    _loadPins();
   }
 
   @override
@@ -224,23 +216,20 @@ class _MapScreenState extends State<MapScreen> {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final mapContentWidth = math.min(screenWidth, 900.0);
-    final filteredEvents = _events
-        .where((event) => _eventMatchesSearch(event, _searchQuery))
-        .toList();
 
     final eventMarkers = buildEventMarkers(
-      events: filteredEvents,
+      markers: _markers,
       onMarkerTap: _onMarkerTap,
     );
 
-    final selectedEvent = _selectedEvent;
+    final selectedMarker = _selectedMarker;
     final hasCurrentLocation = _currentUserLocation != null;
     double distanceKm = 0.0;
-    if (selectedEvent != null && _currentUserLocation != null) {
+    if (selectedMarker != null && _currentUserLocation != null) {
       distanceKm = _distanceCalculator.as(
         LengthUnit.Kilometer,
         _currentUserLocation!,
-        selectedEvent.point,
+        selectedMarker.point,
       );
     }
 
@@ -353,7 +342,35 @@ class _MapScreenState extends State<MapScreen> {
                                   ],
                                 ),
                               ),
-                              if (_events.isEmpty)
+                              if (_isLoadingPins && _markers.isEmpty)
+                                const Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                )
+                              else if (_pinsError != null && _markers.isEmpty)
+                                Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: Text(
+                                          'No s\'han pogut carregar els esdeveniments.',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else if (_markers.isEmpty)
                                 const Positioned.fill(
                                   child: IgnorePointer(
                                     child: Center(
@@ -389,8 +406,8 @@ class _MapScreenState extends State<MapScreen> {
                               Positioned(
                                 top: 12,
                                 right: 12,
-                                child: FilterButton(
-                                  currentFilters: _activeFilters,
+                                child: MapFilterButton(
+                                  currentFilters: _filters,
                                   onApplyFilters: _onApplyFilters,
                                   onSheetVisibilityChanged: (isVisible) {
                                     if (mounted) {
@@ -401,21 +418,21 @@ class _MapScreenState extends State<MapScreen> {
                                   },
                                 ),
                               ),
-                              if (selectedEvent != null)
+                              if (selectedMarker != null)
                                 Positioned(
                                   left: 12,
                                   right: 12,
                                   bottom: 12,
                                   child: MapSelectedEventCard(
-                                    event: selectedEvent,
-                                    detail: _selectedDetail,
-                                    isLoading: _isLoadingDetail,
+                                    marker: selectedMarker,
+                                    preview: _selectedPreview,
+                                    isLoading: _isLoadingPreview,
                                     hasCurrentLocation: hasCurrentLocation,
                                     distanceKm: distanceKm,
                                     onRoutePressed: () =>
-                                        _openNavigationToEvent(selectedEvent),
+                                        _openNavigationToEvent(selectedMarker),
                                     onMoreDetailsPressed: () =>
-                                        _openEventDetails(selectedEvent),
+                                        _openEventDetails(selectedMarker),
                                     onClosePressed: _closeSelectedEventCard,
                                   ),
                                 ),

@@ -14,6 +14,64 @@ class EventsApi {
   /// 20 manté la UI lleugera.
   static const int defaultPageSize = 20;
 
+  /// Fetches the lightweight list of map pins from `/api/events/map/`.
+  ///
+  /// The endpoint returns every matching event without paginating. Only
+  /// `date`, `category` and `name` are forwarded — the rest of `EventFilters`
+  /// is irrelevant on the map.
+  Future<List<EventMapPinDto>> fetchEventMapPins({
+    DateTime? date,
+    String? category,
+    String? name,
+  }) async {
+    final params = <String, String>{
+      'date': _formatDate(date ?? DateTime.now()),
+    };
+    if (category != null && category.trim().isNotEmpty) {
+      params['category'] = category.trim();
+    }
+    if (name != null && name.trim().isNotEmpty) {
+      params['name'] = name.trim();
+    }
+
+    final response = await ApiClient.get('${_path}map/', queryParams: params);
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is Map<String, dynamic>) {
+      final rawResults = decoded['results'] ?? decoded['events'];
+      if (rawResults is List) {
+        return rawResults
+            .whereType<Map<String, dynamic>>()
+            .map(EventMapPinDto.fromJson)
+            .toList();
+      }
+      return const <EventMapPinDto>[];
+    }
+    if (decoded is List) {
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(EventMapPinDto.fromJson)
+          .toList();
+    }
+    throw const FormatException('Unexpected API response format');
+  }
+
+  /// Fetches the translated preview for a single event.
+  Future<EventPreviewDto> fetchEventPreview(String eventCode) async {
+    final code = eventCode.trim();
+    if (code.isEmpty) {
+      throw const FormatException(
+        'El codi de l\'esdeveniment no pot ser buit.',
+      );
+    }
+    final response = await ApiClient.get('$_path$code/preview/');
+    final decoded = ApiClient.decodeBody(response);
+    if (decoded is Map<String, dynamic>) {
+      return EventPreviewDto.fromJson(decoded);
+    }
+    throw const FormatException('Unexpected API response format');
+  }
+
   Future<EventExtended> fetchEventByCode(String eventCode) async {
     final code = eventCode.trim();
     if (code.isEmpty) {

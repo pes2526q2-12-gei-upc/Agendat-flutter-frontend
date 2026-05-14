@@ -3,6 +3,7 @@ import 'package:agendat/core/api/events_api.dart';
 import 'package:agendat/core/mappers/event_mapper.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
+import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/core/query/query_client.dart';
 
 /// Result of a single paginated request to `/api/events/`.
@@ -125,6 +126,67 @@ class EventsQuery {
     );
   }
 
+  /// Fetches every event pin from `/api/events/map/` for the given filters.
+  ///
+  /// [date] defaults to today on the API side. [category] and [name] are
+  /// forwarded only when non-empty.
+  Future<List<EventMapPin>> getEventMapPins({
+    DateTime? date,
+    String? category,
+    String? name,
+    bool forceRefresh = false,
+  }) {
+    return _client.query<List<EventMapPin>>(
+      key: _mapKey(date: date, category: category, name: name),
+      staleTime: staleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () async {
+        final dtos = await _api.fetchEventMapPins(
+          date: date,
+          category: category,
+          name: name,
+        );
+        return dtos
+            .where(
+              (dto) =>
+                  dto.code.isNotEmpty &&
+                  dto.latitude != null &&
+                  dto.longitude != null,
+            )
+            .map(
+              (dto) => EventMapPin(
+                code: dto.code,
+                latitude: dto.latitude!,
+                longitude: dto.longitude!,
+              ),
+            )
+            .toList();
+      },
+    );
+  }
+
+  /// Fetches the translated preview for [eventCode].
+  Future<EventPreview> getEventPreview(
+    String eventCode, {
+    bool forceRefresh = false,
+  }) {
+    final code = eventCode.trim();
+    return _client.query<EventPreview>(
+      key: _previewKey(code),
+      staleTime: staleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () async {
+        final dto = await _api.fetchEventPreview(code);
+        return EventPreview(
+          code: code,
+          title: dto.denomination,
+          startDate: _parseDate(dto.startDate),
+          endDate: _parseDate(dto.endDate),
+        );
+      },
+    );
+  }
+
   /// Invalidates every cached events query (lists + details).
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 
@@ -132,9 +194,16 @@ class EventsQuery {
   /// including the per-page entries used by infinite scroll).
   void invalidateLists() => _client.invalidatePrefix('$_prefix:list');
 
+  /// Invalidates every cached map-pins query (any date/category/name combo).
+  void invalidateMapPins() => _client.invalidatePrefix('$_prefix:map');
+
   /// Invalidates the cached detail for a specific event code.
   void invalidateDetail(String eventCode) =>
       _client.invalidate(_detailKey(eventCode.trim()));
+
+  /// Invalidates the cached preview for a specific event code.
+  void invalidatePreview(String eventCode) =>
+      _client.invalidate(_previewKey(eventCode.trim()));
 
   String _listKey(EventFilters? filters) {
     if (filters == null || filters.isEmpty) {
@@ -162,6 +231,28 @@ class EventsQuery {
   }
 
   String _detailKey(String eventCode) => '$_prefix:detail:$eventCode';
+
+  String _previewKey(String eventCode) => '$_prefix:preview:$eventCode';
+
+  String _mapKey({DateTime? date, String? category, String? name}) {
+    final dateKey = date == null ? '' : _formatDateKey(date);
+    final categoryKey = category?.trim() ?? '';
+    final nameKey = name?.trim() ?? '';
+    return '$_prefix:map:$dateKey:$categoryKey:$nameKey';
+  }
+
+  static String _formatDateKey(DateTime date) {
+    final yyyy = date.year.toString().padLeft(4, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    final dd = date.day.toString().padLeft(2, '0');
+    return '$yyyy-$mm-$dd';
+  }
+
+  static DateTime? _parseDate(String? raw) {
+    if (raw == null) return null;
+    final parsed = DateTime.tryParse(raw);
+    return parsed?.toLocal();
+  }
 
   bool _areSameFilters(EventFilters? a, EventFilters? b) {
     if (a == null && b == null) return true;
