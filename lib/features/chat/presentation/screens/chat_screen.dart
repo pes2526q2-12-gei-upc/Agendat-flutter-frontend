@@ -9,9 +9,13 @@ import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
-import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
+import 'package:agendat/features/chat/presentation/widgets/chat_empty_pane.dart';
+import 'package:agendat/features/chat/presentation/widgets/chat_friends_starters.dart';
+import 'package:agendat/features/chat/presentation/widgets/conversation_message_input_bar.dart';
+import 'package:agendat/features/chat/presentation/widgets/conversation_partner_app_bar_title.dart';
+import 'package:agendat/features/chat/presentation/widgets/inactive_conversation_banner.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
@@ -245,10 +249,12 @@ class _ChatScreenState extends State<ChatScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
         children: [
-          _emptyPane(
+          ChatEmptyPane(
             icon: Icons.error_outline,
             title: _error!,
-            action: ('Reintentar', () => _reload(forceRefresh: true)),
+            actionLabel: 'Reintentar',
+            onAction: () => _reload(forceRefresh: true),
+            accentColor: _accentRed,
           ),
         ],
       );
@@ -259,13 +265,18 @@ class _ChatScreenState extends State<ChatScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
         children: [
-          _emptyPane(
+          ChatEmptyPane(
             icon: Icons.chat_bubble_outline,
             title: 'Encara no tens cap xat.',
             subtitle: 'Pots iniciar una conversa amb qualsevol amic.',
+            accentColor: _accentRed,
           ),
           const SizedBox(height: 12),
-          ..._buildFriendsStarters(),
+          ChatFriendsStarters(
+            loading: _loadingFriends,
+            friends: _friends,
+            onFriendTap: _startChatWithFriend,
+          ),
         ],
       );
     }
@@ -275,12 +286,14 @@ class _ChatScreenState extends State<ChatScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
         children: [
-          _emptyPane(
+          ChatEmptyPane(
             icon: Icons.search_off,
             title: 'Cap xat coincideix amb la cerca.',
             subtitle:
                 'Prova un altre nom o esborra el text per veure tots els xats.',
-            action: ('Esborra cerca', _clearSearch),
+            actionLabel: 'Esborra cerca',
+            onAction: _clearSearch,
+            accentColor: _accentRed,
           ),
         ],
       );
@@ -304,120 +317,6 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       },
     );
-  }
-
-  Widget _emptyPane({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    (String, VoidCallback)? action,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 48),
-      child: Column(
-        children: [
-          Icon(icon, size: 56, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade800,
-            ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
-          ],
-          if (action != null) ...[
-            const SizedBox(height: 18),
-            ElevatedButton(
-              onPressed: action.$2,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accentRed,
-                foregroundColor: Colors.white,
-              ),
-              child: Text(action.$1),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildFriendsStarters() {
-    if (_loadingFriends) {
-      return const [
-        Padding(
-          padding: EdgeInsets.only(top: 12),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ];
-    }
-    if (_friends.isEmpty) {
-      return const [
-        Padding(
-          padding: EdgeInsets.only(top: 4),
-          child: Center(
-            child: Text(
-              'No tens amics disponibles per iniciar un xat.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ];
-    }
-
-    final sorted = [..._friends]
-      ..sort(
-        (a, b) =>
-            a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
-      );
-    return [
-      Text(
-        'Inicia xat amb amics',
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          color: Colors.grey.shade800,
-        ),
-      ),
-      const SizedBox(height: 10),
-      ...sorted.map(
-        (friend) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            tileColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            leading: ProfileCircleAvatar(
-              radius: 22,
-              profileImage: friend.profileImage,
-              fallbackLabel: friend.displayName,
-            ),
-            title: Text(
-              friend.displayName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              '@${friend.username}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: const Icon(Icons.chat_outlined),
-            onTap: () => _startChatWithFriend(friend),
-          ),
-        ),
-      ),
-    ];
   }
 }
 
@@ -648,49 +547,9 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
         backgroundColor: AppThemeTokens.appBarBackground,
         elevation: AppThemeTokens.appBarElevation,
         foregroundColor: Colors.black87,
-        title: InkWell(
+        title: ConversationPartnerAppBarTitle(
+          partner: _partner,
           onTap: _openPartnerProfile,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                ProfileCircleAvatar(
-                  radius: 18,
-                  profileImage: _partner.profileImage,
-                  fallbackLabel: _partner.displayName,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _partner.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 17,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text(
-                        '@${_partner.username}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
       body: Column(
@@ -702,93 +561,15 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
             ),
           ),
           if (_chat.canSend)
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _inputController,
-                        focusNode: _inputFocus,
-                        minLines: 1,
-                        maxLines: 4,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
-                        decoration: InputDecoration(
-                          hintText: 'Escriu un missatge...',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(
-                      onPressed: _sending ? null : _sendMessage,
-                      icon: _sending
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send),
-                    ),
-                  ],
-                ),
-              ),
+            ConversationMessageInputBar(
+              controller: _inputController,
+              focusNode: _inputFocus,
+              sending: _sending,
+              onSend: _sendMessage,
             )
           else
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.hourglass_disabled_outlined,
-                          size: 22,
-                          color: Colors.grey.shade700,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            _inactiveConversationBannerText(),
-                            style: TextStyle(
-                              fontSize: 14,
-                              height: 1.35,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            InactiveConversationBanner(
+              message: _inactiveConversationBannerText(),
             ),
         ],
       ),
