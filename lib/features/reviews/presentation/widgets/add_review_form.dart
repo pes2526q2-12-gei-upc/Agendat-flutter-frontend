@@ -76,9 +76,6 @@ class _AddReviewFormState extends State<AddReviewForm> {
     text: widget.initialComment,
   );
 
-  // TODO(backend): en mode edició caldria carregar també els mitjans
-  // que ja existien al servidor (URLs) i deixar que l'usuari en tregui
-  // o n'afegeixi de nous.
   final List<XFile> _selectedMedia = [];
 
   static const _ratingInputStyle = TextStyle(
@@ -91,24 +88,43 @@ class _AddReviewFormState extends State<AddReviewForm> {
     _RatingInputConfig(
       label: 'General',
       rating: _generalRating,
+      starSize: ReviewRatingRow.formGeneralStarSize,
       onChanged: (v) => setState(() => _generalRating = v),
     ),
     _RatingInputConfig(
       label: 'Preu',
       rating: _preuRating,
-      onChanged: (v) => setState(() => _preuRating = v),
+      starSize: ReviewRatingRow.formOtherCategoriesStarSize,
+      onChanged: (v) =>
+          setState(() => _preuRating = _optionalRatingAfterTap(_preuRating, v)),
     ),
     _RatingInputConfig(
       label: 'Ambient',
       rating: _ambientRating,
-      onChanged: (v) => setState(() => _ambientRating = v),
+      starSize: ReviewRatingRow.formOtherCategoriesStarSize,
+      onChanged: (v) => setState(
+        () => _ambientRating = _optionalRatingAfterTap(_ambientRating, v),
+      ),
     ),
     _RatingInputConfig(
       label: 'Accessibilitat',
       rating: _accessibilitatRating,
-      onChanged: (v) => setState(() => _accessibilitatRating = v),
+      starSize: ReviewRatingRow.formOtherCategoriesStarSize,
+      onChanged: (v) => setState(
+        () => _accessibilitatRating = _optionalRatingAfterTap(
+          _accessibilitatRating,
+          v,
+        ),
+      ),
     ),
   ];
+
+  /// Preu, ambient i accessibilitat poden ser 0. Si la puntuació és 1 i es
+  /// torna a prémer la primera estrella, es deixa a 0 (General no: mínim 1).
+  int _optionalRatingAfterTap(int current, int tapped) {
+    if (tapped == 1 && current == 1) return 0;
+    return tapped;
+  }
 
   @override
   void dispose() {
@@ -116,21 +132,11 @@ class _AddReviewFormState extends State<AddReviewForm> {
     super.dispose();
   }
 
-  /// Valida i envia el formulari. Totes les puntuacions han de tenir
-  /// almenys 1 estrella; altrament es mostra un avís i no es crida
-  /// `onSubmit`.
+  /// Valida i envia el formulari. General ha de tenir com a mínim 1 estrella;
+  /// la resta de categories poden quedar a 0.
   void _submitForm() {
-    final missing = <String>[];
-    if (_generalRating == 0) missing.add('General');
-    if (_preuRating == 0) missing.add('Preu');
-    if (_ambientRating == 0) missing.add('Ambient');
-    if (_accessibilitatRating == 0) missing.add('Accessibilitat');
-    if (missing.isNotEmpty) {
-      _showSnack(
-        missing.length == 1
-            ? 'Has de posar almenys 1 estrella a ${missing.first}.'
-            : 'Totes les puntuacions han de tenir almenys 1 estrella.',
-      );
+    if (_generalRating == 0) {
+      _showSnack('Has de posar almenys 1 estrella a General.');
       return;
     }
     widget.onSubmit(
@@ -237,7 +243,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
             onRatingChanged: config.onChanged,
             labelWidth: 110,
             labelStyle: _ratingInputStyle,
-            starSize: 30,
+            starSize: config.starSize,
             starSpacing: 4,
             bottomSpacing: 10,
           ),
@@ -372,10 +378,12 @@ class _RatingInputConfig {
   const _RatingInputConfig({
     required this.label,
     required this.rating,
+    required this.starSize,
     required this.onChanged,
   });
 
   final String label;
   final int rating;
+  final double starSize;
   final ValueChanged<int> onChanged;
 }

@@ -1,11 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:agendat/core/api/events_api.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
-import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
@@ -25,16 +23,8 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   /// la càrrega de la pàgina següent (com fa Instagram).
   static const double _loadMoreThresholdPx = 300;
 
-  /// Temps que esperem entre la darrera pulsació de tecla i la crida al
-  /// backend per cercar pel paràmetre `name`.
-  static const Duration _searchDebounce = Duration(milliseconds: 300);
-
-  /// Quants esdeveniments demanem en cada crida al backend.
-  ///
-  /// Depèn de l'idioma actiu:
-  /// - **CA**: 20 (no es tradueix, podem ser generosos).
-  /// - **ES/EN**: 3 (es tradueix; limitem caràcters traduïts per crida).
-  int get _pageSize => EventsQuery.pageSizeForCurrentLanguage();
+  /// Mida fixa de pàgina per a cada crida a `/api/events/`.
+  static const int _pageSize = EventsApi.defaultPageSize;
 
   final EventsQuery _eventsQuery = EventsQuery.instance;
   final ScrollController _scrollController = ScrollController();
@@ -53,16 +43,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   /// (filters changed, pull-to-refresh, etc.).
   int _requestEpoch = 0;
 
-  /// Text actual del cercador (filtrat local instantani).
-  String _query = '';
-
-  /// Text de cerca enviat al backend (com a paràmetre `name`). Pot estar
-  /// "endarrerit" respecte a `_query` mentre s'aplica el debounce.
-  String _appliedNameQuery = '';
-
-  /// Timer que ens permet enviar la cerca al backend només quan l'usuari
-  /// para d'escriure (debounce).
-  Timer? _searchDebounceTimer;
+  /// Text de cerca aplicat al backend (paràmetre `name`). Només
+  /// s'actualitza quan l'usuari prem Enter / botó de cerca.
+  ///
+  /// No filtrem localment per aquesta cadena: el backend ja fa la cerca
+  /// cross-language (tradueix el text a català abans de buscar), i un
+  /// filtre local sobre `event.title` el contradiria (típicament cap títol
+  /// retornat conté literalment el text en l'idioma de l'usuari).
+  String _submittedNameQuery = '';
 
   DateTime get _todayAtMidnight {
     final now = DateTime.now();
@@ -81,29 +69,18 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsQuery.persistedFiltersListenable.addListener(
       _onSharedFiltersChanged,
     );
-    // Si l'usuari canvia l'idioma de l'app, hem de tornar a començar des
-    // de l'offset 0 (les pàgines de l'idioma anterior ja no encaixen amb
-    // les del nou idioma, i a més el page size canvia).
-    AppLanguage.listenable.addListener(_onLanguageChanged);
     _scrollController.addListener(_onScroll);
     _loadFirstPage(forceRefresh: true);
   }
 
   @override
   void dispose() {
-    _searchDebounceTimer?.cancel();
     _eventsQuery.persistedFiltersListenable.removeListener(
       _onSharedFiltersChanged,
     );
-    AppLanguage.listenable.removeListener(_onLanguageChanged);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onLanguageChanged() {
-    if (!mounted) return;
-    _loadFirstPage(forceRefresh: true);
   }
 
   void _onSharedFiltersChanged() {
@@ -131,10 +108,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     }
   }
 
-  /// Combina els filtres compartits actuals amb el text del cercador actiu
-  /// (`name`). Retorna `null` quan no cal enviar cap filtre a l'API.
+  /// Combina els filtres compartits actuals amb el `name` aplicat (només
+  /// canvia quan l'usuari prem Enter al cercador). Retorna `null` quan no
+  /// cal enviar cap filtre a l'API.
   EventFilters? _buildFiltersForRequest() {
-    final trimmed = _appliedNameQuery.trim();
+    final trimmed = _submittedNameQuery.trim();
     final combined = _activeFilters.copyWith(
       name: () => trimmed.isEmpty ? null : trimmed,
     );
@@ -172,6 +150,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         _hasMore = page.hasMore;
         _isInitialLoading = false;
       });
+      _eventsQuery.publishEvents(_events);
     } catch (e) {
       if (!mounted || epoch != _requestEpoch) return;
       setState(() {
@@ -198,6 +177,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         _hasMore = page.hasMore;
         _isLoadingMore = false;
       });
+      _eventsQuery.publishEvents(_events);
     } catch (e) {
       if (!mounted || epoch != _requestEpoch) return;
       setState(() => _isLoadingMore = false);
@@ -209,21 +189,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     }
   }
 
-  /// Crida al backend per cercar pel paràmetre `name`. Es dispara amb
-  /// debounce des de [_onSearchChanged] perquè no enviem una crida per
-  /// cada pulsació.
-  void _onSearchChanged(String value) {
-    setState(() => _query = value);
-
-    _searchDebounceTimer?.cancel();
-    _searchDebounceTimer = Timer(_searchDebounce, () {
-      final trimmed = value.trim();
-      // Si el text que volem enviar és el mateix que ja vam aplicar, no fem
-      // res: el filtre local sobre `_events` ja respon al canvi visualment.
-      if (trimmed == _appliedNameQuery) return;
-      _appliedNameQuery = trimmed;
-      _loadFirstPage();
-    });
+  /// Es crida quan l'usuari prem Enter o el botó de cerca del teclat. Si
+  /// el text efectiu canvia, recarrega la primera pàgina enviant el
+  /// paràmetre `name` al backend.
+  void _onSearchSubmitted(String value) {
+    final trimmed = value.trim();
+    if (trimmed == _submittedNameQuery) return;
+    _submittedNameQuery = trimmed;
+    _loadFirstPage();
   }
 
   void _refresh() {
@@ -235,22 +208,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsQuery.setPersistedFilters(filters);
   }
 
-  List<Event> _applySearch(List<Event> events) {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return events;
-
-    return events.where((event) {
-      final subtitle = event.subtitle?.toLowerCase() ?? '';
-      final description = event.description?.toLowerCase() ?? '';
-      return event.code.toLowerCase().contains(q) ||
-          event.title.toLowerCase().contains(q) ||
-          subtitle.contains(q) ||
-          description.contains(q) ||
-          event.displayCategory.toLowerCase().contains(q) ||
-          event.location.toLowerCase().contains(q);
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -259,7 +216,8 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       body: Column(
         children: [
           bar.AppSearchBar(
-            onChanged: _onSearchChanged,
+            onSubmitted: _onSearchSubmitted,
+            textInputAction: TextInputAction.search,
             margin: const EdgeInsets.fromLTRB(
               AppScreenSpacing.horizontal,
               AppScreenSpacing.section,
@@ -312,8 +270,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       );
     }
 
-    final filtered = _applySearch(_events);
-    if (filtered.isEmpty && !_isLoadingMore) {
+    if (_events.isEmpty && !_isLoadingMore) {
       return RefreshIndicator(
         onRefresh: () async => _refresh(),
         child: ListView(
@@ -326,7 +283,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       );
     }
 
-    return eventsList(filtered);
+    return eventsList(_events);
   }
 
   Widget eventsList(List<Event> events) {
@@ -398,9 +355,12 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                   Flexible(child: eventCategory(event)),
                 ],
               ),
-              const SizedBox(height: 4),
-              eventSubtitle(event),
-              const SizedBox(height: 10),
+              if (event.subtitle?.trim().isNotEmpty ?? false) ...[
+                const SizedBox(height: 4),
+                eventSubtitle(event),
+                const SizedBox(height: 10),
+              ] else
+                const SizedBox(height: 10),
               Row(
                 children: [
                   eventDate(event),
@@ -451,7 +411,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventSubtitle(Event event) {
     return Text(
-      event.displaySubtitle,
+      event.subtitle!.trim(),
       style: const TextStyle(
         fontSize: 16,
         color: Color.fromARGB(255, 109, 109, 109),

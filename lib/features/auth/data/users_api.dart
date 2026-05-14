@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/state/auth_session.dart';
+import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/token_storage.dart';
@@ -206,6 +207,7 @@ Future<void> clearLocalSession() async {
   currentAuthToken = null;
   ApiClient.setAuthToken(null);
   unreadChatConversationsNotifier.value = 0;
+  pendingFriendRequestsNotifier.value = 0;
   await TokenStorage.clear();
 }
 

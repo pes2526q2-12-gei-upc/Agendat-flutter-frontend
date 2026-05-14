@@ -1,20 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
 
 class MapSelectedEventCard extends StatelessWidget {
   static const double _kStaticCardHeight = 210;
 
   const MapSelectedEventCard({
-    required this.event,
+    required this.marker,
     required this.hasCurrentLocation,
     required this.distanceKm,
     required this.onRoutePressed,
     required this.onMoreDetailsPressed,
     required this.onClosePressed,
+    this.preview,
+    this.isLoading = false,
     super.key,
   });
 
-  final MapEventMarkerData event;
+  /// Identifier + coords of the tapped pin. Used as fallback while the
+  /// preview is loading.
+  final MapEventMarker marker;
+
+  /// Translated preview returned by `/api/events/{code}/preview/`. Null until
+  /// it arrives; the card shows the skeleton while [isLoading] is true.
+  final EventPreview? preview;
+
+  /// `true` while the preview is being fetched and there is no response yet.
+  final bool isLoading;
+
   final bool hasCurrentLocation;
   final double distanceKm;
   final VoidCallback onRoutePressed;
@@ -23,6 +36,9 @@ class MapSelectedEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showSkeleton = isLoading && preview == null;
+    final buttonsEnabled = !showSkeleton;
+
     return Container(
       height: _kStaticCardHeight,
       padding: const EdgeInsets.all(10),
@@ -45,25 +61,41 @@ class MapSelectedEventCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 6),
-                Text(
-                  event.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  event.startDateLabel == event.endDateLabel
-                      ? event.startDateLabel
-                      : '${event.startDateLabel} - ${event.endDateLabel}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                // Padding right per no quedar sota la creueta de tancar.
+                Padding(
+                  padding: const EdgeInsets.only(right: 28),
+                  child: showSkeleton
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _skeletonLine(width: double.infinity, height: 18),
+                            const SizedBox(height: 6),
+                            _skeletonLine(width: 160, height: 14),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              preview?.displayTitle ?? '',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              preview?.displayDateRange ?? '',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                 ),
                 if (hasCurrentLocation) ...[
                   const SizedBox(height: 2),
@@ -79,7 +111,7 @@ class MapSelectedEventCard extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: onRoutePressed,
+                    onPressed: buttonsEnabled ? onRoutePressed : null,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size.fromHeight(38),
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -91,7 +123,7 @@ class MapSelectedEventCard extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: onMoreDetailsPressed,
+                    onPressed: buttonsEnabled ? onMoreDetailsPressed : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF8B1E1E),
                       foregroundColor: Colors.white,
@@ -105,10 +137,11 @@ class MapSelectedEventCard extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: -12,
-            right: -12,
+            top: -4,
+            right: -4,
             child: IconButton(
-              // Creu per tancar la targeta
+              // Creu per tancar la targeta (queda dins del card per
+              // no ser tallada pel ClipRRect del mapa).
               onPressed: onClosePressed,
               icon: const Icon(Icons.close),
               splashRadius: 18,
@@ -117,6 +150,17 @@ class MapSelectedEventCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _skeletonLine({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }

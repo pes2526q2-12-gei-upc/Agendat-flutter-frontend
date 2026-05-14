@@ -278,10 +278,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final username = _currentUsername;
     if (username == null) return false;
     try {
-      return _reviewsQuery.hasConfirmedAttendance(
-        username: username,
-        eventCode: widget.eventCode,
-      );
+      return _reviewsQuery.hasConfirmedAttendance(eventCode: widget.eventCode);
     } catch (_) {
       return true;
     }
@@ -332,6 +329,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   void _openEditForm(int index) {
     setState(() {
+      debugPrint('openEditForm: $index');
       _isFormOpen = true;
       _editingIndex = index;
     });
@@ -762,7 +760,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: generalAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryGeneralStarSize,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
@@ -770,7 +768,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: preuAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryOtherCategoriesStarSize,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
@@ -778,7 +776,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: ambientAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryOtherCategoriesStarSize,
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
@@ -786,7 +784,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           rating: accessAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
-          starSize: 20,
+          starSize: ReviewRatingRow.summaryOtherCategoriesStarSize,
           bottomSpacing: 0,
         ),
       ],
