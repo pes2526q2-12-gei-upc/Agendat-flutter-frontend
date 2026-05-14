@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'package:agendat/core/services/google_auth_config.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/query/profile_query.dart';
@@ -165,8 +166,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithGoogle() async {
     final googleSignIn = GoogleSignIn(
       scopes: ['email', 'profile'],
-      clientId:
-          '482718948827-mbcnthq46p3g8lalmehdsmmcdbtt991h.apps.googleusercontent.com',
+      clientId: GoogleAuthConfig.clientId,
+      serverClientId: GoogleAuthConfig.serverClientId,
     );
 
     try {
