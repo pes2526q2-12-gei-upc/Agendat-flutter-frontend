@@ -43,11 +43,13 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   /// (filters changed, pull-to-refresh, etc.).
   int _requestEpoch = 0;
 
-  /// Text actual del cercador (només filtre local instantani).
-  String _query = '';
-
   /// Text de cerca aplicat al backend (paràmetre `name`). Només
   /// s'actualitza quan l'usuari prem Enter / botó de cerca.
+  ///
+  /// No filtrem localment per aquesta cadena: el backend ja fa la cerca
+  /// cross-language (tradueix el text a català abans de buscar), i un
+  /// filtre local sobre `event.title` el contradiria (típicament cap títol
+  /// retornat conté literalment el text en l'idioma de l'usuari).
   String _submittedNameQuery = '';
 
   DateTime get _todayAtMidnight {
@@ -187,12 +189,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     }
   }
 
-  /// Actualitza només el text per al filtre local instantani (no fa cap
-  /// crida a l'API; la crida es dispara a [_onSearchSubmitted]).
-  void _onSearchChanged(String value) {
-    setState(() => _query = value);
-  }
-
   /// Es crida quan l'usuari prem Enter o el botó de cerca del teclat. Si
   /// el text efectiu canvia, recarrega la primera pàgina enviant el
   /// paràmetre `name` al backend.
@@ -212,22 +208,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsQuery.setPersistedFilters(filters);
   }
 
-  List<Event> _applySearch(List<Event> events) {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return events;
-
-    return events.where((event) {
-      final subtitle = event.subtitle?.toLowerCase() ?? '';
-      final description = event.description?.toLowerCase() ?? '';
-      return event.code.toLowerCase().contains(q) ||
-          event.title.toLowerCase().contains(q) ||
-          subtitle.contains(q) ||
-          description.contains(q) ||
-          event.displayCategory.toLowerCase().contains(q) ||
-          event.location.toLowerCase().contains(q);
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -236,7 +216,6 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       body: Column(
         children: [
           bar.AppSearchBar(
-            onChanged: _onSearchChanged,
             onSubmitted: _onSearchSubmitted,
             textInputAction: TextInputAction.search,
             margin: const EdgeInsets.fromLTRB(
@@ -291,8 +270,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       );
     }
 
-    final filtered = _applySearch(_events);
-    if (filtered.isEmpty && !_isLoadingMore) {
+    if (_events.isEmpty && !_isLoadingMore) {
       return RefreshIndicator(
         onRefresh: () async => _refresh(),
         child: ListView(
@@ -305,7 +283,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       );
     }
 
-    return eventsList(filtered);
+    return eventsList(_events);
   }
 
   Widget eventsList(List<Event> events) {

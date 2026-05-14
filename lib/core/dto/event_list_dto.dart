@@ -136,6 +136,42 @@ class EventListDto {
   }
 }
 
+/// DTO for `/api/events/map/` items: only `code`, `latitude`, `longitude`.
+class EventMapPinDto {
+  final String code;
+  final double? latitude;
+  final double? longitude;
+
+  const EventMapPinDto({required this.code, this.latitude, this.longitude});
+
+  factory EventMapPinDto.fromJson(Map<String, dynamic> json) {
+    return EventMapPinDto(
+      code: (json['code'] ?? '').toString().trim(),
+      latitude: EventListDto._parseDouble(json, 'latitude'),
+      longitude: EventListDto._parseDouble(json, 'longitude'),
+    );
+  }
+}
+
+/// DTO for `/api/events/{code}/preview/`.
+class EventPreviewDto {
+  final String? denomination;
+  final String? startDate;
+  final String? endDate;
+
+  const EventPreviewDto({this.denomination, this.startDate, this.endDate});
+
+  factory EventPreviewDto.fromJson(Map<String, dynamic> json) {
+    return EventPreviewDto(
+      denomination: EventListDto._trimOrNull(
+        json['denomination'] ?? json['title'],
+      ),
+      startDate: EventListDto._trimOrNull(json['start_date']),
+      endDate: EventListDto._trimOrNull(json['end_date']),
+    );
+  }
+}
+
 class EventDto {
   final String code;
   final String? denomination;
