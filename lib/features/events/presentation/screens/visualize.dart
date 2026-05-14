@@ -377,9 +377,12 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                   Flexible(child: eventCategory(event)),
                 ],
               ),
-              const SizedBox(height: 4),
-              eventSubtitle(event),
-              const SizedBox(height: 10),
+              if (event.subtitle?.trim().isNotEmpty ?? false) ...[
+                const SizedBox(height: 4),
+                eventSubtitle(event),
+                const SizedBox(height: 10),
+              ] else
+                const SizedBox(height: 10),
               Row(
                 children: [
                   eventDate(event),
@@ -430,7 +433,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventSubtitle(Event event) {
     return Text(
-      event.displaySubtitle,
+      event.subtitle!.trim(),
       style: const TextStyle(
         fontSize: 16,
         color: Color.fromARGB(255, 109, 109, 109),
