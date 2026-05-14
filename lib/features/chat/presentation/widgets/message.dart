@@ -20,6 +20,7 @@ class Message extends StatelessWidget {
     required this.isSentByMe,
     this.avatarUrl,
     this.avatarLabel,
+    this.receiptLabel,
   });
 
   final String messageText;
@@ -31,6 +32,7 @@ class Message extends StatelessWidget {
 
   /// Text per inicials si no hi ha foto.
   final String? avatarLabel;
+  final String? receiptLabel;
   static const Color _sentBubbleColor = Color(0xFFB71C1C);
 
   @override
@@ -46,6 +48,8 @@ class Message extends StatelessWidget {
       profileImage: avatarUrl,
       fallbackLabel: avatarLabel ?? '?',
     );
+    final hasReceiptLabel =
+        receiptLabel != null && receiptLabel!.trim().isNotEmpty;
 
     final bubble = Container(
       constraints: BoxConstraints(
@@ -89,6 +93,29 @@ class Message extends StatelessWidget {
       ),
     );
 
+    final bubbleWithReceipt = Column(
+      crossAxisAlignment: isSentByMe
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        bubble,
+        if (hasReceiptLabel) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              receiptLabel!,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.black54,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       child: Row(
@@ -100,7 +127,7 @@ class Message extends StatelessWidget {
               alignment: isSentByMe
                   ? Alignment.centerRight
                   : Alignment.centerLeft,
-              child: bubble,
+              child: bubbleWithReceipt,
             ),
           ),
           if (isSentByMe) ...[const SizedBox(width: 8), avatar],

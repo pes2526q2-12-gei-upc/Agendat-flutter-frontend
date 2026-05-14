@@ -133,6 +133,7 @@ class ChatsQuery {
         _appendMessageToCache(event.chatId, event.message);
       case ChatMessagesReadEvent():
         _upsertChatSummary(event.chat);
+        _markMessagesReadInCache(event.chatId, event.messageIds, event.readAt);
       case ChatRealtimeErrorEvent():
         break;
     }
@@ -195,6 +196,36 @@ class ChatsQuery {
 
     final next = [...cached, message]
       ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+    _client.setQueryData(_messagesKey(chatId), next);
+  }
+
+  void _markMessagesReadInCache(
+    int chatId,
+    List<int> messageIds,
+    DateTime? readAt,
+  ) {
+    if (messageIds.isEmpty) return;
+
+    final cached = _client.getQueryData<List<ChatMessage>>(
+      _messagesKey(chatId),
+    );
+    if (cached == null) return;
+
+    final ids = messageIds.toSet();
+    var changed = false;
+    final next = cached.map((message) {
+      if (!ids.contains(message.id)) return message;
+
+      final nextReadAt = readAt ?? message.readAt;
+      if (message.isRead && message.readAt == nextReadAt) {
+        return message;
+      }
+
+      changed = true;
+      return message.copyWith(isRead: true, readAt: nextReadAt);
+    }).toList();
+
+    if (!changed) return;
     _client.setQueryData(_messagesKey(chatId), next);
   }
 

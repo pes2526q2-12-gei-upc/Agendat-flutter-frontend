@@ -33,10 +33,17 @@ extension MessageDtoMapper on MessageDto {
       fileUrl: fileUrl,
       sentAt: _parseDateTime(sentAt),
       edited: edited,
+      readAt: _parseOptionalDateTime(readAt),
+      isRead: isRead,
     );
   }
 }
 
 DateTime _parseDateTime(String raw) {
   return DateTime.tryParse(raw) ?? DateTime.fromMillisecondsSinceEpoch(0);
+}
+
+DateTime? _parseOptionalDateTime(String? raw) {
+  if (raw == null) return null;
+  return DateTime.tryParse(raw);
 }
