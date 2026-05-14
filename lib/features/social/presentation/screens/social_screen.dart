@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/chat.dart';
+import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -57,6 +58,11 @@ class _SocialScreenState extends State<SocialScreen>
   String? _chatsErrorMessage;
   List<Chat> _chats = const [];
 
+  bool _isLoadingRecommendations = false;
+  String? _recommendationsErrorMessage;
+  List<FriendRecommendation> _recommendations = const [];
+  final Set<int> _busyRecommendationIds = <int>{};
+
   // Animació del pop-up del llistat d'amics. Es renderitza com a overlay
   // dins del cos de la pantalla i lliscà des de baix amb una animació
   // semblant a la d'un bottom sheet modal, però sense bloquejar la barra
@@ -86,6 +92,7 @@ class _SocialScreenState extends State<SocialScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardAuthenticated();
       _loadPendingRequestsCount();
+      _loadFriendRecommendations();
       _loadChats();
     });
   }
@@ -114,6 +121,7 @@ class _SocialScreenState extends State<SocialScreen>
       } else {
         _loadChats(forceRefresh: false);
       }
+      _loadFriendRecommendations(forceRefresh: false);
     }
   }
 
@@ -423,9 +431,47 @@ class _SocialScreenState extends State<SocialScreen>
     }
   }
 
+  Future<void> _loadFriendRecommendations({bool forceRefresh = false}) async {
+    if (!_isAuthenticated) return;
+    setState(() {
+      _isLoadingRecommendations = true;
+      _recommendationsErrorMessage = null;
+    });
+
+    try {
+      final data = await ProfileQuery.instance.getFriendRecommendations(
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) return;
+
+      final currentUserId = (currentLoggedInUser?['id'] as num?)?.toInt();
+      final blockedIds = ProfileQuery.instance.locallyBlockedUserIds;
+      final recommendations = data.recommendations
+          .where((r) => r.id != currentUserId && !blockedIds.contains(r.id))
+          .toList();
+
+      setState(() {
+        _recommendations = recommendations;
+        _isLoadingRecommendations = false;
+        _recommendationsErrorMessage = null;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[social] friend recommendations load failed: $e');
+      }
+      if (!mounted) return;
+      setState(() {
+        _isLoadingRecommendations = false;
+        _recommendationsErrorMessage =
+            'No s\'han pogut carregar les recomanacions.';
+      });
+    }
+  }
+
   Future<void> _refreshSocialOverview() async {
     await Future.wait([
       _loadPendingRequestsCount(forceRefresh: true),
+      _loadFriendRecommendations(forceRefresh: true),
       _loadChats(forceRefresh: true),
     ]);
   }
@@ -444,6 +490,77 @@ class _SocialScreenState extends State<SocialScreen>
     );
     if (!mounted) return;
     await _loadChats(forceRefresh: true);
+  }
+
+  Future<void> _sendRecommendationRequest(FriendRecommendation rec) async {
+    if (!_isAuthenticated) {
+      _guardAuthenticated();
+      return;
+    }
+    if (_busyRecommendationIds.contains(rec.id)) return;
+
+    setState(() => _busyRecommendationIds.add(rec.id));
+    final result = await sendFriendRequest(rec.id);
+
+    if (!mounted) return;
+
+    switch (result) {
+      case FriendActionSuccess():
+        setState(() {
+          _busyRecommendationIds.remove(rec.id);
+          _recommendations = _recommendations
+              .where((candidate) => candidate.id != rec.id)
+              .toList();
+        });
+        ProfileQuery.instance.recordFriendshipStatusChange(
+          rec.id,
+          FriendshipStatus.requestSent,
+          otherSummary: rec.toUserSummary(),
+        );
+        final myId = currentLoggedInUser?['id'];
+        if (myId is int) {
+          ProfileQuery.instance.invalidateFriendRequestsList(myId);
+        }
+        ProfileQuery.instance.invalidateFriendRecommendations();
+        _showSnack('Sol·licitud d\'amistat enviada.');
+      case FriendActionUnauthorized():
+        setState(() => _busyRecommendationIds.remove(rec.id));
+        _guardAuthenticated();
+      case FriendActionUserNotFound():
+        _removeRecommendation(rec.id);
+        ProfileQuery.instance.invalidateUser(rec.id);
+        ProfileQuery.instance.invalidateFriendRecommendations();
+        _showSnack('Perfil no vàlid.');
+      case FriendActionConflict(:final message):
+        _removeRecommendation(rec.id);
+        ProfileQuery.instance.invalidateUser(rec.id);
+        ProfileQuery.instance.invalidateFriendRecommendations();
+        _showSnack(message ?? 'Aquesta recomanació ja no és vàlida.');
+      case FriendActionFailure(:final statusCode, :final message, :final error):
+        setState(() => _busyRecommendationIds.remove(rec.id));
+        if (_isInvalidRequestStatus(statusCode)) {
+          _removeRecommendation(rec.id);
+          ProfileQuery.instance.invalidateUser(rec.id);
+          ProfileQuery.instance.invalidateFriendRecommendations();
+          _showSnack(message ?? 'Aquesta recomanació ja no és vàlida.');
+          return;
+        }
+        final text =
+            message ??
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : 'No s\'ha pogut enviar la sol·licitud.');
+        _showSnack(text);
+    }
+  }
+
+  void _removeRecommendation(int userId) {
+    setState(() {
+      _busyRecommendationIds.remove(userId);
+      _recommendations = _recommendations
+          .where((candidate) => candidate.id != userId)
+          .toList();
+    });
   }
 
   @override
@@ -612,6 +729,9 @@ class _SocialScreenState extends State<SocialScreen>
             if (_pendingRequests.isNotEmpty) _buildPendingRequestsShortcut(),
             if (_pendingRequests.isNotEmpty)
               const SizedBox(height: AppScreenSpacing.xs),
+            if (_shouldShowRecommendations) _buildRecommendationsShortcut(),
+            if (_shouldShowRecommendations)
+              const SizedBox(height: AppScreenSpacing.xs),
             if (_chats.isEmpty)
               _buildCenteredMessage(
                 icon: Icons.chat_bubble_outline,
@@ -665,6 +785,182 @@ class _SocialScreenState extends State<SocialScreen>
       ),
       separatorBuilder: (_, __) => const SizedBox(height: AppScreenSpacing.xs),
       itemCount: _results.length,
+    );
+  }
+
+  bool get _shouldShowRecommendations => _recommendations.isNotEmpty;
+
+  Widget _buildRecommendationsShortcut() {
+    if (_recommendations.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.people_outline, color: Colors.grey.shade500),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _recommendationsErrorMessage ??
+                    'No hi ha recomanacions disponibles.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: () => _loadFriendRecommendations(forceRefresh: true),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: _kPrimaryRed.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.people_outline, color: _kPrimaryRed),
+        ),
+        title: const Text(
+          'Recomanacions d\'amics',
+          style: TextStyle(fontWeight: FontWeight.w700),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          _recommendations.length == 1
+              ? '1 recomanació'
+              : '${_recommendations.length} recomanacions',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: _isLoadingRecommendations
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.chevron_right),
+        onTap: _openRecommendationsPopup,
+      ),
+    );
+  }
+
+  void _openRecommendationsPopup() {
+    if (_recommendations.isEmpty) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            final maxHeight = MediaQuery.of(context).size.height * 0.72;
+
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Persones que podries conèixer',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Tanca',
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const BouncingScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            final rec = _recommendations[index];
+                            return _RecommendationTile(
+                              recommendation: rec,
+                              isBusy: _busyRecommendationIds.contains(rec.id),
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                _openProfile(rec.toUserSummary());
+                              },
+                              onAdd: () async {
+                                final action = _sendRecommendationRequest(rec);
+                                setSheetState(() {});
+                                await action;
+                                if (!mounted || !sheetContext.mounted) return;
+                                if (_recommendations.isEmpty) {
+                                  Navigator.of(sheetContext).pop();
+                                } else {
+                                  setSheetState(() {});
+                                }
+                              },
+                            );
+                          },
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemCount: _recommendations.length,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -820,6 +1116,130 @@ class _UserResultTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _RecommendationTile extends StatelessWidget {
+  const _RecommendationTile({
+    required this.recommendation,
+    required this.isBusy,
+    required this.onTap,
+    required this.onAdd,
+  });
+
+  static const _kPrimaryRed = Color(0xFFB71C1C);
+
+  final FriendRecommendation recommendation;
+  final bool isBusy;
+  final VoidCallback onTap;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final reason = _recommendationReason;
+
+    return Material(
+      color: Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              _Avatar(profileImage: recommendation.profileImage),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      recommendation.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '@${recommendation.username}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      reason,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 36,
+                child: ElevatedButton.icon(
+                  onPressed: isBusy ? null : onAdd,
+                  icon: isBusy
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Icon(Icons.person_add_alt_1, size: 17),
+                  label: const Text(
+                    'Afegir',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _kPrimaryRed,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: _kPrimaryRed.withValues(
+                      alpha: 0.6,
+                    ),
+                    disabledForegroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    minimumSize: const Size(0, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String get _recommendationReason {
+    final shared = recommendation.sharedConnectionsCount;
+    if (shared == 1) return '1 amic en comú';
+    return '$shared amics en comú';
   }
 }
 

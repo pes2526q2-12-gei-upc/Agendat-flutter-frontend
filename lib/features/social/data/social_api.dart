@@ -81,6 +81,123 @@ Future<SearchUsersResult> searchUsers(String query) async {
 }
 
 // ---------------------------------------------------------------------------
+// Friend recommendations
+// ---------------------------------------------------------------------------
+
+/// Recomanació d'amistat retornada per
+/// `GET /api/users/friend-recommendations/`.
+class FriendRecommendation {
+  const FriendRecommendation({
+    required this.id,
+    required this.username,
+    this.firstName,
+    this.lastName,
+    this.profileImage,
+    this.connectionDegree = 0,
+    this.reasonCode,
+    this.reasonLabel,
+    this.sharedConnectionsCount = 0,
+  });
+
+  final int id;
+  final String username;
+  final String? firstName;
+  final String? lastName;
+  final String? profileImage;
+  final int connectionDegree;
+  final String? reasonCode;
+  final String? reasonLabel;
+  final int sharedConnectionsCount;
+
+  factory FriendRecommendation.fromJson(Map<String, dynamic> json) {
+    return FriendRecommendation(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      username: (json['username'] as String?) ?? '',
+      firstName: json['first_name'] as String?,
+      lastName: json['last_name'] as String?,
+      profileImage: _profileImageFromJson(json),
+      connectionDegree: (json['connection_degree'] as num?)?.toInt() ?? 0,
+      reasonCode: json['reason_code'] as String?,
+      reasonLabel: json['reason_label'] as String?,
+      sharedConnectionsCount:
+          (json['shared_connections_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  UserSummary toUserSummary() {
+    return UserSummary(
+      id: id,
+      username: username,
+      firstName: firstName,
+      lastName: lastName,
+      profileImage: profileImage,
+    );
+  }
+
+  String get displayName => toUserSummary().displayName;
+
+  static String? _profileImageFromJson(Map<String, dynamic> json) {
+    const keys = <String>[
+      'profile_image',
+      'profile_image_url',
+      'profile_picture',
+      'avatar',
+      'photo',
+      'image',
+    ];
+    for (final key in keys) {
+      final v = json[key];
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
+    return null;
+  }
+}
+
+/// Resposta de `GET /api/users/friend-recommendations/`.
+class FriendRecommendationsData {
+  const FriendRecommendationsData({
+    required this.count,
+    required this.recommendations,
+    this.detail,
+  });
+
+  final int count;
+  final List<FriendRecommendation> recommendations;
+  final String? detail;
+
+  static const FriendRecommendationsData empty = FriendRecommendationsData(
+    count: 0,
+    recommendations: [],
+  );
+
+  factory FriendRecommendationsData.fromJson(Map<String, dynamic> json) {
+    final rawRecommendations = json['recommendations'];
+    final recommendations = rawRecommendations is List
+        ? rawRecommendations
+              .whereType<Map<String, dynamic>>()
+              .map(FriendRecommendation.fromJson)
+              .toList()
+        : const <FriendRecommendation>[];
+
+    return FriendRecommendationsData(
+      count: (json['count'] as num?)?.toInt() ?? recommendations.length,
+      recommendations: recommendations,
+      detail: json['detail'] as String?,
+    );
+  }
+}
+
+/// GET /api/users/friend-recommendations/
+Future<FriendRecommendationsData> fetchFriendRecommendations() async {
+  final response = await ApiClient.get('/api/users/friend-recommendations/');
+  final decoded = jsonDecode(response.body);
+  if (decoded is Map<String, dynamic>) {
+    return FriendRecommendationsData.fromJson(decoded);
+  }
+  return FriendRecommendationsData.empty;
+}
+
+// ---------------------------------------------------------------------------
 // Friendship API
 // ---------------------------------------------------------------------------
 
