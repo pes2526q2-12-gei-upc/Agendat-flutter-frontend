@@ -47,7 +47,7 @@ class ProfileSummaryCard extends StatelessWidget {
               Expanded(
                 child: _ProfileInfoHeader(
                   profile: profile,
-                  reputation: stats?.reputation,
+                  reputation: profile.reputacio,
                 ),
               ),
               if (isOwnProfile)
@@ -58,7 +58,7 @@ class ProfileSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          _ProfileStatsRow(stats: stats),
+          _ProfileStatsRow(stats: stats, reputation: profile.reputacio),
           if (!isOwnProfile) ...[const SizedBox(height: 16), friendshipSection],
         ],
       ),
@@ -178,9 +178,10 @@ class _ReputationChip extends StatelessWidget {
 }
 
 class _ProfileStatsRow extends StatelessWidget {
-  const _ProfileStatsRow({required this.stats});
+  const _ProfileStatsRow({required this.stats, required this.reputation});
 
   final UserStats? stats;
+  final double? reputation;
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +197,7 @@ class _ProfileStatsRow extends StatelessWidget {
           label: 'Valoracions',
         ),
         _ProfileStatItem(
-          value: stats == null ? '—' : stats!.reputation.toStringAsFixed(1),
+          value: reputation == null ? '—' : reputation!.toStringAsFixed(1),
           label: 'Reputació',
         ),
       ],

@@ -67,6 +67,7 @@ class UserProfile {
     this.socialAlertsAllowed = true,
     this.calendarSyncAllowed = true,
     this.description,
+    this.reputacio,
     this.friendshipStatus,
   });
 
@@ -85,6 +86,7 @@ class UserProfile {
   final bool socialAlertsAllowed;
   final bool calendarSyncAllowed;
   final String? description;
+  final double? reputacio;
 
   /// Relació d'amistat de l'usuari autenticat envers aquest perfil. Només està
   /// present si el backend l'inclou a la resposta (camp `friendship_status`).
@@ -113,6 +115,9 @@ class UserProfile {
           json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
       calendarSyncAllowed: json['calendar_sync_allowed'] as bool? ?? true,
       description: json['description'] as String?,
+      reputacio:
+          (json['reputacio'] as num?)?.toDouble() ??
+          (json['reputation'] as num?)?.toDouble(),
       friendshipStatus: friendshipStatusFromString(
         json['friendship_status'] as String?,
       ),
@@ -136,6 +141,7 @@ class UserProfile {
       socialAlertsAllowed: socialAlertsAllowed,
       calendarSyncAllowed: calendarSyncAllowed,
       description: description,
+      reputacio: reputacio,
       friendshipStatus: status,
     );
   }
