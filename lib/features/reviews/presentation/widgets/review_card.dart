@@ -88,6 +88,8 @@ class _ReviewCardState extends State<ReviewCard> {
           ReviewRatingRow(
             label: 'Valoració general',
             rating: widget.review.general,
+            starSize: ReviewRatingRow.cardGeneralStarSize,
+            starSpacing: 3,
           ),
           if (_hasComment) ...[
             const SizedBox(height: 8),
