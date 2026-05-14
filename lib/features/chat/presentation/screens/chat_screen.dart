@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/state/auth_session.dart';
+import 'package:agendat/core/realtime/chat_realtime_event.dart';
+import 'package:agendat/core/realtime/chat_realtime_service.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -36,6 +40,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _profileQuery = ProfileQuery.instance;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
+  StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
 
   bool _loading = true;
   String? _error;
@@ -46,6 +51,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _realtimeSubscription = ChatRealtimeService.instance.events.listen(
+      _onRealtimeEvent,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuth()) return;
       _reload(forceRefresh: true);
@@ -54,6 +62,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
@@ -135,6 +144,26 @@ class _ChatScreenState extends State<ChatScreen> {
     _searchController.clear();
     setState(() {});
     _searchFocus.unfocus();
+  }
+
+  void _onRealtimeEvent(ChatRealtimeEvent event) {
+    if (!mounted) return;
+    _chatsQuery.applyRealtimeEvent(event);
+    switch (event) {
+      case ChatMessageCreatedEvent():
+        _syncChatsFromCache();
+      case ChatMessagesReadEvent():
+        _syncChatsFromCache();
+      case ChatRealtimeErrorEvent():
+        break;
+    }
+  }
+
+  void _syncChatsFromCache() {
+    final cached = _chatsQuery.peekCachedChatsList();
+    if (cached == null) return;
+    setState(() => _chats = cached);
+    syncUnreadChatConversationsBadge(cached);
   }
 
   Future<void> _openChat(Chat chat) async {
@@ -338,6 +367,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   final _inputController = TextEditingController();
   final _inputFocus = FocusNode();
   final _listScrollController = ScrollController();
+  StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
 
   /// Si és cert, després de nous missatges es fa scroll al final (missatges recents).
   bool _stickToBottom = true;
@@ -388,6 +418,9 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     super.initState();
     _chat = widget.chat;
     _listScrollController.addListener(_onMessagesScroll);
+    _realtimeSubscription = ChatRealtimeService.instance.events.listen(
+      _onRealtimeEvent,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _reload(
         forceRefresh: true,
@@ -399,6 +432,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     _listScrollController.removeListener(_onMessagesScroll);
     _listScrollController.dispose();
     _inputController.dispose();
@@ -431,6 +465,40 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) => jump());
     });
+  }
+
+  void _onRealtimeEvent(ChatRealtimeEvent event) {
+    if (!mounted) return;
+    _chatsQuery.applyRealtimeEvent(event);
+
+    switch (event) {
+      case ChatMessageCreatedEvent():
+        if (event.chatId != widget.chat.id) return;
+        final shouldScrollToNewest =
+            _stickToBottom || event.message.senderId == _myUserId;
+        final alreadyPresent = _messages.any(
+          (message) => message.id == event.message.id,
+        );
+        setState(() {
+          _chat = event.chat;
+          if (!alreadyPresent) {
+            _messages = [..._messages, event.message]
+              ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+          }
+          _loading = false;
+        });
+        if (shouldScrollToNewest) {
+          _scrollMessagesToBottom(animated: true);
+        }
+        if (event.message.senderId != _myUserId) {
+          unawaited(_chatsQuery.markRead(event.chatId));
+        }
+      case ChatMessagesReadEvent():
+        if (event.chatId != widget.chat.id) return;
+        setState(() => _chat = event.chat);
+      case ChatRealtimeErrorEvent():
+        break;
+    }
   }
 
   Future<void> _reload({
