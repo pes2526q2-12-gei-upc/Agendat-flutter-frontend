@@ -6,16 +6,23 @@ class AppNavigationBar extends StatelessWidget {
     required this.currentIndex,
     required this.onTap,
     this.socialUnreadConversationCount = 0,
+    this.socialPendingFriendRequestsCount = 0,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
   final int socialUnreadConversationCount;
+  final int socialPendingFriendRequestsCount;
 
-  static Widget _socialIconWithBadge(Color color, int unreadConversations) {
+  static Widget _socialIconWithBadge(
+    Color color,
+    int unreadConversations,
+    int pendingFriendRequestsCount,
+  ) {
     final icon = Icon(Icons.chat_bubble, color: color);
-    if (unreadConversations <= 0) return icon;
-    final label = unreadConversations > 99 ? '99+' : '$unreadConversations';
+    final total = unreadConversations + pendingFriendRequestsCount;
+    if (total <= 0) return icon;
+    final label = total > 99 ? '99+' : '$total';
     return Badge(
       backgroundColor: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -66,10 +73,12 @@ class AppNavigationBar extends StatelessWidget {
             icon: _socialIconWithBadge(
               Colors.white70,
               socialUnreadConversationCount,
+              socialPendingFriendRequestsCount,
             ),
             selectedIcon: _socialIconWithBadge(
               Colors.white,
               socialUnreadConversationCount,
+              socialPendingFriendRequestsCount,
             ),
             label: 'Social',
           ),

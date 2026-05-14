@@ -19,6 +19,7 @@ import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/data/models/user_summary.dart';
 import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
+import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/main.dart' show rootTabIndexNotifier, kSocialTabIndex;
 
@@ -248,6 +249,7 @@ class _SocialScreenState extends State<SocialScreen>
         _pendingRequests = pending;
         _isLoadingRequests = false;
       });
+      syncPendingFriendRequestsBadge(pending.length);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -312,6 +314,7 @@ class _SocialScreenState extends State<SocialScreen>
               .where((r) => r.id != request.id)
               .toList();
         });
+        syncPendingFriendRequestsBadge(_pendingRequests.length);
         _invalidateCaches(targetUserId: sender.id);
         _showSnack(successMessage);
       case FriendActionUnauthorized():
@@ -354,6 +357,7 @@ class _SocialScreenState extends State<SocialScreen>
           .toList();
       _busyRequestIds.remove(requestId);
     });
+    syncPendingFriendRequestsBadge(_pendingRequests.length);
   }
 
   void _invalidateCaches({required int targetUserId}) {

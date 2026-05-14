@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:agendat/core/query/chats_query.dart';
+import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
@@ -116,12 +117,28 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   Future<void> _primeUnreadBadge() async {
     if (currentAuthToken == null || currentAuthToken!.trim().isEmpty) {
       unreadChatConversationsNotifier.value = 0;
+      pendingFriendRequestsNotifier.value = 0;
       return;
     }
+    final myId = currentLoggedInUser?['id'];
     try {
       final chats = await ChatsQuery.instance.getChats();
       if (!mounted) return;
       syncUnreadChatConversationsBadge(chats);
+    } catch (_) {
+      /* es manté el valor anterior */
+    }
+    if (myId is! int) {
+      pendingFriendRequestsNotifier.value = 0;
+      return;
+    }
+    try {
+      final data = await ProfileQuery.instance.getFriendRequests(myId);
+      if (!mounted) return;
+      final pending = data.received
+          .where((r) => r.status.toLowerCase() == 'pending')
+          .length;
+      syncPendingFriendRequestsBadge(pending);
     } catch (_) {
       /* es manté el valor anterior */
     }
@@ -143,10 +160,16 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
       bottomNavigationBar: ValueListenableBuilder<int>(
         valueListenable: unreadChatConversationsNotifier,
         builder: (context, unreadConversations, _) {
-          return AppNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: _onDestinationSelected,
-            socialUnreadConversationCount: unreadConversations,
+          return ValueListenableBuilder<int>(
+            valueListenable: pendingFriendRequestsNotifier,
+            builder: (context, pendingFriendRequests, _) {
+              return AppNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: _onDestinationSelected,
+                socialUnreadConversationCount: unreadConversations,
+                socialPendingFriendRequestsCount: pendingFriendRequests,
+              );
+            },
           );
         },
       ),
