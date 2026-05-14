@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/chats_query.dart';
+import 'package:agendat/core/realtime/chat_realtime_event.dart';
+import 'package:agendat/core/realtime/chat_realtime_service.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
@@ -41,6 +43,7 @@ class _SocialScreenState extends State<SocialScreen>
   final FocusNode _focusNode = FocusNode();
 
   Timer? _debounce;
+  StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
   int _requestToken = 0;
 
   String _query = '';
@@ -89,6 +92,9 @@ class _SocialScreenState extends State<SocialScreen>
         );
     _popupController.addStatusListener(_onPopupStatusChanged);
     rootTabIndexNotifier.addListener(_onRootTabChanged);
+    _realtimeSubscription = ChatRealtimeService.instance.events.listen(
+      _onRealtimeEvent,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardAuthenticated();
       _loadPendingRequestsCount();
@@ -99,6 +105,7 @@ class _SocialScreenState extends State<SocialScreen>
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     rootTabIndexNotifier.removeListener(_onRootTabChanged);
     _popupController.removeStatusListener(_onPopupStatusChanged);
     _popupController.dispose();
@@ -123,6 +130,26 @@ class _SocialScreenState extends State<SocialScreen>
       }
       _loadFriendRecommendations(forceRefresh: false);
     }
+  }
+
+  void _onRealtimeEvent(ChatRealtimeEvent event) {
+    if (!mounted) return;
+    _chatsQuery.applyRealtimeEvent(event);
+    switch (event) {
+      case ChatMessageCreatedEvent():
+        _syncChatsFromCache();
+      case ChatMessagesReadEvent():
+        _syncChatsFromCache();
+      case ChatRealtimeErrorEvent():
+        break;
+    }
+  }
+
+  void _syncChatsFromCache() {
+    final cached = _chatsQuery.peekCachedChatsList();
+    if (cached == null) return;
+    setState(() => _chats = cached);
+    syncUnreadChatConversationsBadge(cached);
   }
 
   /// Reconstrueix la jerarquia quan l'animació entra/surt dels seus extrems

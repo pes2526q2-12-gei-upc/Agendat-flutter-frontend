@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:agendat/core/services/google_auth_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -33,6 +34,8 @@ class GoogleCalendarApi {
   // Singleton GoogleSignIn instance to avoid multiple initializations
   static final GoogleSignIn _googleSignInInstance = GoogleSignIn(
     scopes: ['email', 'https://www.googleapis.com/auth/calendar.events'],
+    clientId: GoogleAuthConfig.clientId,
+    serverClientId: GoogleAuthConfig.serverClientId,
     forceCodeForRefreshToken: true,
   );
 

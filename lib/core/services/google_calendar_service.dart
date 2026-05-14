@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:agendat/core/services/google_auth_config.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
@@ -14,6 +15,8 @@ class GoogleCalendarService {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'https://www.googleapis.com/auth/calendar.events'],
+    clientId: GoogleAuthConfig.clientId,
+    serverClientId: GoogleAuthConfig.serverClientId,
   );
 
   /// Get the access token from Google Sign-In
