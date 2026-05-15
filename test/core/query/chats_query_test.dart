@@ -1,0 +1,80 @@
+import 'package:agendat/core/models/chat.dart';
+import 'package:agendat/core/models/chat_message.dart';
+import 'package:agendat/core/query/chats_query.dart';
+import 'package:agendat/core/query/query_client.dart';
+import 'package:agendat/core/realtime/chat_realtime_event.dart';
+import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('ChatsQuery.applyRealtimeEvent', () {
+    setUp(() {
+      QueryClient.instance.invalidateAll();
+    });
+
+    tearDown(() {
+      QueryClient.instance.invalidateAll();
+    });
+
+    test('marks matching cached messages as read', () {
+      final chat = Chat(
+        id: 42,
+        partner: const UserSummary(id: 5, username: 'partner'),
+        createdAt: DateTime.parse('2026-05-14T09:00:00Z'),
+        updatedAt: DateTime.parse('2026-05-14T10:06:00Z'),
+        lastMessage: 'Hola',
+        lastMessageTime: DateTime.parse('2026-05-14T10:06:00Z'),
+        unreadCount: 0,
+        canSend: true,
+        blockedByMe: false,
+        blockedMe: false,
+      );
+      final cachedMessages = [
+        ChatMessage(
+          id: 1,
+          chatId: 42,
+          senderId: 7,
+          content: 'Primer',
+          type: 'text',
+          sentAt: DateTime.parse('2026-05-14T10:00:00Z'),
+          edited: false,
+          readAt: null,
+          isRead: false,
+        ),
+        ChatMessage(
+          id: 2,
+          chatId: 42,
+          senderId: 5,
+          content: 'Segon',
+          type: 'text',
+          sentAt: DateTime.parse('2026-05-14T10:01:00Z'),
+          edited: false,
+          readAt: null,
+          isRead: false,
+        ),
+      ];
+
+      QueryClient.instance.setQueryData('chats:messages:42', cachedMessages);
+
+      ChatsQuery.instance.applyRealtimeEvent(
+        ChatMessagesReadEvent(
+          requestId: 'req-1',
+          chatId: 42,
+          chat: chat,
+          messageIds: const [1],
+          readAt: DateTime.parse('2026-05-14T10:05:00Z'),
+        ),
+      );
+
+      final updated = QueryClient.instance.getQueryData<List<ChatMessage>>(
+        'chats:messages:42',
+      );
+
+      expect(updated, isNotNull);
+      expect(updated![0].isRead, isTrue);
+      expect(updated[0].readAt, DateTime.parse('2026-05-14T10:05:00Z'));
+      expect(updated[1].isRead, isFalse);
+      expect(updated[1].readAt, isNull);
+    });
+  });
+}

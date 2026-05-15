@@ -495,10 +495,29 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
         }
       case ChatMessagesReadEvent():
         if (event.chatId != widget.chat.id) return;
-        setState(() => _chat = event.chat);
+        setState(() {
+          _chat = event.chat;
+          _messages = _applyReadReceiptEvent(_messages, event);
+        });
       case ChatRealtimeErrorEvent():
         break;
     }
+  }
+
+  List<ChatMessage> _applyReadReceiptEvent(
+    List<ChatMessage> messages,
+    ChatMessagesReadEvent event,
+  ) {
+    if (event.messageIds.isEmpty) return messages;
+
+    final ids = event.messageIds.toSet();
+    return messages.map((message) {
+      if (!ids.contains(message.id)) return message;
+      return message.copyWith(
+        isRead: true,
+        readAt: event.readAt ?? message.readAt,
+      );
+    }).toList();
   }
 
   Future<void> _reload({
@@ -686,6 +705,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
 
     final orderedMessages = [...messages]
       ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+    final latestSentMessageId = _latestSentMessageId(orderedMessages);
 
     return ListView.builder(
       controller: _listScrollController,
@@ -706,8 +726,23 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
           isSentByMe: isMine,
           avatarUrl: isMine ? myProfileImage : _partner.profileImage,
           avatarLabel: isMine ? (_myAvatarLabel ?? '?') : _partner.displayName,
+          receiptLabel: isMine && message.id == latestSentMessageId
+              ? (message.isRead ? 'Llegit' : 'Enviat')
+              : null,
         );
       },
     );
+  }
+
+  int? _latestSentMessageId(List<ChatMessage> messages) {
+    final myUserId = _myUserId;
+    if (myUserId == null) return null;
+
+    for (final message in messages.reversed) {
+      if (message.senderId == myUserId) {
+        return message.id;
+      }
+    }
+    return null;
   }
 }

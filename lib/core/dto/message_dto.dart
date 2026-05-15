@@ -8,6 +8,8 @@ class MessageDto {
     required this.fileUrl,
     required this.sentAt,
     required this.edited,
+    required this.readAt,
+    required this.isRead,
   });
 
   final int id;
@@ -18,8 +20,11 @@ class MessageDto {
   final String? fileUrl;
   final String sentAt;
   final bool edited;
+  final String? readAt;
+  final bool isRead;
 
   factory MessageDto.fromJson(Map<String, dynamic> json) {
+    final readAt = _trimOrNull(json['read_at']);
     return MessageDto(
       id: ((json['id_message'] ?? json['id']) as num).toInt(),
       chatId: _parseNestedId(json['chat']),
@@ -29,6 +34,8 @@ class MessageDto {
       fileUrl: _trimOrNull(json['file_url']),
       sentAt: (json['sent_at'] ?? '').toString().trim(),
       edited: json['edited'] == true,
+      readAt: readAt,
+      isRead: json['is_read'] == true || readAt != null,
     );
   }
 
