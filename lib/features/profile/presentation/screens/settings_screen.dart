@@ -6,6 +6,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/features/profile/presentation/screens/blockedUsers.dart';
+import 'package:agendat/features/profile/presentation/widgets/language_selector_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/notification_alerts_block.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 
@@ -20,7 +21,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const _unauthenticatedMessage =
-      'Cal iniciar sessió per configurar alertes.';
+      LanguageSelectorTile.unauthenticatedMessageDefault;
 
   late bool _notificationsAllowed;
   late bool _eventRemindersAllowed;
@@ -237,6 +238,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _buildIntroText(),
         const SizedBox(height: 24),
+        LanguageSelectorTile(
+          unauthenticatedMessage: _unauthenticatedMessage,
+          onShowMessage: _showMessage,
+        ),
+        const SizedBox(height: 12),
         _buildBlockedUsersShortcut(),
         const SizedBox(height: 12),
         _buildNotificationBlock(),

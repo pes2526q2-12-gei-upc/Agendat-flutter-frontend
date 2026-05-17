@@ -472,7 +472,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (currentLoggedInUser == null || currentAuthToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cal iniciar sessió per configurar alertes.'),
+          content: Text('Cal iniciar sessió per accedir a la configuració.'),
         ),
       );
       return;
