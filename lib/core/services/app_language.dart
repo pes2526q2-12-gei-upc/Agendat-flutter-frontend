@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Source of truth per a la llengua activa de la UI de l'app.
 ///
@@ -12,6 +14,15 @@ class AppLanguage {
   /// Codis suportats.
   static const Set<String> supported = {'CA', 'ES', 'EN'};
 
+  static const String _storageKey = 'preferred_language_code';
+
+  /// Etiquetes del selector (sempre en català).
+  static const Map<String, String> displayNamesByCode = {
+    'CA': 'Català',
+    'EN': 'English',
+    'ES': 'Español',
+  };
+
   AppLanguage._();
 
   static final ValueNotifier<String> _current = ValueNotifier<String>(
@@ -23,6 +34,33 @@ class AppLanguage {
 
   /// Listenable perquè els widgets puguin reaccionar quan canvia.
   static ValueListenable<String> get listenable => _current;
+
+  /// Carrega la preferència des de [SharedPreferences] abans d'arrencar l'app.
+  static Future<void> loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_storageKey);
+    if (stored == null) return;
+    setCode(stored);
+  }
+
+  /// Desa el codi actual a [SharedPreferences].
+  static Future<void> persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_storageKey, _current.value);
+  }
+
+  /// Converteix el codi actiu a [Locale] per a MaterialApp o capçaleres HTTP.
+  static Locale toLocale([String? code]) {
+    switch (_normalize(code ?? _current.value)) {
+      case 'ES':
+        return const Locale('es');
+      case 'EN':
+        return const Locale('en');
+      case 'CA':
+      default:
+        return const Locale('ca');
+    }
+  }
 
   /// Actualitza l'idioma actiu. No-op si [value] coincideix amb l'actual.
   static void setCode(String value) {

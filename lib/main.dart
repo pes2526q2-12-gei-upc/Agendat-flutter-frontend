@@ -5,6 +5,7 @@ import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
+import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
@@ -32,6 +33,8 @@ const int kAgendaTabIndex = 2;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await AppLanguage.loadFromStorage();
 
   const forceLogin = bool.fromEnvironment('FORCE_LOGIN');
   if (forceLogin) {
@@ -68,22 +71,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Agenda\'t',
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('ca'), Locale('es'), Locale('en')],
-      locale: const Locale('ca'),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color.fromARGB(255, 255, 105, 105),
-        ),
-      ),
-      home: initialHome,
+    return ValueListenableBuilder<String>(
+      valueListenable: AppLanguage.listenable,
+      builder: (context, _, __) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Agenda\'t',
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('ca'), Locale('es'), Locale('en')],
+          locale: AppLanguage.toLocale(),
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color.fromARGB(255, 255, 105, 105),
+            ),
+          ),
+          home: initialHome,
+        );
+      },
     );
   }
 }
