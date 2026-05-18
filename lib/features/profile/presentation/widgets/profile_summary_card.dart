@@ -44,12 +44,7 @@ class ProfileSummaryCard extends StatelessWidget {
             children: [
               _ProfileViewAvatar(profile: profile),
               const SizedBox(width: 16),
-              Expanded(
-                child: _ProfileInfoHeader(
-                  profile: profile,
-                  reputation: profile.reputacio,
-                ),
-              ),
+              Expanded(child: _ProfileInfoHeader(profile: profile)),
               if (isOwnProfile)
                 IconButton(
                   icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600),
@@ -58,7 +53,7 @@ class ProfileSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          _ProfileStatsRow(stats: stats, reputation: profile.reputacio),
+          _ProfileStatsRow(stats: stats, profile: profile),
           if (!isOwnProfile) ...[const SizedBox(height: 16), friendshipSection],
         ],
       ),
@@ -109,10 +104,9 @@ class _ProfileViewAvatar extends StatelessWidget {
 }
 
 class _ProfileInfoHeader extends StatelessWidget {
-  const _ProfileInfoHeader({required this.profile, required this.reputation});
+  const _ProfileInfoHeader({required this.profile});
 
   final UserProfile profile;
-  final double? reputation;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +118,7 @@ class _ProfileInfoHeader extends StatelessWidget {
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        _ReputationChip(reputation: reputation),
+        _ReputationChip(reputation: profile.reputacio),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,10 +172,10 @@ class _ReputationChip extends StatelessWidget {
 }
 
 class _ProfileStatsRow extends StatelessWidget {
-  const _ProfileStatsRow({required this.stats, required this.reputation});
+  const _ProfileStatsRow({required this.stats, required this.profile});
 
   final UserStats? stats;
-  final double? reputation;
+  final UserProfile profile;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +191,9 @@ class _ProfileStatsRow extends StatelessWidget {
           label: 'Valoracions',
         ),
         _ProfileStatItem(
-          value: reputation == null ? '—' : reputation!.toStringAsFixed(1),
+          value: profile.reputacio == null
+              ? '—'
+              : profile.reputacio!.toStringAsFixed(1),
           label: 'Reputació',
         ),
       ],
