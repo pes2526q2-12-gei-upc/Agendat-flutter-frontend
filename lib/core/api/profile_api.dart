@@ -88,7 +88,10 @@ Future<ProfileResult> fetchUserProfile(int userId) async {
 
 Future<UserStats> fetchUserStats(int userId) async {
   final response = await ApiClient.get('/api/users/$userId/stats/');
-  final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+  final decoded = ApiClient.decodeBody(response);
+  if (decoded is! Map<String, dynamic>) {
+    throw const FormatException('Unexpected user stats response format');
+  }
   return UserStats.fromJson(decoded);
 }
 

@@ -36,6 +36,20 @@ void main() {
       expect(message.readAt, isNull);
     });
 
+    test('maps flat sender_id when sender object is absent', () {
+      final message = MessageDto.fromJson({
+        'id_message': 13,
+        'chat': {'id_chat': 3},
+        'sender_id': 9,
+        'content': 'Hola',
+        'type': 'text',
+        'sent_at': '2026-05-14T10:00:00Z',
+        'edited': false,
+      }).toDomain();
+
+      expect(message.senderId, 9);
+    });
+
     test('defaults missing receipt fields to unread', () {
       final message = MessageDto.fromJson({
         'id_message': 12,

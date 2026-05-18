@@ -9,6 +9,8 @@ class ProfileSummaryCard extends StatelessWidget {
     super.key,
     required this.profile,
     required this.stats,
+    this.attendanceCount,
+    this.reviewsCount,
     required this.isOwnProfile,
     required this.onEditProfile,
     required this.friendshipSection,
@@ -16,6 +18,12 @@ class ProfileSummaryCard extends StatelessWidget {
 
   final UserProfile profile;
   final UserStats? stats;
+
+  /// Assistències confirmades (sessions). Si és `null`, es fa servir [stats].
+  final int? attendanceCount;
+
+  /// Ressenyes del perfil (mateixa font que la pestanya). Si és `null`, stats.
+  final int? reviewsCount;
   final bool isOwnProfile;
   final VoidCallback onEditProfile;
   final Widget friendshipSection;
