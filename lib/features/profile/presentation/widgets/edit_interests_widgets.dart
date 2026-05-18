@@ -67,6 +67,7 @@ class EditInterestsCategoryChip extends StatelessWidget {
     if (id == null) return const SizedBox.shrink();
     final categoryLabel =
         EventTextUtils.labelOrNull(category.name) ?? category.name;
+    final emoji = _emojiForCategory(category);
 
     return ChoiceChip(
       selected: selected,
@@ -78,6 +79,8 @@ class EditInterestsCategoryChip extends StatelessWidget {
             const Icon(Icons.check_rounded, size: 17, color: Colors.white),
             const SizedBox(width: 6),
           ],
+          Text(emoji, style: const TextStyle(fontSize: 17, height: 1)),
+          const SizedBox(width: 7),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 220),
             child: Text(categoryLabel, overflow: TextOverflow.ellipsis),
@@ -98,5 +101,11 @@ class EditInterestsCategoryChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       onSelected: (_) => onToggle(id),
     );
+  }
+
+  String _emojiForCategory(CategoryDto category) {
+    final emoji = category.emoji;
+    if (emoji != null && emoji.isNotEmpty) return emoji;
+    return '✨';
   }
 }

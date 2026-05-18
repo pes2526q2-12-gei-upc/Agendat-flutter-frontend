@@ -251,16 +251,64 @@ class UserStats {
 }
 
 class UserInterest {
-  const UserInterest({required this.id, required this.name});
+  const UserInterest({required this.id, required this.name, this.emoji});
 
   final int id;
   final String name;
+  final String? emoji;
 
   factory UserInterest.fromJson(Map<String, dynamic> json) {
+    final category = json['category'];
+    final categoryMap = category is Map<String, dynamic> ? category : null;
+    final emoji =
+        _stringFromJson(json, const ['emoji', 'icon']) ??
+        _stringFromJson(categoryMap, const ['emoji', 'icon']);
+
     return UserInterest(
-      id: (json['id'] as num).toInt(),
-      name: json['name'] as String,
+      id:
+          _intFromJson(json, const ['category_id', 'id_category']) ??
+          _intFromJson(categoryMap, const ['id', 'id_category']) ??
+          _intFromJson(json, const ['id']) ??
+          0,
+      name:
+          _stringFromJson(json, const ['name']) ??
+          _stringFromJson(categoryMap, const ['name']) ??
+          '',
+      emoji: emoji,
     );
+  }
+
+  UserInterest copyWith({int? id, String? name, String? emoji}) {
+    return UserInterest(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      emoji: emoji ?? this.emoji,
+    );
+  }
+
+  static int? _intFromJson(Map<String, dynamic>? json, List<String> keys) {
+    if (json == null) return null;
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toInt();
+      if (value is String) {
+        final parsed = int.tryParse(value);
+        if (parsed != null) return parsed;
+      }
+    }
+    return null;
+  }
+
+  static String? _stringFromJson(
+    Map<String, dynamic>? json,
+    List<String> keys,
+  ) {
+    if (json == null) return null;
+    for (final key in keys) {
+      final value = json[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
   }
 }
 
