@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/user_profile.dart';
-import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 
 class ProfileSummaryCard extends StatelessWidget {
@@ -55,7 +54,7 @@ class ProfileSummaryCard extends StatelessWidget {
               Expanded(
                 child: _ProfileInfoHeader(
                   profile: profile,
-                  reputation: stats?.reputation,
+                  reputation: profile.reputacio,
                 ),
               ),
               if (isOwnProfile)
@@ -65,12 +64,7 @@ class ProfileSummaryCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 20),
-          _ProfileStatsRow(
-            stats: stats,
-            attendanceCount: attendanceCount,
-            reviewsCount: reviewsCount,
-          ),
+          // Stats row removed per request
           if (!isOwnProfile) ...[const SizedBox(height: 16), friendshipSection],
         ],
       ),
@@ -185,70 +179,6 @@ class _ReputationChip extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ProfileStatsRow extends StatelessWidget {
-  const _ProfileStatsRow({
-    required this.stats,
-    this.attendanceCount,
-    this.reviewsCount,
-  });
-
-  final UserStats? stats;
-  final int? attendanceCount;
-  final int? reviewsCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final attendances = attendanceCount ?? stats?.eventCount;
-    final reviews = reviewsCount ?? stats?.reviewCount;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _ProfileStatItem(
-          value: attendances == null ? '—' : '$attendances',
-          label: 'Assistències',
-        ),
-        _ProfileStatItem(
-          value: reviews == null ? '—' : '$reviews',
-          label: 'Valoracions',
-        ),
-        _ProfileStatItem(
-          value: stats == null ? '—' : stats!.reputation.toStringAsFixed(1),
-          label: 'Reputació',
-        ),
-      ],
-    );
-  }
-}
-
-class _ProfileStatItem extends StatelessWidget {
-  const _ProfileStatItem({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: EventTextUtils.kPrimaryRed,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-        ),
-      ],
     );
   }
 }
