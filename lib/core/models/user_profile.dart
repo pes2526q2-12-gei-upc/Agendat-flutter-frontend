@@ -54,6 +54,7 @@ class UserProfile {
   const UserProfile({
     required this.id,
     required this.username,
+    this.reputacio,
     this.firstName,
     this.lastName,
     this.email,
@@ -78,6 +79,7 @@ class UserProfile {
   final String? phone;
   final DateTime? birthDate;
   final String? profileImage;
+  final double? reputacio;
   final bool locationAllowed;
   final bool notificationsAllowed;
   final bool eventRemindersAllowed;
@@ -113,6 +115,8 @@ class UserProfile {
           json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
       calendarSyncAllowed: json['calendar_sync_allowed'] as bool? ?? true,
       description: json['description'] as String?,
+      reputacio: ((json['reputacio'] ?? json['reputation']) as num?)
+          ?.toDouble(),
       friendshipStatus: friendshipStatusFromString(
         json['friendship_status'] as String?,
       ),
@@ -123,6 +127,7 @@ class UserProfile {
     return UserProfile(
       id: id,
       username: username,
+      reputacio: reputacio,
       firstName: firstName,
       lastName: lastName,
       email: email,
@@ -171,6 +176,7 @@ class UserProfile {
   }
 
   Map<String, dynamic> toJson() => {
+    'reputacio': reputacio,
     'username': username,
     'email': email,
     'description': description,

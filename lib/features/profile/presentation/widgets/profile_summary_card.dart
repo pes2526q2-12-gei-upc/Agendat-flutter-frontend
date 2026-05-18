@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/user_profile.dart';
-import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 
 class ProfileSummaryCard extends StatelessWidget {
@@ -47,7 +46,7 @@ class ProfileSummaryCard extends StatelessWidget {
               Expanded(
                 child: _ProfileInfoHeader(
                   profile: profile,
-                  reputation: stats?.reputation,
+                  reputation: profile.reputacio,
                 ),
               ),
               if (isOwnProfile)
@@ -57,8 +56,7 @@ class ProfileSummaryCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 20),
-          _ProfileStatsRow(stats: stats),
+          // Stats row removed per request
           if (!isOwnProfile) ...[const SizedBox(height: 16), friendshipSection],
         ],
       ),
@@ -173,61 +171,6 @@ class _ReputationChip extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ProfileStatsRow extends StatelessWidget {
-  const _ProfileStatsRow({required this.stats});
-
-  final UserStats? stats;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _ProfileStatItem(
-          value: '${stats?.eventCount ?? 0}',
-          label: 'Esdeveniments',
-        ),
-        _ProfileStatItem(
-          value: '${stats?.reviewCount ?? 0}',
-          label: 'Valoracions',
-        ),
-        _ProfileStatItem(
-          value: stats == null ? '—' : stats!.reputation.toStringAsFixed(1),
-          label: 'Reputació',
-        ),
-      ],
-    );
-  }
-}
-
-class _ProfileStatItem extends StatelessWidget {
-  const _ProfileStatItem({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: EventTextUtils.kPrimaryRed,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-        ),
-      ],
     );
   }
 }
