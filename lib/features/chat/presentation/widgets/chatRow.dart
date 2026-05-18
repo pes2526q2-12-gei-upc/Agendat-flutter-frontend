@@ -16,6 +16,8 @@ import 'package:flutter/material.dart';
 class ChatRow extends StatelessWidget {
   const ChatRow({super.key, required this.chat, this.onTap});
 
+  static const Color _notificationBlue = Color(0xFF1976D2);
+
   final Chat chat;
   final VoidCallback? onTap;
 
@@ -100,7 +102,7 @@ class ChatRow extends StatelessWidget {
               Text(
                 timeLabel,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: hasUnread ? Colors.red : Colors.black45,
+                  color: hasUnread ? _notificationBlue : Colors.black45,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
@@ -114,6 +116,8 @@ class ChatRow extends StatelessWidget {
 
 class _UnreadBadge extends StatelessWidget {
   const _UnreadBadge({required this.count});
+
+  static const Color _notificationBlue = Color(0xFF1976D2);
 
   final int count;
 
@@ -129,7 +133,7 @@ class _UnreadBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.red,
+        color: _notificationBlue,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(

@@ -14,6 +14,8 @@ class AppNavigationBar extends StatelessWidget {
   final int socialUnreadConversationCount;
   final int socialPendingFriendRequestsCount;
 
+  static const Color _badgeBlue = Color(0xFF1976D2);
+
   static Widget _socialIconWithBadge(
     Color color,
     int unreadConversations,
@@ -24,14 +26,14 @@ class AppNavigationBar extends StatelessWidget {
     if (total <= 0) return icon;
     final label = total > 99 ? '99+' : '$total';
     return Badge(
-      backgroundColor: Colors.white,
+      backgroundColor: _badgeBlue,
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       label: Text(
         label,
         style: const TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          color: Color(0xFFB71C1C),
+          color: Colors.white,
           fontFeatures: [FontFeature.tabularFigures()],
         ),
       ),
