@@ -57,6 +57,38 @@ class SessionsApi {
     );
   }
 
+  /// GET /api/sessions/?event={eventCode}
+  ///
+  /// Retorna les sessions de l'usuari autenticat per a un esdeveniment
+  /// concret. S'utilitza al diàleg de selecció de sessió per "Convidar".
+  Future<List<SessionDto>> fetchSessionsForEvent(String eventCode) async {
+    final response = await ApiClient.get(
+      _path,
+      queryParams: <String, String>{'event': eventCode},
+    );
+    final decoded = jsonDecode(response.body) as dynamic;
+
+    if (decoded is List) {
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(SessionDto.fromJson)
+          .toList();
+    }
+    if (decoded is Map<String, dynamic>) {
+      final raw = decoded['results'] ?? decoded['sessions'];
+      if (raw is List) {
+        return raw
+            .whereType<Map<String, dynamic>>()
+            .map(SessionDto.fromJson)
+            .toList();
+      }
+    }
+
+    throw const FormatException(
+      'Expected a list of sessions in the API response',
+    );
+  }
+
   Future<void> deleteSession(int sessionId) async {
     await ApiClient.delete('$_path$sessionId/', expectedStatusCode: 204);
   }

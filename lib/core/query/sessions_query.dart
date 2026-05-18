@@ -25,6 +25,24 @@ class SessionsQuery {
     );
   }
 
+  /// Retorna les sessions de l'usuari autenticat per a un esdeveniment
+  /// concret, utilitzat al diàleg de selecció de sessió quan l'usuari
+  /// prem "Convidar".
+  Future<List<Session>> getSessionsForEvent(
+    String eventCode, {
+    bool forceRefresh = false,
+  }) {
+    return _client.query<List<Session>>(
+      key: _eventKey(eventCode),
+      staleTime: staleTime,
+      forceRefresh: forceRefresh,
+      queryFn: () async {
+        final dtos = await _api.fetchSessionsForEvent(eventCode);
+        return dtos.map((dto) => dto.toDomain()).toList();
+      },
+    );
+  }
+
   Future<void> deleteSession(int sessionId) async {
     await _api.deleteSession(sessionId);
     invalidateAll();
@@ -33,5 +51,10 @@ class SessionsQuery {
   /// Invalidates all cached sessions queries.
   void invalidateAll() => _client.invalidatePrefix(_prefix);
 
+  /// Invalida només la cache de la llista de sessions per a un esdeveniment.
+  void invalidateEvent(String eventCode) =>
+      _client.invalidate(_eventKey(eventCode));
+
   String get _listKey => '$_prefix:list';
+  String _eventKey(String eventCode) => '$_prefix:event:$eventCode';
 }

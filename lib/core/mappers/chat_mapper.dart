@@ -1,5 +1,6 @@
 import 'package:agendat/core/dto/chat_dto.dart';
 import 'package:agendat/core/dto/message_dto.dart';
+import 'package:agendat/core/mappers/event_invitation_mapper.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
@@ -35,6 +36,7 @@ extension MessageDtoMapper on MessageDto {
       edited: edited,
       readAt: _parseOptionalDateTime(readAt),
       isRead: isRead,
+      eventInvitation: eventInvitation?.toDomain(),
     );
   }
 }

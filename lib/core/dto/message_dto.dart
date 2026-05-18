@@ -1,3 +1,5 @@
+import 'package:agendat/core/dto/event_invitation_dto.dart';
+
 class MessageDto {
   const MessageDto({
     required this.id,
@@ -10,12 +12,15 @@ class MessageDto {
     required this.edited,
     required this.readAt,
     required this.isRead,
+    this.eventInvitation,
   });
 
   final int id;
   final int chatId;
   final int senderId;
   final String content;
+
+  /// Valors coneguts: `text`, `image`, `file`, `event_invitation`.
   final String type;
   final String? fileUrl;
   final String sentAt;
@@ -23,8 +28,13 @@ class MessageDto {
   final String? readAt;
   final bool isRead;
 
+  /// Quan [type] és `event_invitation`, el backend pot incloure la invitació
+  /// completa per renderitzar la bombolla sense haver de fer una crida extra.
+  final EventInvitationDto? eventInvitation;
+
   factory MessageDto.fromJson(Map<String, dynamic> json) {
     final readAt = _trimOrNull(json['read_at']);
+    final rawInvitation = json['event_invitation'];
     return MessageDto(
       id: ((json['id_message'] ?? json['id']) as num).toInt(),
       chatId: _parseNestedId(json['chat']),
@@ -36,6 +46,9 @@ class MessageDto {
       edited: json['edited'] == true,
       readAt: readAt,
       isRead: json['is_read'] == true || readAt != null,
+      eventInvitation: rawInvitation is Map<String, dynamic>
+          ? EventInvitationDto.fromJson(rawInvitation)
+          : null,
     );
   }
 
