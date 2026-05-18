@@ -35,25 +35,28 @@ class ProfileInterestsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isOwnProfile ? 'Els meus interessos' : 'Interessos',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  isOwnProfile ? 'Els meus interessos' : 'Interessos',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               if (isOwnProfile)
-                GestureDetector(
-                  onTap: onEditTap,
-                  child: const Text(
-                    'Editar',
-                    style: TextStyle(
+                TextButton.icon(
+                  onPressed: onEditTap,
+                  icon: const Icon(Icons.tune_rounded, size: 18),
+                  label: const Text('Editar'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: EventTextUtils.kPrimaryRed,
+                    textStyle: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: EventTextUtils.kPrimaryRed,
+                      fontWeight: FontWeight.w700,
                     ),
+                    visualDensity: VisualDensity.compact,
                   ),
                 ),
             ],
@@ -75,7 +78,17 @@ class ProfileInterestsSection extends StatelessWidget {
               children: interests
                   .map(
                     (i) => Chip(
-                      label: Text(i.name),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _emojiForInterest(i),
+                            style: const TextStyle(fontSize: 16, height: 1),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(i.name),
+                        ],
+                      ),
                       backgroundColor: Colors.grey.shade100,
                       side: BorderSide(color: Colors.grey.shade300),
                     ),
@@ -85,5 +98,11 @@ class ProfileInterestsSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _emojiForInterest(UserInterest interest) {
+    final emoji = interest.emoji;
+    if (emoji != null && emoji.isNotEmpty) return emoji;
+    return '✨';
   }
 }

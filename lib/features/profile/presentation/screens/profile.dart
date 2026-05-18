@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
@@ -46,6 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
+  final CategoriesQuery _categoriesQuery = CategoriesQuery.instance;
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
   final EventsQuery _eventsQuery = EventsQuery.instance;
 
@@ -55,7 +58,13 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   bool get _isOwnProfile => widget.userId == null;
 
-  int? get _currentUserId => currentLoggedInUser?['id'] as int?;
+  int? get _currentUserId {
+    final raw = currentLoggedInUser?['id'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    if (raw is String) return int.tryParse(raw);
+    return null;
+  }
 
   @override
   void initState() {
@@ -84,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       _errorMessage = null;
     });
 
-    final userId = widget.userId ?? currentLoggedInUser?['id'] as int?;
+    final userId = widget.userId ?? _currentUserId;
     if (userId == null) {
       setState(() {
         _isLoading = false;
@@ -110,6 +119,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         final interestsFuture = _profileQuery
             .getUserInterests(userId, forceRefresh: refreshDerived)
             .catchError((_) => const <UserInterest>[]);
+        final categoriesFuture = _categoriesQuery.getCategoryDtos().catchError(
+          (_) => const <CategoryDto>[],
+        );
         final reviewsFuture = _profileQuery
             .getUserReviews(userId, forceRefresh: refreshDerived)
             .catchError(
@@ -124,14 +136,18 @@ class _ProfileScreenState extends State<ProfileScreen>
         final results = await Future.wait([
           statsFuture,
           interestsFuture,
+          categoriesFuture,
           reviewsFuture,
           sessionsFuture,
         ]);
 
         final stats = results[0] as UserStats?;
-        final interests = results[1] as List<UserInterest>;
-        final reviewsResponse = results[2] as UserReviewsResponse;
-        final sessions = results[3] as List<Session>;
+        final interests = _withCategoryEmojis(
+          results[1] as List<UserInterest>,
+          results[2] as List<CategoryDto>,
+        );
+        final reviewsResponse = results[3] as UserReviewsResponse;
+        final sessions = results[4] as List<Session>;
 
         final attendanceCount = _isOwnProfile
             ? sessions.length
@@ -184,6 +200,31 @@ class _ProfileScreenState extends State<ProfileScreen>
     } catch (_) {
       return null;
     }
+  }
+
+  List<UserInterest> _withCategoryEmojis(
+    List<UserInterest> interests,
+    List<CategoryDto> categories,
+  ) {
+    if (interests.isEmpty || categories.isEmpty) return interests;
+
+    final emojiById = <int, String>{};
+    for (final category in categories) {
+      final id = category.id;
+      final emoji = category.emoji;
+      if (id != null && emoji != null && emoji.isNotEmpty) {
+        emojiById[id] = emoji;
+      }
+    }
+    if (emojiById.isEmpty) return interests;
+
+    return interests.map((interest) {
+      if (interest.emoji != null && interest.emoji!.isNotEmpty) {
+        return interest;
+      }
+      final emoji = emojiById[interest.id];
+      return emoji == null ? interest : interest.copyWith(emoji: emoji);
+    }).toList();
   }
 
   Future<void> _requestLogOut() async {
@@ -475,14 +516,23 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _navigateToEditInterests() async {
     final profile = _profile;
     if (profile == null) return;
+    final userId = _isOwnProfile ? _currentUserId : profile.id;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No s\'ha pogut obrir l\'editor d\'interessos. Torna a iniciar sessió.',
+          ),
+        ),
+      );
+      return;
+    }
 
     final updatedInterests = await Navigator.push<List<UserInterest>>(
       context,
       MaterialPageRoute(
-        builder: (_) => EditInterestsScreen(
-          userId: profile.id,
-          currentInterests: _interests,
-        ),
+        builder: (_) =>
+            EditInterestsScreen(userId: userId, currentInterests: _interests),
       ),
     );
 
