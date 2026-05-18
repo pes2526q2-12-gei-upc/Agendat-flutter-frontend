@@ -10,6 +10,8 @@ class ProfileSummaryCard extends StatelessWidget {
     super.key,
     required this.profile,
     required this.stats,
+    this.attendanceCount,
+    this.reviewsCount,
     required this.isOwnProfile,
     required this.onEditProfile,
     required this.friendshipSection,
@@ -17,6 +19,12 @@ class ProfileSummaryCard extends StatelessWidget {
 
   final UserProfile profile;
   final UserStats? stats;
+
+  /// Assistències confirmades (sessions). Si és `null`, es fa servir [stats].
+  final int? attendanceCount;
+
+  /// Ressenyes del perfil (mateixa font que la pestanya). Si és `null`, stats.
+  final int? reviewsCount;
   final bool isOwnProfile;
   final VoidCallback onEditProfile;
   final Widget friendshipSection;
@@ -58,7 +66,11 @@ class ProfileSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          _ProfileStatsRow(stats: stats),
+          _ProfileStatsRow(
+            stats: stats,
+            attendanceCount: attendanceCount,
+            reviewsCount: reviewsCount,
+          ),
           if (!isOwnProfile) ...[const SizedBox(height: 16), friendshipSection],
         ],
       ),
@@ -178,21 +190,30 @@ class _ReputationChip extends StatelessWidget {
 }
 
 class _ProfileStatsRow extends StatelessWidget {
-  const _ProfileStatsRow({required this.stats});
+  const _ProfileStatsRow({
+    required this.stats,
+    this.attendanceCount,
+    this.reviewsCount,
+  });
 
   final UserStats? stats;
+  final int? attendanceCount;
+  final int? reviewsCount;
 
   @override
   Widget build(BuildContext context) {
+    final attendances = attendanceCount ?? stats?.eventCount;
+    final reviews = reviewsCount ?? stats?.reviewCount;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         _ProfileStatItem(
-          value: '${stats?.eventCount ?? 0}',
-          label: 'Esdeveniments',
+          value: attendances == null ? '—' : '$attendances',
+          label: 'Assistències',
         ),
         _ProfileStatItem(
-          value: '${stats?.reviewCount ?? 0}',
+          value: reviews == null ? '—' : '$reviews',
           label: 'Valoracions',
         ),
         _ProfileStatItem(

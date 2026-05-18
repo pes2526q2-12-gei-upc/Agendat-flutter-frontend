@@ -40,6 +40,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _isLoggingOut = false;
   UserProfile? _profile;
   UserStats? _stats;
+  int? _attendanceCount;
+  int? _reviewsCount;
   List<UserInterest> _interests = const [];
   UserReviewsResponse? _reviewsResponse;
   String? _errorMessage;
@@ -100,30 +102,41 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     switch (result) {
       case ProfileSuccess(:final profile):
-        final stats = await _profileQuery
-            .getUserStats(userId, forceRefresh: forceRefresh)
-            .catchError((_) {
-              return const UserStats(
-                eventCount: 0,
-                reviewCount: 0,
-                reputation: 0,
-              );
-            });
-        final interests = await _profileQuery
-            .getUserInterests(userId, forceRefresh: forceRefresh)
-            .catchError((_) {
-              return const <UserInterest>[];
-            });
-        final reviewsResponse = await _profileQuery
-            .getUserReviews(
-              userId,
-              // Les ressenyes es mostren en una pestanya dinàmica del perfil.
-              // Forcem refetch per evitar quedar-nos amb caché buida/obsoleta.
-              forceRefresh: true,
-            )
-            .catchError((_) {
-              return const UserReviewsResponse(count: 0, reviews: []);
-            });
+        final refreshDerived = forceRefresh || _isOwnProfile;
+        final statsFuture = _loadUserStatsSafe(
+          userId,
+          forceRefresh: refreshDerived,
+        );
+        final interestsFuture = _profileQuery
+            .getUserInterests(userId, forceRefresh: refreshDerived)
+            .catchError((_) => const <UserInterest>[]);
+        final reviewsFuture = _profileQuery
+            .getUserReviews(userId, forceRefresh: refreshDerived)
+            .catchError(
+              (_) => const UserReviewsResponse(count: 0, reviews: []),
+            );
+        final sessionsFuture = _isOwnProfile
+            ? _sessionsQuery
+                  .getSessions(forceRefresh: refreshDerived)
+                  .catchError((_) => const <Session>[])
+            : Future<List<Session>>.value(const []);
+
+        final results = await Future.wait([
+          statsFuture,
+          interestsFuture,
+          reviewsFuture,
+          sessionsFuture,
+        ]);
+
+        final stats = results[0] as UserStats?;
+        final interests = results[1] as List<UserInterest>;
+        final reviewsResponse = results[2] as UserReviewsResponse;
+        final sessions = results[3] as List<Session>;
+
+        final attendanceCount = _isOwnProfile
+            ? sessions.length
+            : stats?.eventCount;
+        final reviewsCount = reviewsResponse.count;
 
         final derivedStatus = _resolveFriendshipStatus(profile: profile);
 
@@ -132,6 +145,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         setState(() {
           _profile = profile;
           _stats = stats;
+          _attendanceCount = attendanceCount;
+          _reviewsCount = reviewsCount;
           _interests = interests;
           _reviewsResponse = reviewsResponse;
           _friendshipStatus = derivedStatus;
@@ -154,6 +169,20 @@ class _ProfileScreenState extends State<ProfileScreen>
               ? 'Error de connexió. Comprova la teva connexió a internet.'
               : 'Error del servidor (codi $statusCode).';
         });
+    }
+  }
+
+  Future<UserStats?> _loadUserStatsSafe(
+    int userId, {
+    required bool forceRefresh,
+  }) async {
+    try {
+      return await _profileQuery.getUserStats(
+        userId,
+        forceRefresh: forceRefresh,
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -833,6 +862,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             ProfileSummaryCard(
               profile: profile,
               stats: _stats,
+              attendanceCount: _attendanceCount,
+              reviewsCount: _reviewsCount,
               isOwnProfile: _isOwnProfile,
               onEditProfile: _navigateToEditProfile,
               friendshipSection: ProfileFriendshipSection(

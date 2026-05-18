@@ -199,11 +199,48 @@ class UserStats {
   final double reputation;
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
+    final root = _unwrapStatsPayload(json);
     return UserStats(
-      eventCount: (json['event_count'] as num?)?.toInt() ?? 0,
-      reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
-      reputation: (json['reputation'] as num?)?.toDouble() ?? 0.0,
+      eventCount: _intFromJson(root, const [
+        'attendance_count',
+        'attendances_count',
+        'sessions_count',
+        'event_count',
+        'events_count',
+      ]),
+      reviewCount: _intFromJson(root, const [
+        'reviews_count',
+        'reviews_left_count',
+        'review_count',
+      ]),
+      reputation: _doubleFromJson(root, const [
+        'reputation',
+        'average_reputation',
+        'avg_reputation',
+      ]),
     );
+  }
+
+  static Map<String, dynamic> _unwrapStatsPayload(Map<String, dynamic> json) {
+    final nested = json['stats'] ?? json['data'] ?? json['result'];
+    if (nested is Map<String, dynamic>) return nested;
+    return json;
+  }
+
+  static int _intFromJson(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toInt();
+    }
+    return 0;
+  }
+
+  static double _doubleFromJson(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toDouble();
+    }
+    return 0.0;
   }
 }
 
