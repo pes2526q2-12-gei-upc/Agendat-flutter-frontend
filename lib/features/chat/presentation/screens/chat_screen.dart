@@ -19,6 +19,7 @@ import 'package:agendat/features/chat/presentation/widgets/chat_empty_pane.dart'
 import 'package:agendat/features/chat/presentation/widgets/chat_friends_starters.dart';
 import 'package:agendat/features/chat/presentation/widgets/conversation_message_input_bar.dart';
 import 'package:agendat/features/chat/presentation/widgets/conversation_partner_app_bar_title.dart';
+import 'package:agendat/features/chat/presentation/widgets/event_invitation_message.dart';
 import 'package:agendat/features/chat/presentation/widgets/inactive_conversation_banner.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
 import 'package:agendat/core/query/profile_query.dart';
@@ -476,12 +477,16 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
         if (event.chatId != widget.chat.id) return;
         final shouldScrollToNewest =
             _stickToBottom || event.message.senderId == _myUserId;
-        final alreadyPresent = _messages.any(
+        final existingIndex = _messages.indexWhere(
           (message) => message.id == event.message.id,
         );
         setState(() {
           _chat = event.chat;
-          if (!alreadyPresent) {
+          if (existingIndex >= 0) {
+            final next = [..._messages];
+            next[existingIndex] = event.message;
+            _messages = next;
+          } else {
             _messages = [..._messages, event.message]
               ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
           }
@@ -718,6 +723,31 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
         final myProfileImage = currentLoggedInUser == null
             ? null
             : currentLoggedInUser!['profile_image'] as String?;
+
+        if (message.isEventInvitation) {
+          return EventInvitationMessage(
+            invitation: message.eventInvitation!,
+            messageId: message.id,
+            chatId: message.chatId,
+            sentAt: message.sentAt,
+            isSentByMe: isMine,
+            partner: _partner,
+            myAvatarUrl: myProfileImage,
+            myAvatarLabel: _myAvatarLabel,
+            onInvitationUpdated: (updated) {
+              setState(() {
+                _messages = _messages
+                    .map(
+                      (m) => m.id == message.id
+                          ? m.copyWith(eventInvitation: updated)
+                          : m,
+                    )
+                    .toList();
+              });
+            },
+          );
+        }
+
         return Message(
           messageText: message.content.isEmpty
               ? '(sense text)'

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/api/sessions_api.dart';
+import 'package:agendat/core/mappers/session_mapper.dart';
+import 'package:agendat/core/models/session.dart';
+import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -10,6 +13,8 @@ import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/events/presentation/widgets/info_row.dart';
 import 'package:agendat/features/events/presentation/widgets/link_tile.dart';
+import 'package:agendat/features/events/presentation/widgets/invite_friends_bottom_sheet.dart';
+import 'package:agendat/features/events/presentation/widgets/session_picker_dialog.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_section.dart';
 import 'package:agendat/core/services/google_calendar_service.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -31,6 +36,19 @@ class _EventScreenState extends State<EventScreen> {
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
   bool _isCreatingSession = false;
+  bool _isPreparingInvitation = false;
+
+  bool get _isAuthenticated =>
+      currentAuthToken != null && currentAuthToken!.trim().isNotEmpty;
+
+  /// Un esdeveniment admet invitacions sempre que tingui dates conegudes i la
+  /// data de fi (o de inici, si no n'hi ha de fi) encara no hagi passat.
+  bool _canInviteToEvent(EventExtended event) {
+    final reference = event.endDate ?? event.startDate;
+    if (reference == null) return false;
+    final today = DateUtils.dateOnly(DateTime.now());
+    return !DateUtils.dateOnly(reference).isBefore(today);
+  }
 
   bool get _addToGoogleCalendar =>
       (currentLoggedInUser?['calendar_sync_allowed'] as bool?) ?? true;
@@ -339,6 +357,246 @@ class _EventScreenState extends State<EventScreen> {
     return '$dd/$mm/${date.year}';
   }
 
+  // ---------------------------------------------------------------------------
+  // Flux "Convidar"
+  // ---------------------------------------------------------------------------
+
+  Future<void> _handleConvidar(EventExtended event) async {
+    if (_isPreparingInvitation) return;
+
+    if (!_isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cal iniciar sessió per enviar invitacions.'),
+        ),
+      );
+      return;
+    }
+
+    if (!_canInviteToEvent(event)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No es pot convidar a aquest esdeveniment.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isPreparingInvitation = true);
+    try {
+      final pickerResult = await SessionPickerDialog.show(
+        context: context,
+        event: event,
+      );
+      if (pickerResult == null || !mounted) return;
+
+      Session? session;
+      switch (pickerResult) {
+        case SessionPickerExisting(session: final existingSession):
+          session = existingSession;
+        case SessionPickerCreateNew():
+          session = await _createSessionForInvitation(event);
+      }
+
+      if (session == null || !mounted) return;
+
+      final result = await InviteFriendsBottomSheet.show(
+        context: context,
+        event: event,
+        session: session,
+      );
+      if (result == null || !mounted) return;
+
+      _showInvitationSummary(result);
+    } finally {
+      if (mounted) {
+        setState(() => _isPreparingInvitation = false);
+      }
+    }
+  }
+
+  /// Crea silenciosament una sessió per a l'usuari emissor (en el context del
+  /// flux "Convidar"): mostra el datetime picker reutilitzat del flux
+  /// "Assistir", valida les dates contra l'esdeveniment i fa POST a
+  /// `/api/sessions/`. Retorna la sessió creada o `null` si l'usuari cancel·la
+  /// o si hi ha un error (en aquest últim cas, ja s'ha mostrat un snackbar).
+  Future<Session?> _createSessionForInvitation(EventExtended event) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final eventStartDate = event.startDate == null
+        ? null
+        : DateUtils.dateOnly(event.startDate!);
+    final initialDate = eventStartDate != null && eventStartDate.isAfter(today)
+        ? eventStartDate
+        : today;
+    final initialStartDateTime = DateTime(
+      initialDate.year,
+      initialDate.month,
+      initialDate.day,
+      0,
+      0,
+    );
+
+    final selectedDateTime = await _showSessionDateTimeDialog(
+      initialDateTime: initialStartDateTime,
+      eventTitle: event.title,
+    );
+    if (selectedDateTime == null || !mounted) return null;
+
+    final selectedStartDate = DateUtils.dateOnly(selectedDateTime);
+    final eventEndDate = event.endDate == null
+        ? eventStartDate
+        : DateUtils.dateOnly(event.endDate!);
+
+    if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
+          ),
+        ),
+      );
+      return null;
+    }
+    if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessió seleccionada és posterior al final de l\'esdeveniment.',
+          ),
+        ),
+      );
+      return null;
+    }
+
+    try {
+      final endDateTime = selectedDateTime.add(const Duration(hours: 1));
+      final dto = await _sessionsApi.createSession(
+        CreateSessionRequest(
+          event: event.code,
+          startTime: selectedDateTime,
+          endTime: endDateTime,
+        ),
+      );
+      _sessionsQuery.invalidateAll();
+      _sessionsQuery.invalidateEvent(event.code);
+      return dto.toDomain();
+    } on ApiException catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No s\'ha pogut crear la sessió per convidar (${e.statusCode}).',
+          ),
+        ),
+      );
+      return null;
+    } catch (_) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No s\'ha pogut crear la sessió per convidar.'),
+        ),
+      );
+      return null;
+    }
+  }
+
+  void _showInvitationSummary(InviteFriendsResult result) {
+    if (result.totalRequested == 0) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final successes = result.successes.length;
+    final errors = result.errors;
+
+    if (errors.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            successes == 1
+                ? 'Invitació enviada correctament.'
+                : '$successes invitacions enviades correctament.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Hi ha errors: si tots són del mateix tipus i clarament identificables,
+    // mostrem un text concret; si no, obrim un diàleg amb el detall per amic.
+    if (successes == 0 && errors.length == 1) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(_friendlySendErrorMessage(errors.first.result))),
+      );
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Resum de l\'enviament'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$successes invitacions enviades · ${errors.length} amb error',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: errors.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final entry = errors[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(
+                          Icons.error_outline,
+                          color: Colors.redAccent,
+                        ),
+                        title: Text(entry.friend.displayName),
+                        subtitle: Text(_friendlySendErrorMessage(entry.result)),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Tanca'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Tradueix un [SendInvitationResult] al text exacte de les user stories.
+  String _friendlySendErrorMessage(SendInvitationResult result) {
+    switch (result) {
+      case SendInvitationSuccess():
+        return 'OK';
+      case SendInvitationUnauthorized():
+        return 'Cal iniciar sessió per enviar invitacions.';
+      case SendInvitationInvalidRecipient():
+        return 'Usuari destinatari no vàlid.';
+      case SendInvitationEventNotInvitable():
+        return 'No es pot convidar a aquest esdeveniment.';
+      case SendInvitationDuplicate():
+        return 'Ja has enviat una invitació per aquest esdeveniment.';
+      case SendInvitationFailure(:final message):
+        return message ?? 'No s\'ha pogut enviar la invitació.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -600,11 +858,63 @@ class _EventScreenState extends State<EventScreen> {
                           ),
                   ),
                 ),
+                const SizedBox(height: 10),
+                _buildConvidarButton(event),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildConvidarButton(EventExtended event) {
+    final canInvite = _canInviteToEvent(event);
+    final isBusy = _isPreparingInvitation;
+    final isEnabled = canInvite && !isBusy;
+
+    final button = SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: isEnabled ? () => _handleConvidar(event) : null,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          foregroundColor: const Color.fromARGB(255, 202, 3, 3),
+          side: BorderSide(
+            color: canInvite
+                ? const Color.fromARGB(255, 202, 3, 3)
+                : Colors.grey.shade400,
+            width: 1.5,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        icon: isBusy
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Color.fromARGB(255, 202, 3, 3),
+                  ),
+                ),
+              )
+            : const Icon(Icons.group_add_rounded),
+        label: const Text(
+          'Convidar',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+
+    if (canInvite) return button;
+
+    return Tooltip(
+      message: 'No es pot convidar a aquest esdeveniment.',
+      triggerMode: TooltipTriggerMode.tap,
+      child: button,
     );
   }
 }

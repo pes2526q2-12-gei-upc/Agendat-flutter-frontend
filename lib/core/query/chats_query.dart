@@ -2,6 +2,7 @@ import 'package:agendat/core/api/chats_api.dart';
 import 'package:agendat/core/mappers/chat_mapper.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
+import 'package:agendat/core/models/event_invitation.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
@@ -192,10 +193,51 @@ class ChatsQuery {
     final cached = _client.getQueryData<List<ChatMessage>>(
       _messagesKey(chatId),
     );
-    if (cached == null || cached.any((item) => item.id == message.id)) return;
+    if (cached == null) return;
+
+    // Upsert: si el missatge ja existeix (mateix `id`), el substituïm pel
+    // payload actualitzat. Això és crític per al cicle de vida d'invitacions
+    // a esdeveniments, on el backend reemet `message.created` amb el mateix
+    // `message_id` però amb el camp `event_invitation.status` actualitzat
+    // (per exemple, quan el destinatari accepta o rebutja).
+    final existingIndex = cached.indexWhere((item) => item.id == message.id);
+    if (existingIndex >= 0) {
+      final next = [...cached];
+      next[existingIndex] = message;
+      _client.setQueryData(_messagesKey(chatId), next);
+      return;
+    }
 
     final next = [...cached, message]
       ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+    _client.setQueryData(_messagesKey(chatId), next);
+  }
+
+  /// Actualització optimista local del payload `eventInvitation` d'un
+  /// missatge concret a la cache de missatges del xat. Útil per reflectir
+  /// instantàniament l'efecte d'acceptar/rebutjar una invitació, abans que
+  /// arribi el `message.created` re-emès pel backend via WebSocket.
+  void upsertInvitationStatusInMessage({
+    required int chatId,
+    required int messageId,
+    required EventInvitation invitation,
+  }) {
+    final cached = _client.getQueryData<List<ChatMessage>>(
+      _messagesKey(chatId),
+    );
+    if (cached == null) return;
+
+    final index = cached.indexWhere((message) => message.id == messageId);
+    if (index < 0) return;
+
+    final current = cached[index];
+    if (current.eventInvitation?.status == invitation.status &&
+        current.eventInvitation?.respondedAt == invitation.respondedAt) {
+      return;
+    }
+
+    final next = [...cached];
+    next[index] = current.copyWith(eventInvitation: invitation);
     _client.setQueryData(_messagesKey(chatId), next);
   }
 
