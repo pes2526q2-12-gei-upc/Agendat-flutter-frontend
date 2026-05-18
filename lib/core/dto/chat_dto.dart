@@ -42,7 +42,7 @@ class ChatDto {
     final explicit = json['partner'];
     if (explicit is Map<String, dynamic>) return explicit;
 
-    final otherUser = json['other_user'];
+    final otherUser = json['other_user'] ?? json['user'];
     if (otherUser is Map<String, dynamic>) return otherUser;
 
     // Fallback for APIs that flatten the user in the chat payload.

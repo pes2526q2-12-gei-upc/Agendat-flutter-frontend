@@ -341,6 +341,7 @@ class _ChatScreenState extends State<ChatScreen> {
       itemBuilder: (context, i) {
         final chat = list[i];
         return ClipRRect(
+          key: ValueKey<int>(chat.id),
           borderRadius: BorderRadius.circular(12),
           child: ChatRow(chat: chat, onTap: () => _openChat(chat)),
         );
@@ -379,7 +380,11 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   late Chat _chat;
 
   UserSummary get _partner => _chat.partner;
-  int? get _myUserId => currentLoggedInUser?['id'] as int?;
+  int? get _myUserId {
+    final raw = currentLoggedInUser?['id'];
+    if (raw is num) return raw.toInt();
+    return null;
+  }
 
   static const String _inactiveUnfriendBanner =
       'Ja no sou amics amb aquest usuari. El xat es manté al llistat però '
@@ -719,6 +724,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
             ? null
             : currentLoggedInUser!['profile_image'] as String?;
         return Message(
+          key: ValueKey<int>(message.id),
           messageText: message.content.isEmpty
               ? '(sense text)'
               : message.content,
