@@ -19,13 +19,19 @@ class UserSummary {
 
   factory UserSummary.fromJson(Map<String, dynamic> json) {
     return UserSummary(
-      id: (json['id'] as num).toInt(),
+      id: _parseId(json),
       username: (json['username'] as String?) ?? '',
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
       profileImage: _profileImageFromJson(json),
       description: json['description'] as String?,
     );
+  }
+
+  static int _parseId(Map<String, dynamic> json) {
+    final raw = json['id'] ?? json['id_user'];
+    if (raw is num) return raw.toInt();
+    throw FormatException('UserSummary requires numeric id or id_user');
   }
 
   static String? _profileImageFromJson(Map<String, dynamic> json) {

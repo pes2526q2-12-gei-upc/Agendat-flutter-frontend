@@ -17,10 +17,26 @@ class ProfileCircleAvatar extends StatelessWidget {
   final String? profileImage;
   final String? fallbackLabel;
 
+  /// Clau estable per evitar que `ListView` reutilitzi la imatge d’un altre usuari.
+  static ValueKey<String> imageKey({
+    required String? profileImage,
+    required String? fallbackLabel,
+  }) {
+    final resolved = chatProfileImageUrl(profileImage);
+    final initials = chatAvatarInitials(fallbackLabel);
+    return ValueKey<String>(
+      resolved == null ? 'initials:$initials' : 'url:$resolved',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final resolved = chatProfileImageUrl(profileImage);
+    final avatarKey = imageKey(
+      profileImage: profileImage,
+      fallbackLabel: fallbackLabel,
+    );
     final size = radius * 2;
     final label = chatAvatarInitials(fallbackLabel);
     final textStyle =
@@ -42,20 +58,25 @@ class ProfileCircleAvatar extends StatelessWidget {
     );
 
     if (resolved == null) {
-      return initialsAvatar();
+      return KeyedSubtree(key: avatarKey, child: initialsAvatar());
     }
 
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Image.network(
-          resolved,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) => initialsAvatar(),
+    return KeyedSubtree(
+      key: avatarKey,
+      child: ClipOval(
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Image.network(
+            resolved,
+            key: avatarKey,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+            webHtmlElementStrategy: kIsWeb
+                ? WebHtmlElementStrategy.prefer
+                : WebHtmlElementStrategy.never,
+            errorBuilder: (_, __, ___) => initialsAvatar(),
+          ),
         ),
       ),
     );

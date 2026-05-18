@@ -28,7 +28,7 @@ class MessageDto {
     return MessageDto(
       id: ((json['id_message'] ?? json['id']) as num).toInt(),
       chatId: _parseNestedId(json['chat']),
-      senderId: _parseNestedId(json['sender']),
+      senderId: _parseNestedId(json['sender'] ?? json['sender_id']),
       content: (json['content'] ?? '').toString().trim(),
       type: (json['type'] ?? 'text').toString().trim().toLowerCase(),
       fileUrl: _trimOrNull(json['file_url']),
