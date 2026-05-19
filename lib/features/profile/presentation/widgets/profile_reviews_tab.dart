@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 
 class ProfileReviewsTab extends StatelessWidget {
   const ProfileReviewsTab({
     super.key,
     required this.response,
+    required this.eventsQuery,
     required this.onReviewTap,
   });
 
   final UserReviewsResponse? response;
+  final EventsQuery eventsQuery;
   final ValueChanged<UserReview> onReviewTap;
 
   @override
@@ -40,30 +44,93 @@ class ProfileReviewsTab extends StatelessWidget {
       itemCount: reviews.length,
       separatorBuilder: (_, __) => const Divider(height: 16),
       itemBuilder: (context, index) {
-        final r = reviews[index];
-        return ListTile(
-          onTap: () => onReviewTap(r),
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.rate_review, color: Colors.grey.shade600),
-          title: Text(
-            r.reviewerUsername.isEmpty ? 'Usuari' : r.reviewerUsername,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Text(r.comment.isEmpty ? '—' : r.comment),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Text(
-              '${r.rating}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+        final review = reviews[index];
+        final comment = review.comment.trim();
+        return InkWell(
+          onTap: () => onReviewTap(review),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ProfileReviewRatingRow(
+                        review: review,
+                        eventsQuery: eventsQuery,
+                      ),
+                      if (comment.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          comment,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right, color: Colors.grey.shade400),
+              ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _ProfileReviewRatingRow extends StatelessWidget {
+  const _ProfileReviewRatingRow({
+    required this.review,
+    required this.eventsQuery,
+  });
+
+  final UserReview review;
+  final EventsQuery eventsQuery;
+
+  @override
+  Widget build(BuildContext context) {
+    final cachedTitle = review.eventTitle?.trim();
+    if (cachedTitle != null && cachedTitle.isNotEmpty) {
+      return _buildRatingRow(cachedTitle);
+    }
+
+    final eventCode = review.eventCode?.trim();
+    if (eventCode == null || eventCode.isEmpty) {
+      return _buildRatingRow('Esdeveniment');
+    }
+
+    return FutureBuilder(
+      future: eventsQuery.getEventByCode(eventCode),
+      builder: (context, snapshot) {
+        final title = snapshot.data?.title.trim();
+        final display = (title == null || title.isEmpty) ? eventCode : title;
+        return _buildRatingRow(display);
+      },
+    );
+  }
+
+  Widget _buildRatingRow(String label) {
+    return ReviewRatingRow(
+      label: label,
+      rating: review.rating,
+      labelWidth: 130,
+      labelStyle: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Colors.black87,
+      ),
+      starSize: ReviewRatingRow.cardGeneralStarSize,
+      starSpacing: 3,
+      bottomSpacing: 0,
     );
   }
 }

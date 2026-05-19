@@ -1049,19 +1049,32 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                   ProfileReviewsTab(
                     response: reviewsResponse,
+                    eventsQuery: _eventsQuery,
                     onReviewTap: _openReviewEvent,
                   ),
                 ],
               ),
             ),
-          ] else
+          ] else ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Ressenyes',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
             SizedBox(
               height: 280,
               child: ProfileReviewsTab(
                 response: reviewsResponse,
+                eventsQuery: _eventsQuery,
                 onReviewTap: _openReviewEvent,
               ),
             ),
+          ],
         ],
       ),
     );
