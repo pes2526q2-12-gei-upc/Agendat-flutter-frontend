@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
+import 'package:agendat/core/realtime/friendship_realtime_service.dart';
 import 'package:agendat/core/state/auth_session.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
@@ -194,6 +195,7 @@ Future<void> setCurrentAuthToken(String? token) async {
   currentAuthToken = token;
   ApiClient.setAuthToken(token);
   ChatRealtimeService.instance.connect(token: token);
+  FriendshipRealtimeService.instance.connect(token: token);
   await TokenStorage.write(token);
 }
 
@@ -209,6 +211,7 @@ Future<void> clearLocalSession() async {
   currentAuthToken = null;
   ApiClient.setAuthToken(null);
   ChatRealtimeService.instance.disconnect();
+  FriendshipRealtimeService.instance.disconnect();
   unreadChatConversationsNotifier.value = 0;
   pendingFriendRequestsNotifier.value = 0;
   await TokenStorage.clear();
@@ -231,6 +234,7 @@ Future<bool> restoreSession() async {
   currentAuthToken = token.trim();
   ApiClient.setAuthToken(currentAuthToken);
   ChatRealtimeService.instance.connect(token: currentAuthToken);
+  FriendshipRealtimeService.instance.connect(token: currentAuthToken);
 
   final userId = _intFromValue(currentLoggedInUser?['id']);
   if (userId != null) {

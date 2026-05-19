@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
+import 'package:agendat/core/realtime/friendship_realtime_event.dart';
+import 'package:agendat/core/realtime/friendship_realtime_service.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/app_language.dart';
@@ -105,28 +107,34 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
 
   late int _selectedIndex;
   StreamSubscription<ChatRealtimeEvent>? _chatRealtimeSubscription;
+  StreamSubscription<FriendshipRealtimeEvent>? _friendshipRealtimeSubscription;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
     rootTabIndexNotifier.value = _selectedIndex;
-    ChatRealtimeService.instance.connect(token: currentAuthToken);
     _chatRealtimeSubscription = ChatRealtimeService.instance.events.listen(
       _onChatRealtimeEvent,
     );
+    _friendshipRealtimeSubscription = FriendshipRealtimeService.instance.events
+        .listen(_onFriendshipRealtimeEvent);
     WidgetsBinding.instance.addPostFrameCallback((_) => _primeUnreadBadge());
   }
 
   @override
   void dispose() {
     _chatRealtimeSubscription?.cancel();
-    ChatRealtimeService.instance.disconnect();
+    _friendshipRealtimeSubscription?.cancel();
     super.dispose();
   }
 
   void _onChatRealtimeEvent(ChatRealtimeEvent event) {
     ChatsQuery.instance.applyRealtimeEvent(event);
+  }
+
+  void _onFriendshipRealtimeEvent(FriendshipRealtimeEvent event) {
+    unawaited(ProfileQuery.instance.applyFriendshipRealtimeEvent(event));
   }
 
   Future<void> _primeUnreadBadge() async {

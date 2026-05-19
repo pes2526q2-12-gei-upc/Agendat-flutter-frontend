@@ -18,8 +18,11 @@ enum FriendshipStatus {
   /// Ja som amics.
   friends,
 
-  /// Tinc aquest usuari bloquejat.
-  blocked,
+  /// He bloquejat aquest usuari.
+  blockedByMe,
+
+  /// Aquest usuari m'ha bloquejat.
+  blockedMe,
 }
 
 FriendshipStatus? friendshipStatusFromString(String? raw) {
@@ -42,8 +45,11 @@ FriendshipStatus? friendshipStatusFromString(String? raw) {
     case 'friend':
     case 'accepted':
       return FriendshipStatus.friends;
+    case 'blocked_by_me':
     case 'blocked':
-      return FriendshipStatus.blocked;
+      return FriendshipStatus.blockedByMe;
+    case 'blocked_me':
+      return FriendshipStatus.blockedMe;
   }
   return null;
 }

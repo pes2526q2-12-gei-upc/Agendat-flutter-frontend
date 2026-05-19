@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -34,10 +36,14 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
   /// rebutjades. Permet bloquejar els botons individualment sense afectar
   /// la resta de la llista.
   final Set<int> _busyRequestIds = <int>{};
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
 
   @override
   void initState() {
     super.initState();
+    _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
+      _onFriendshipChange,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuthenticated()) return;
       // Forcem un refetch en muntar la pantalla. Les sol·licituds canvien
@@ -47,6 +53,12 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
       // l'usuari obre explícitament la pantalla de gestió, saltem la caché.
       _loadRequests(forceRefresh: true);
     });
+  }
+
+  @override
+  void dispose() {
+    _friendshipChangeSubscription?.cancel();
+    super.dispose();
   }
 
   bool get _isAuthenticated =>
@@ -72,6 +84,11 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
       (route) => false,
     );
     return false;
+  }
+
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!_isAuthenticated || !mounted) return;
+    unawaited(_refreshRequestsFromCache());
   }
 
   Future<void> _loadRequests({bool forceRefresh = false}) async {
@@ -109,6 +126,28 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
         _errorMessage =
             'No s\'han pogut carregar les sol·licituds. Comprova la teva connexió.';
       });
+    }
+  }
+
+  Future<void> _refreshRequestsFromCache() async {
+    if (!_guardAuthenticated()) return;
+    final myId = currentLoggedInUser!['id'] as int;
+
+    try {
+      final data = await _profileQuery.getFriendRequests(myId);
+      if (!mounted) return;
+      final pendingReceived = data.received
+          .where((r) => r.status.toLowerCase() == 'pending')
+          .toList();
+
+      setState(() {
+        _received = pendingReceived;
+        _errorMessage = null;
+      });
+      syncPendingFriendRequestsBadge(pendingReceived.length);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[friend-requests] silent refresh failed: $e');
+      if (mounted) setState(() {});
     }
   }
 

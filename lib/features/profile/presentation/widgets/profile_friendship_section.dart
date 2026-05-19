@@ -87,12 +87,38 @@ class ProfileFriendshipSection extends StatelessWidget {
           label: 'Eliminar amistat',
           busy: busy,
         );
-      case FriendshipStatus.blocked:
+      case FriendshipStatus.blockedByMe:
         return _FriendshipOutlinedButton(
           onPressed: isBlockBusy ? null : onUnblock,
           icon: Icons.lock_open,
           label: 'Desbloquejar',
           busy: isBlockBusy,
+        );
+      case FriendshipStatus.blockedMe:
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.block, size: 18, color: Colors.black54),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Aquest usuari t\'ha bloquejat',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
     }
   }

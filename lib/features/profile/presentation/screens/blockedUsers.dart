@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -23,14 +25,24 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   List<UserSummary> _blockedUsers = const [];
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
 
   @override
   void initState() {
     super.initState();
+    _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
+      _onFriendshipChange,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuthenticated()) return;
       _loadBlockedUsers();
     });
+  }
+
+  @override
+  void dispose() {
+    _friendshipChangeSubscription?.cancel();
+    super.dispose();
   }
 
   bool get _isAuthenticated =>
@@ -54,6 +66,11 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       (route) => false,
     );
     return false;
+  }
+
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!_isAuthenticated || !mounted) return;
+    unawaited(_refreshBlockedUsersFromCache());
   }
 
   Future<void> _loadBlockedUsers({bool forceRefresh = false}) async {
@@ -84,6 +101,23 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
         _errorMessage =
             'No s\'ha pogut carregar el llistat de bloquejats. Comprova la connexió.';
       });
+    }
+  }
+
+  Future<void> _refreshBlockedUsersFromCache() async {
+    if (!_guardAuthenticated()) return;
+    final myId = currentLoggedInUser!['id'] as int;
+
+    try {
+      final blocked = await _profileQuery.getBlockedUsers(myId);
+      if (!mounted) return;
+      setState(() {
+        _blockedUsers = _sortAlphabetically(blocked);
+        _errorMessage = null;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('[blocked-users] silent refresh failed: $e');
+      if (mounted) setState(() {});
     }
   }
 
