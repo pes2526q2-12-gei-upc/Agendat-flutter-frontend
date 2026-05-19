@@ -67,6 +67,7 @@ class UserProfile {
     this.eventUpdatesAllowed = true,
     this.socialAlertsAllowed = true,
     this.calendarSyncAllowed = true,
+    this.selectedLanguage = 'CA',
     this.description,
     this.friendshipStatus,
   });
@@ -86,6 +87,7 @@ class UserProfile {
   final bool eventUpdatesAllowed;
   final bool socialAlertsAllowed;
   final bool calendarSyncAllowed;
+  final String selectedLanguage;
   final String? description;
 
   /// Relació d'amistat de l'usuari autenticat envers aquest perfil. Només està
@@ -114,6 +116,8 @@ class UserProfile {
       socialAlertsAllowed:
           json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
       calendarSyncAllowed: json['calendar_sync_allowed'] as bool? ?? true,
+      selectedLanguage:
+          (json['selected_language'] as String?)?.trim().toUpperCase() ?? 'CA',
       description: json['description'] as String?,
       reputacio: ((json['reputacio'] ?? json['reputation']) as num?)
           ?.toDouble(),
@@ -140,6 +144,7 @@ class UserProfile {
       eventUpdatesAllowed: eventUpdatesAllowed,
       socialAlertsAllowed: socialAlertsAllowed,
       calendarSyncAllowed: calendarSyncAllowed,
+      selectedLanguage: selectedLanguage,
       description: description,
       friendshipStatus: status,
     );
@@ -190,6 +195,7 @@ class UserProfile {
     'event_updates_allowed': eventUpdatesAllowed,
     'social_alerts_allowed': socialAlertsAllowed,
     'calendar_sync_allowed': calendarSyncAllowed,
+    'selected_language': selectedLanguage,
   };
 }
 
