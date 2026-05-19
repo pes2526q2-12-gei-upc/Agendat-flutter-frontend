@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
@@ -369,6 +370,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   final _inputController = TextEditingController();
   final _inputFocus = FocusNode();
   final _listScrollController = ScrollController();
+  final _imagePicker = ImagePicker();
   StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
 
   /// Si és cert, després de nous missatges es fa scroll al final (missatges recents).
@@ -376,7 +378,11 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
 
   bool _loading = true;
   bool _sending = false;
+  bool _pickingImage = false;
   String? _error;
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageExtension;
   List<ChatMessage> _messages = const [];
   late Chat _chat;
 
@@ -394,6 +400,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   static const String _inactiveBlockedByPartnerBanner =
       'Aquest usuari t\'ha bloquejat. El xat es manté al llistat però '
       'només pots llegir els missatges anteriors.';
+
+  static const Set<String> _allowedImageExtensions = {'jpg', 'jpeg', 'png'};
 
   String _inactiveConversationBannerText() {
     if (_chat.blockedByMe) {
@@ -587,6 +595,51 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   Future<void> _sendMessage() async {
     final myUserId = _myUserId;
     final text = _inputController.text.trim();
+    final selectedImage = _selectedImage;
+    final selectedImageBytes = _selectedImageBytes;
+    final selectedImageExtension = _selectedImageExtension;
+
+    if (selectedImage != null &&
+        selectedImageBytes != null &&
+        selectedImageExtension != null) {
+      if (_sending || myUserId == null || !_chat.canSend) {
+        if (!_chat.canSend && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Aquest xat està inactiu. Només podeu llegir la conversa.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() => _sending = true);
+      try {
+        await _sendImageBytes(
+          bytes: selectedImageBytes,
+          filename: _normalizedImageFilename(
+            selectedImage,
+            selectedImageExtension,
+          ),
+          contentType: _contentTypeForImageExtension(selectedImageExtension),
+        );
+        _clearSelectedImage();
+      } catch (e, st) {
+        if (kDebugMode) debugPrint('[friend_conversation] send image: $e\n$st');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No s\'ha pogut enviar la imatge.')),
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _sending = false);
+        }
+      }
+      return;
+    }
+
     if (text.isEmpty || _sending || myUserId == null || !_chat.canSend) {
       if (text.isNotEmpty && !_chat.canSend && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -626,6 +679,129 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final myUserId = _myUserId;
+    final text = _inputController.text;
+    if (_sending ||
+        _pickingImage ||
+        text.isNotEmpty ||
+        myUserId == null ||
+        !_chat.canSend) {
+      if (!_chat.canSend && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Aquest xat està inactiu. Només podeu llegir la conversa.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() => _pickingImage = true);
+    try {
+      final picked = await _imagePicker.pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+
+      final extension = _allowedImageExtension(picked);
+      if (extension == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Només es poden enviar imatges JPG, JPEG o PNG.'),
+          ),
+        );
+        return;
+      }
+
+      final bytes = await picked.readAsBytes();
+      if (bytes.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La imatge seleccionada és buida.')),
+        );
+        return;
+      }
+
+      setState(() {
+        _selectedImage = picked;
+        _selectedImageBytes = bytes;
+        _selectedImageExtension = extension;
+      });
+      _inputFocus.unfocus();
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('[friend_conversation] pick image: $e\n$st');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No s\'ha pogut seleccionar la imatge.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _pickingImage = false);
+      }
+    }
+  }
+
+  Future<void> _sendImageBytes({
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+  }) async {
+    await _chatsQuery.sendImageMessage(
+      _chat.id,
+      bytes: bytes,
+      filename: filename,
+      contentType: contentType,
+      content: '',
+    );
+    _inputController.clear();
+    _inputFocus.requestFocus();
+    await _reload(
+      forceRefresh: true,
+      scrollToNewest: true,
+      animateScrollToNewest: true,
+    );
+  }
+
+  String? _allowedImageExtension(XFile image) {
+    final name = image.name.trim().isNotEmpty ? image.name : image.path;
+    final dot = name.lastIndexOf('.');
+    final extension = dot >= 0 ? name.substring(dot + 1).toLowerCase() : '';
+    if (_allowedImageExtensions.contains(extension)) return extension;
+
+    switch (image.mimeType?.toLowerCase()) {
+      case 'image/jpeg':
+        return 'jpg';
+      case 'image/png':
+        return 'png';
+    }
+    return null;
+  }
+
+  String _normalizedImageFilename(XFile image, String extension) {
+    final rawName = image.name.trim().isNotEmpty ? image.name.trim() : '';
+    if (rawName.isEmpty) return 'chat-image.$extension';
+    final lowerName = rawName.toLowerCase();
+    if (_allowedImageExtensions.any((ext) => lowerName.endsWith('.$ext'))) {
+      return rawName;
+    }
+    return '$rawName.$extension';
+  }
+
+  String _contentTypeForImageExtension(String extension) {
+    return extension == 'png' ? 'image/png' : 'image/jpeg';
+  }
+
+  void _clearSelectedImage() {
+    if (!mounted) return;
+    setState(() {
+      _selectedImage = null;
+      _selectedImageBytes = null;
+      _selectedImageExtension = null;
+    });
+  }
+
   void _openPartnerProfile() {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -662,7 +838,11 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
               controller: _inputController,
               focusNode: _inputFocus,
               sending: _sending,
+              pickingImage: _pickingImage,
+              selectedImageBytes: _selectedImageBytes,
               onSend: _sendMessage,
+              onPickImage: _pickImage,
+              onRemoveImage: _clearSelectedImage,
             )
           else
             InactiveConversationBanner(
@@ -755,9 +935,13 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
 
         return Message(
           key: ValueKey<int>(message.id),
-          messageText: message.content.isEmpty
+          messageText: message.content.isEmpty && message.type != 'image'
               ? '(sense text)'
               : message.content,
+          imageUrl: message.type == 'image' ? message.fileUrl : null,
+          imageApiPath: message.type == 'image'
+              ? '/api/chats/${message.chatId}/messages/${message.id}/media/'
+              : null,
           sentAt: message.sentAt,
           isSentByMe: isMine,
           avatarUrl: isMine ? myProfileImage : _partner.profileImage,
