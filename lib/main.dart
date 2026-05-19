@@ -7,6 +7,7 @@ import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
+import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -18,18 +19,6 @@ import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-
-/// Index of the currently selected root tab.
-///
-/// Kept in sync by [RootNavigationScreen] so other screens can react when the
-/// user switches tabs, such as closing transient overlays.
-final ValueNotifier<int> rootTabIndexNotifier = ValueNotifier<int>(0);
-
-/// Index of the `Social` tab inside [RootNavigationScreen].
-const int kSocialTabIndex = 3;
-
-/// Índex que ocupa la pestanya `Agenda` dins de [RootNavigationScreen].
-const int kAgendaTabIndex = 2;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

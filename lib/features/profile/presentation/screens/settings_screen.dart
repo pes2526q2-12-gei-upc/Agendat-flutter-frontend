@@ -239,6 +239,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildIntroText(),
         const SizedBox(height: 24),
         LanguageSelectorTile(
+          userId: widget.currentProfile.id,
           unauthenticatedMessage: _unauthenticatedMessage,
           onShowMessage: _showMessage,
         ),

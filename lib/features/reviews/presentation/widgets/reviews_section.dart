@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
 import 'package:agendat/core/models/review.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/query/reviews_query.dart';
 import 'package:agendat/features/reviews/presentation/widgets/add_review_form.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
@@ -33,6 +34,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
 
   final ReviewsQuery _reviewsQuery = ReviewsQuery.instance;
+  final ProfileQuery _profileQuery = ProfileQuery.instance;
 
   bool _isExpanded = false;
   bool _isFormOpen = false;
@@ -418,6 +420,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
                   ? 'Valoració actualitzada correctament.'
                   : 'Valoració publicada correctament.'),
       );
+      final currentUserId = currentLoggedInUser?['id'];
+      if (currentUserId is int) {
+        _profileQuery.invalidateUser(currentUserId);
+      }
       // Refresc silenciós per sincronitzar id real, likes i data del backend.
       // ignore: unawaited_futures
       _fetchReviews(silent: true);
