@@ -8,9 +8,6 @@ Aquest widget representa un missatge de chat.
 
 */
 
-import 'dart:typed_data';
-
-import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +19,6 @@ class Message extends StatelessWidget {
     required this.sentAt,
     required this.isSentByMe,
     this.imageUrl,
-    this.imageApiPath,
     this.avatarUrl,
     this.avatarLabel,
     this.receiptLabel,
@@ -32,7 +28,6 @@ class Message extends StatelessWidget {
   final DateTime sentAt;
   final bool isSentByMe;
   final String? imageUrl;
-  final String? imageApiPath;
 
   /// Imatge de perfil del remitent (relativa o URL completa).
   final String? avatarUrl;
@@ -90,11 +85,24 @@ class Message extends StatelessWidget {
           if (hasImage) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: _ChatMessageImage(
-                apiPath: imageApiPath,
-                imageUrl: resolvedImageUrl,
-                isSentByMe: isSentByMe,
-                iconColor: onBubble.withValues(alpha: 0.65),
+              child: Image.network(
+                resolvedImageUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 220,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 160,
+                    alignment: Alignment.center,
+                    color: isSentByMe
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : Colors.grey.shade100,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: onBubble.withValues(alpha: 0.65),
+                    ),
+                  );
+                },
               ),
             ),
             if (hasText) const SizedBox(height: 8),
@@ -156,85 +164,6 @@ class Message extends StatelessWidget {
           if (isSentByMe) ...[const SizedBox(width: 8), avatar],
         ],
       ),
-    );
-  }
-}
-
-class _ChatMessageImage extends StatelessWidget {
-  const _ChatMessageImage({
-    required this.apiPath,
-    required this.imageUrl,
-    required this.isSentByMe,
-    required this.iconColor,
-  });
-
-  final String? apiPath;
-  final String imageUrl;
-  final bool isSentByMe;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final path = apiPath;
-    if (path == null || path.trim().isEmpty) {
-      return _networkImage();
-    }
-
-    return FutureBuilder<Uint8List>(
-      future: _loadBytes(path),
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          return Image.memory(
-            snapshot.data!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: 220,
-          );
-        }
-        if (snapshot.hasError) return _brokenImage();
-        return _loadingImage();
-      },
-    );
-  }
-
-  Future<Uint8List> _loadBytes(String path) async {
-    final response = await ApiClient.get(path);
-    return response.bodyBytes;
-  }
-
-  Widget _networkImage() {
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: 220,
-      errorBuilder: (_, _, _) => _brokenImage(),
-    );
-  }
-
-  Widget _loadingImage() {
-    return Container(
-      height: 220,
-      alignment: Alignment.center,
-      color: isSentByMe
-          ? Colors.white.withValues(alpha: 0.14)
-          : Colors.grey.shade100,
-      child: SizedBox(
-        width: 22,
-        height: 22,
-        child: CircularProgressIndicator(strokeWidth: 2, color: iconColor),
-      ),
-    );
-  }
-
-  Widget _brokenImage() {
-    return Container(
-      height: 160,
-      alignment: Alignment.center,
-      color: isSentByMe
-          ? Colors.white.withValues(alpha: 0.14)
-          : Colors.grey.shade100,
-      child: Icon(Icons.broken_image_outlined, color: iconColor),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/state/auth_session.dart';
@@ -629,9 +630,9 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       } catch (e, st) {
         if (kDebugMode) debugPrint('[friend_conversation] send image: $e\n$st');
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No s\'ha pogut enviar la imatge.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_sendImageErrorMessage(e))));
       } finally {
         if (mounted) {
           setState(() => _sending = false);
@@ -701,7 +702,11 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
 
     setState(() => _pickingImage = true);
     try {
-      final picked = await _imagePicker.pickImage(source: ImageSource.gallery);
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 82,
+      );
       if (picked == null) return;
 
       final extension = _allowedImageExtension(picked);
@@ -791,6 +796,18 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
 
   String _contentTypeForImageExtension(String extension) {
     return extension == 'png' ? 'image/png' : 'image/jpeg';
+  }
+
+  String _sendImageErrorMessage(Object error) {
+    if (error is ApiException) {
+      if (error.statusCode == 413) {
+        return 'La imatge és massa gran. Prova amb una imatge més petita.';
+      }
+      if (error.statusCode >= 500) {
+        return 'El servidor no ha pogut pujar la imatge. Torna-ho a provar.';
+      }
+    }
+    return 'No s\'ha pogut enviar la imatge.';
   }
 
   void _clearSelectedImage() {
@@ -939,9 +956,6 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
               ? '(sense text)'
               : message.content,
           imageUrl: message.type == 'image' ? message.fileUrl : null,
-          imageApiPath: message.type == 'image'
-              ? '/api/chats/${message.chatId}/messages/${message.id}/media/'
-              : null,
           sentAt: message.sentAt,
           isSentByMe: isMine,
           avatarUrl: isMine ? myProfileImage : _partner.profileImage,
