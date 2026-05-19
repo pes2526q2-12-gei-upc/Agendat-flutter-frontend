@@ -73,17 +73,28 @@ class ReviewRatingRow extends StatelessWidget {
             width: labelWidth,
             child: Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style:
                   labelStyle ??
                   const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ),
-          RatingStars(
-            rating: rating.toDouble(),
-            onRatingChanged: onRatingChanged ?? (_) {},
-            isEnabled: isEditable,
-            size: starSize,
-            spacing: starSpacing,
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: RatingStars(
+                  rating: rating.toDouble(),
+                  onRatingChanged: onRatingChanged ?? (_) {},
+                  isEnabled: isEditable,
+                  size: starSize,
+                  spacing: starSpacing,
+                ),
+              ),
+            ),
           ),
         ],
       ),
