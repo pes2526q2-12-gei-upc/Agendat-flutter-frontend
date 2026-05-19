@@ -8,6 +8,13 @@ String? chatProfileImageUrl(String? rawProfileImageField) {
   return u;
 }
 
+/// URL absoluta per mostrar mitjans adjunts del xat.
+String? chatMediaUrl(String? rawMediaField) {
+  final u = resolveProfileImageUrl(rawMediaField)?.trim();
+  if (u == null || u.isEmpty) return null;
+  return u;
+}
+
 /// Inicials curtes per avatars del xat (no depèn del paquet `characters`).
 String chatAvatarInitials(String? raw) {
   if (raw == null || raw.trim().isEmpty) return '?';

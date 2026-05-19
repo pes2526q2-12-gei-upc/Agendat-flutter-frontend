@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/dto/chat_dto.dart';
 import 'package:agendat/core/dto/message_dto.dart';
@@ -89,6 +91,37 @@ class ChatsApi {
     final response = await ApiClient.postJson(
       '$_chatsPath$chatId/messages/',
       body: request.toJson(),
+      expectedStatusCode: 201,
+    );
+    final decoded = ApiClient.decodeBody(response);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected API response format');
+    }
+    return MessageDto.fromJson(decoded);
+  }
+
+  /// Envia una imatge al xat via multipart.
+  Future<MessageDto> sendImageMessage(
+    int chatId, {
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+    String content = '',
+  }) async {
+    final response = await ApiClient.postMultipart(
+      '$_chatsPath$chatId/messages/',
+      fields: <String, String>{
+        'content': content,
+        'type': ChatMessageType.image.apiValue,
+      },
+      files: [
+        ApiClient.multipartFileFromBytes(
+          field: 'file_url',
+          bytes: bytes,
+          filename: filename,
+          contentType: contentType,
+        ),
+      ],
       expectedStatusCode: 201,
     );
     final decoded = ApiClient.decodeBody(response);

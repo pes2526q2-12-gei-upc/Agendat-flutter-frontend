@@ -1,13 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:agendat/core/api/chats_api.dart';
+import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/mappers/chat_mapper.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/models/event_invitation.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
-import 'package:agendat/core/api/profile_api.dart';
-import 'package:agendat/core/query/profile_query.dart';
 
 export 'package:agendat/core/api/chats_api.dart'
     show ChatMessageType, SendMessageRequest;
@@ -113,6 +115,29 @@ class ChatsQuery {
     final sent = dto.toDomain();
 
     // Keep message lists and chat summaries fresh after any mutation.
+    _client.invalidate(_messagesKey(chatId));
+    _client.invalidate(_detailKey(chatId));
+    _client.invalidate(_listKey);
+
+    return sent;
+  }
+
+  Future<ChatMessage> sendImageMessage(
+    int chatId, {
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+    String content = '',
+  }) async {
+    final dto = await _api.sendImageMessage(
+      chatId,
+      bytes: bytes,
+      filename: filename,
+      contentType: contentType,
+      content: content,
+    );
+    final sent = dto.toDomain();
+
     _client.invalidate(_messagesKey(chatId));
     _client.invalidate(_detailKey(chatId));
     _client.invalidate(_listKey);
