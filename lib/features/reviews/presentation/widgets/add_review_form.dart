@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
@@ -6,7 +8,7 @@ import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.
 /// Formulari inline per afegir o editar una valoració d'un esdeveniment.
 ///
 /// Conté 4 files de puntuació (General, Preu, Ambient, Accessibilitat),
-/// un camp de comentari opcional i un selector d'imatges/vídeos.
+/// un camp de comentari opcional i un selector de fotos (png, jpg, jpeg).
 /// Quan l'usuari prem "Afegir" (o "Desar" en mode edició) es crida
 /// [onSubmit] amb els valors seleccionats. El pare (`ReviewsSection`)
 /// s'encarrega d'enviar-ho al servidor.
@@ -57,15 +59,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
   static const int _maxCommentLength = 500;
   static const int _maxMediaCount = 5;
-  static const List<String> _allowedExtensions = [
-    'png',
-    'jpg',
-    'jpeg',
-    'gif',
-    'webp',
-    'mp4',
-    'mov',
-  ];
+  static const List<String> _allowedExtensions = ['png', 'jpg', 'jpeg'];
 
   late int _generalRating = widget.initialGeneralRating;
   late int _preuRating = widget.initialPreuRating;
@@ -149,6 +143,35 @@ class _AddReviewFormState extends State<AddReviewForm> {
     );
   }
 
+  /// Extensió normalitzada (p. ex. `png`). El [XFile.path] sovint és un tmp
+  /// sense extensió (p. ex. iOS); [XFile.name] acostuma a conservar-la.
+  String? _reviewPickExtension(XFile file) {
+    String? fromBasename(String raw) {
+      final base = raw.replaceAll('\\', '/').split('/').last;
+      final clean = base.split('?').first.split('#').first;
+      final dot = clean.lastIndexOf('.');
+      if (dot <= 0 || dot >= clean.length - 1) return null;
+      return clean.substring(dot + 1).toLowerCase();
+    }
+
+    final fromName = fromBasename(file.name);
+    if (fromName != null && fromName.isNotEmpty) return fromName;
+
+    final fromPath = fromBasename(file.path);
+    if (fromPath != null && fromPath.isNotEmpty) return fromPath;
+
+    switch (file.mimeType?.toLowerCase().trim()) {
+      case 'image/png':
+        return 'png';
+      case 'image/jpeg':
+      case 'image/jpg':
+      case 'image/pjpeg':
+        return 'jpeg';
+      default:
+        return null;
+    }
+  }
+
   /// Obre el selector de la galeria i afegeix els fitxers vàlids que
   /// es triïn (respectant la mida màxima i les extensions permeses).
   Future<void> _pickMedia() async {
@@ -159,9 +182,13 @@ class _AddReviewFormState extends State<AddReviewForm> {
 
     final picked = await ImagePicker().pickMultiImage();
     for (final file in picked) {
-      final ext = file.path.split('.').last.toLowerCase();
-      if (!_allowedExtensions.contains(ext)) {
-        _showSnack('Format no permès: .$ext');
+      final ext = _reviewPickExtension(file);
+      if (ext == null || !_allowedExtensions.contains(ext)) {
+        _showSnack(
+          ext == null
+              ? 'No s\'ha pogut detectar el format de la imatge.'
+              : 'Format no permès: .$ext',
+        );
         continue;
       }
       if (_selectedMedia.length >= _maxMediaCount) break;
@@ -271,15 +298,34 @@ class _AddReviewFormState extends State<AddReviewForm> {
     return OutlinedButton.icon(
       onPressed: _pickMedia,
       icon: const Icon(Icons.add_photo_alternate_outlined),
-      label: Text(
-        'Afegir fotos/videos (${_selectedMedia.length}/$_maxMediaCount)',
-      ),
+      label: Text('Afegir fotos (${_selectedMedia.length}/$_maxMediaCount)'),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.black54,
         side: BorderSide(color: Colors.grey.shade300),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  /// Vista prèvia d'una imatge triada. A web, [Image.file] no està suportat;
+  /// el path del picker acostuma a ser un URL `blob:` vàlid per [Image.network].
+  Widget _pickedImagePreview(XFile file) {
+    const w = 70.0;
+    const h = 70.0;
+    if (kIsWeb) {
+      return Image.network(
+        file.path,
+        width: w,
+        height: h,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const SizedBox(
+          width: w,
+          height: h,
+          child: Icon(Icons.broken_image_outlined, size: 28),
+        ),
+      );
+    }
+    return Image.file(File(file.path), width: w, height: h, fit: BoxFit.cover);
   }
 
   /// Miniatures horitzontals dels mitjans escollits, amb botó per treure'ls.
@@ -295,12 +341,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  File(_selectedMedia[index].path),
-                  width: 70,
-                  height: 70,
-                  fit: BoxFit.cover,
-                ),
+                child: _pickedImagePreview(_selectedMedia[index]),
               ),
               Positioned(
                 top: 0,
