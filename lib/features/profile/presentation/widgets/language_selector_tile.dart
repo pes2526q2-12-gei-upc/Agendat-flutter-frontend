@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -7,6 +8,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 class LanguageSelectorTile extends StatefulWidget {
   const LanguageSelectorTile({
     super.key,
+    required this.userId,
     required this.unauthenticatedMessage,
     required this.onShowMessage,
   });
@@ -14,6 +16,7 @@ class LanguageSelectorTile extends StatefulWidget {
   static const String unauthenticatedMessageDefault =
       'Cal iniciar sessió per accedir a la configuració.';
 
+  final int userId;
   final String unauthenticatedMessage;
   final void Function(String message) onShowMessage;
 
@@ -23,6 +26,12 @@ class LanguageSelectorTile extends StatefulWidget {
 
 class _LanguageSelectorTileState extends State<LanguageSelectorTile> {
   static const List<String> _orderedCodes = ['CA', 'EN', 'ES'];
+
+  Future<void> _revertLanguage(String previous) async {
+    AppLanguage.setCode(previous);
+    await AppLanguage.persist();
+    if (mounted) setState(() {});
+  }
 
   Future<void> _onLanguageSelected(String? code) async {
     if (code == null || code == AppLanguage.code) return;
@@ -38,6 +47,34 @@ class _LanguageSelectorTileState extends State<LanguageSelectorTile> {
 
     await AppLanguage.persist();
     if (mounted) setState(() {});
+
+    final result = await updateUserProfile(widget.userId, {
+      'selected_language': code,
+    });
+
+    if (!mounted) return;
+
+    switch (result) {
+      case UpdateProfileSuccess(:final profile):
+        await setCurrentLoggedInUser({
+          ...currentLoggedInUser ?? <String, dynamic>{},
+          ...profile.toJson(),
+          'id': profile.id,
+          'selected_language': code,
+        });
+      case UpdateProfileFailure(:final statusCode):
+        await _revertLanguage(previous);
+        if (statusCode == 401 || statusCode == 403) {
+          widget.onShowMessage(widget.unauthenticatedMessage);
+        } else if (statusCode == -1) {
+          widget.onShowMessage('Error de connexió. Comprova la teva connexió.');
+        } else {
+          widget.onShowMessage('No s\'ha pogut desar l\'idioma.');
+        }
+      case UpdateProfileValidationError():
+        await _revertLanguage(previous);
+        widget.onShowMessage('No s\'ha pogut desar l\'idioma.');
+    }
   }
 
   @override
