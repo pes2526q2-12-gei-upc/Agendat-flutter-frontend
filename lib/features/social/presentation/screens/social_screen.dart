@@ -44,6 +44,7 @@ class _SocialScreenState extends State<SocialScreen>
 
   Timer? _debounce;
   StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
   int _requestToken = 0;
 
   String _query = '';
@@ -95,6 +96,8 @@ class _SocialScreenState extends State<SocialScreen>
     _realtimeSubscription = ChatRealtimeService.instance.events.listen(
       _onRealtimeEvent,
     );
+    _friendshipChangeSubscription = ProfileQuery.instance.friendshipChanges
+        .listen(_onFriendshipChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _guardAuthenticated();
       _loadPendingRequestsCount();
@@ -106,6 +109,7 @@ class _SocialScreenState extends State<SocialScreen>
   @override
   void dispose() {
     _realtimeSubscription?.cancel();
+    _friendshipChangeSubscription?.cancel();
     rootTabIndexNotifier.removeListener(_onRootTabChanged);
     _popupController.removeStatusListener(_onPopupStatusChanged);
     _popupController.dispose();
@@ -143,6 +147,11 @@ class _SocialScreenState extends State<SocialScreen>
       case ChatRealtimeErrorEvent():
         break;
     }
+  }
+
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!mounted || !_isAuthenticated) return;
+    unawaited(_refreshSocialFromCache());
   }
 
   void _syncChatsFromCache() {
@@ -292,6 +301,28 @@ class _SocialScreenState extends State<SocialScreen>
         _requestsErrorMessage =
             'No s\'han pogut carregar les sol·licituds. Comprova la teva connexió.';
       });
+    }
+  }
+
+  Future<void> _refreshPendingRequestsFromCache() async {
+    if (!_isAuthenticated) return;
+    final myId = currentLoggedInUser?['id'];
+    if (myId is! int) return;
+
+    try {
+      final data = await ProfileQuery.instance.getFriendRequests(myId);
+      if (!mounted) return;
+      final pending = data.received
+          .where((r) => r.status.toLowerCase() == 'pending')
+          .toList();
+      setState(() {
+        _pendingRequests = pending;
+        _requestsErrorMessage = null;
+      });
+      syncPendingFriendRequestsBadge(pending.length);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {});
     }
   }
 
@@ -458,6 +489,32 @@ class _SocialScreenState extends State<SocialScreen>
     }
   }
 
+  Future<void> _refreshChatsFromCache() async {
+    if (!_isAuthenticated) return;
+    final cached = _chatsQuery.peekCachedChatsList();
+    if (cached != null) {
+      if (!mounted) return;
+      setState(() {
+        _chats = cached;
+        _chatsErrorMessage = null;
+      });
+      syncUnreadChatConversationsBadge(cached);
+      return;
+    }
+
+    try {
+      final chats = await _chatsQuery.getChats();
+      if (!mounted) return;
+      setState(() {
+        _chats = chats;
+        _chatsErrorMessage = null;
+      });
+      syncUnreadChatConversationsBadge(chats);
+    } catch (_) {
+      if (mounted) setState(() {});
+    }
+  }
+
   Future<void> _loadFriendRecommendations({bool forceRefresh = false}) async {
     if (!_isAuthenticated) return;
     setState(() {
@@ -493,6 +550,36 @@ class _SocialScreenState extends State<SocialScreen>
             'No s\'han pogut carregar les recomanacions.';
       });
     }
+  }
+
+  Future<void> _refreshFriendRecommendationsFromCache() async {
+    if (!_isAuthenticated) return;
+
+    try {
+      final data = await ProfileQuery.instance.getFriendRecommendations();
+      if (!mounted) return;
+
+      final currentUserId = (currentLoggedInUser?['id'] as num?)?.toInt();
+      final blockedIds = ProfileQuery.instance.locallyBlockedUserIds;
+      final recommendations = data.recommendations
+          .where((r) => r.id != currentUserId && !blockedIds.contains(r.id))
+          .toList();
+
+      setState(() {
+        _recommendations = recommendations;
+        _recommendationsErrorMessage = null;
+      });
+    } catch (_) {
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _refreshSocialFromCache() async {
+    await Future.wait([
+      _refreshPendingRequestsFromCache(),
+      _refreshFriendRecommendationsFromCache(),
+      _refreshChatsFromCache(),
+    ]);
   }
 
   Future<void> _refreshSocialOverview() async {

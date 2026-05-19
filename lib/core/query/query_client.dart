@@ -76,6 +76,16 @@ class QueryClient {
     return entry.data as T;
   }
 
+  /// Returns all cached values whose keys start with [prefix].
+  Map<String, T> getQueryDataByPrefix<T>(String prefix) {
+    final results = <String, T>{};
+    _cache.forEach((key, entry) {
+      if (!key.startsWith(prefix) || entry.data is! T) return;
+      results[key] = entry.data as T;
+    });
+    return results;
+  }
+
   void invalidate(String key) => _cache.remove(key);
 
   void invalidatePrefix(String prefix) {

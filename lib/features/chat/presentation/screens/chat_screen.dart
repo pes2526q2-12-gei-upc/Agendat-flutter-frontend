@@ -373,6 +373,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   final _listScrollController = ScrollController();
   final _imagePicker = ImagePicker();
   StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
 
   /// Si és cert, després de nous missatges es fa scroll al final (missatges recents).
   bool _stickToBottom = true;
@@ -436,6 +437,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     _realtimeSubscription = ChatRealtimeService.instance.events.listen(
       _onRealtimeEvent,
     );
+    _friendshipChangeSubscription = ProfileQuery.instance.friendshipChanges
+        .listen(_onFriendshipChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _reload(
         forceRefresh: true,
@@ -448,6 +451,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   @override
   void dispose() {
     _realtimeSubscription?.cancel();
+    _friendshipChangeSubscription?.cancel();
     _listScrollController.removeListener(_onMessagesScroll);
     _listScrollController.dispose();
     _inputController.dispose();
@@ -523,6 +527,11 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     }
   }
 
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!mounted || change.counterpartId != _partner.id) return;
+    _refreshChatFromCache();
+  }
+
   List<ChatMessage> _applyReadReceiptEvent(
     List<ChatMessage> messages,
     ChatMessagesReadEvent event,
@@ -591,6 +600,15 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
         _error = 'No s\'han pogut carregar els missatges.';
       });
     }
+  }
+
+  void _refreshChatFromCache() {
+    final cached = _chatsQuery.peekCachedChat(widget.chat.id);
+    if (cached == null || !mounted) return;
+    setState(() {
+      _chat = cached;
+      _error = null;
+    });
   }
 
   Future<void> _sendMessage() async {

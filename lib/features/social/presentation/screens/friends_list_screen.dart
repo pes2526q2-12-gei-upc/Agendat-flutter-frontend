@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -40,10 +42,14 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   String? _errorMessage;
   List<UserSummary> _friends = const [];
   String _filter = '';
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
 
   @override
   void initState() {
     super.initState();
+    _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
+      _onFriendshipChange,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuthenticated()) return;
       // Forcem un refetch en muntar: la llista d'amics depèn d'accions que
@@ -57,9 +63,15 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
 
   @override
   void dispose() {
+    _friendshipChangeSubscription?.cancel();
     _filterController.dispose();
     _filterFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!_isAuthenticated || !mounted) return;
+    unawaited(_refreshFriendsFromCache());
   }
 
   bool get _isAuthenticated =>

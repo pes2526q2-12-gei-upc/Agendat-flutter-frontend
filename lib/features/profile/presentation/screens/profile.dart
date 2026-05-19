@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -52,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   final CategoriesQuery _categoriesQuery = CategoriesQuery.instance;
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
   final EventsQuery _eventsQuery = EventsQuery.instance;
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
 
   FriendshipStatus? _friendshipStatus;
   bool _isFriendshipActionInProgress = false;
@@ -74,6 +77,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       _tabController = TabController(length: 2, vsync: this);
     }
     rootTabIndexNotifier.addListener(_onRootTabChanged);
+    _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
+      _onFriendshipChange,
+    );
     // Quan visitem el perfil d'un altre usuari forcem un refetch: el seu
     // `friendship_status` pot haver canviat sense que en rebéssim cap
     // notificació (per exemple, l'altre ens ha eliminat com a amic, o ha
@@ -88,6 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void dispose() {
     rootTabIndexNotifier.removeListener(_onRootTabChanged);
+    _friendshipChangeSubscription?.cancel();
     _tabController?.dispose();
     super.dispose();
   }
@@ -106,6 +113,18 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (wasOwn == isOwn) return;
     _tabController?.dispose();
     _tabController = isOwn ? TabController(length: 2, vsync: this) : null;
+  }
+
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!mounted || widget.userId == null) return;
+    if (change.counterpartId != widget.userId) return;
+
+    setState(() {
+      _friendshipStatus = change.status;
+      if (_profile != null) {
+        _profile = _profile!.copyWithFriendshipStatus(change.status);
+      }
+    });
   }
 
   Future<void> _loadProfile({bool forceRefresh = false}) async {
@@ -308,7 +327,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     final isBlockedLocally = _profileQuery.isUserLocallyBlocked(profile.id);
-    if (isBlockedLocally) return FriendshipStatus.blocked;
+    if (isBlockedLocally) return FriendshipStatus.blockedByMe;
     return profile.friendshipStatus ?? FriendshipStatus.none;
   }
 
@@ -635,7 +654,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (profile == null) return null;
     if (_currentUserId == null || profile.id == _currentUserId) return null;
 
-    final isBlocked = _friendshipStatus == FriendshipStatus.blocked;
+    final isBlocked = _friendshipStatus == FriendshipStatus.blockedByMe;
     final actionLabel = isBlocked ? 'Desbloquejar' : 'Bloquejar';
     final actionIcon = isBlocked ? Icons.lock_open : Icons.block;
 
@@ -691,7 +710,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_isBlockActionInProgress) return;
     if (!_ensureAuthenticatedForBlocking()) return;
 
-    if (_friendshipStatus == FriendshipStatus.blocked) {
+    if (_friendshipStatus == FriendshipStatus.blockedByMe) {
       await _confirmAndUnblockUser();
     } else {
       await _confirmAndBlockUser();
@@ -717,7 +736,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   /// Demana confirmació i, si l'usuari accepta, executa la crida POST
   /// `/api/users/{id}/block/`. En cas d'èxit:
-  /// - Marca el perfil com a `FriendshipStatus.blocked` localment.
+  /// - Marca el perfil com a `FriendshipStatus.blockedByMe` localment.
   /// - Invalida les llistes d'amistat (l'amistat es trenca al backend) i la
   ///   llista de bloquejats per refrescar la propera consulta.
   Future<void> _confirmAndBlockUser() async {
@@ -754,7 +773,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (confirmed != true || !mounted) return;
     await _runBlockAction(
       action: () => blockUser(profile.id),
-      successStatus: FriendshipStatus.blocked,
+      successStatus: FriendshipStatus.blockedByMe,
       successMessage: 'Has bloquejat aquest usuari.',
       genericErrorMessage: 'No s\'ha pogut bloquejar l\'usuari.',
       isUnblock: false,
