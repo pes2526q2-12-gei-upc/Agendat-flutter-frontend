@@ -16,6 +16,7 @@ import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_attended_sessions_tab.dart';
@@ -72,6 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_isOwnProfile) {
       _tabController = TabController(length: 2, vsync: this);
     }
+    rootTabIndexNotifier.addListener(_onRootTabChanged);
     // Quan visitem el perfil d'un altre usuari forcem un refetch: el seu
     // `friendship_status` pot haver canviat sense que en rebéssim cap
     // notificació (per exemple, l'altre ens ha eliminat com a amic, o ha
@@ -85,8 +87,15 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
+    rootTabIndexNotifier.removeListener(_onRootTabChanged);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  void _onRootTabChanged() {
+    if (rootTabIndexNotifier.value == kProfileTabIndex) {
+      _loadProfile(forceRefresh: true);
+    }
   }
 
   @override
@@ -1067,9 +1076,15 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => EventScreen(eventCode: eventCode)),
-    );
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(builder: (_) => EventScreen(eventCode: eventCode)),
+        )
+        .then((_) {
+          if (mounted) {
+            _loadProfile(forceRefresh: true);
+          }
+        });
   }
 
   void _openSessionEvent(Session session) {

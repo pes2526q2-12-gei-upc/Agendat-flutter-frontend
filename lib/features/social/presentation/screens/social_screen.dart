@@ -24,7 +24,7 @@ import 'package:agendat/features/social/data/social_api.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
-import 'package:agendat/main.dart' show rootTabIndexNotifier, kSocialTabIndex;
+import 'package:agendat/core/state/root_tab_state.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
