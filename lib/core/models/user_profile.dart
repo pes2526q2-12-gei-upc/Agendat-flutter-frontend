@@ -327,6 +327,7 @@ class UserReview {
     required this.reviewerId,
     required this.reviewerUsername,
     this.eventCode,
+    this.eventTitle,
   });
 
   final int id;
@@ -336,6 +337,7 @@ class UserReview {
   final int reviewerId;
   final String reviewerUsername;
   final String? eventCode;
+  final String? eventTitle;
 
   factory UserReview.fromJson(Map<String, dynamic> json) {
     final reviewer = json['reviewer'];
@@ -349,6 +351,12 @@ class UserReview {
         eventMap?['code'] ??
         eventMap?['id'];
     final eventCode = rawEventCode?.toString().trim();
+    final rawEventTitle =
+        json['event_title'] ??
+        json['event_name'] ??
+        eventMap?['title'] ??
+        eventMap?['name'];
+    final eventTitle = rawEventTitle?.toString().trim();
     return UserReview(
       id: (json['id'] as num).toInt(),
       rating: (json['rating'] as num).toInt(),
@@ -362,6 +370,9 @@ class UserReview {
           (reviewerMap?['username'] as String?) ??
           '',
       eventCode: (eventCode == null || eventCode.isEmpty) ? null : eventCode,
+      eventTitle: (eventTitle == null || eventTitle.isEmpty)
+          ? null
+          : eventTitle,
     );
   }
 }
