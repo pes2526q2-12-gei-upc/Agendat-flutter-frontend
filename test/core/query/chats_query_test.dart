@@ -4,7 +4,7 @@ import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

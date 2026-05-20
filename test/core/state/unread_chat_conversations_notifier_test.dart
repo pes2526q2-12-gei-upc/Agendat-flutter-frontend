@@ -1,6 +1,6 @@
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

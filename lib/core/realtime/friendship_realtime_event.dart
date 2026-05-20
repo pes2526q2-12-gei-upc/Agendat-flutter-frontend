@@ -1,6 +1,6 @@
 import 'package:agendat/core/models/user_profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/api/friendship_api.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 abstract class FriendshipRealtimeEvent {
   const FriendshipRealtimeEvent({required this.type, required this.requestId});

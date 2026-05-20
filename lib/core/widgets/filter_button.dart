@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/widgets/filter_sheet_launcher.dart';
 import 'package:agendat/core/models/event_filters.dart';
-import 'package:agendat/core/widgets/selectFiltersCard.dart';
+import 'package:agendat/core/widgets/select_filters_card.dart';
 
 class FilterButton extends StatelessWidget {
   const FilterButton({
@@ -25,33 +26,17 @@ class FilterButton extends StatelessWidget {
   final EventFilters currentFilters;
 
   Future<void> _openFilters(BuildContext context) async {
-    onSheetVisibilityChanged?.call(true);
-
-    final selectedFilters = await showModalBottomSheet<EventFilters>(
+    final selectedFilters = await showFilterBottomSheet<EventFilters>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-            child: SingleChildScrollView(
-              child: SelectedFiltersCard(
-                initialFilters: currentFilters,
-                onApply: (filters) {
-                  Navigator.of(sheetContext).pop(filters);
-                },
-                onCancel: () {
-                  Navigator.of(sheetContext).pop();
-                },
-              ),
-            ),
-          ),
+      onSheetVisibilityChanged: onSheetVisibilityChanged,
+      sheetBuilder: (sheetContext, apply) {
+        return SelectedFiltersCard(
+          initialFilters: currentFilters,
+          onApply: apply,
+          onCancel: () => Navigator.of(sheetContext).pop(),
         );
       },
     );
-
-    onSheetVisibilityChanged?.call(false);
 
     if (selectedFilters != null) {
       onApplyFilters?.call(selectedFilters);

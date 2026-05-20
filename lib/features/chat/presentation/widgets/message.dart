@@ -8,6 +8,7 @@ Aquest widget representa un missatge de chat.
 
 */
 
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:flutter/material.dart';
@@ -35,7 +36,7 @@ class Message extends StatelessWidget {
   /// Text per inicials si no hi ha foto.
   final String? avatarLabel;
   final String? receiptLabel;
-  static const Color _sentBubbleColor = Color(0xFFB71C1C);
+  static const Color _sentBubbleColor = AppThemeTokens.brandPrimary;
 
   @override
   Widget build(BuildContext context) {

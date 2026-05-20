@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 
 class EventTextUtils {
   const EventTextUtils._();
 
   // Deep red used for primary actions and header (matches design).
-  static const kPrimaryRed = Color(0xFFB71C1C);
+  static const kPrimaryRed = AppThemeTokens.brandPrimary;
 
   // Catalan month abbreviations for the calendar icon (index 0 = January).
   static const List<String> calendarMonthNames = [

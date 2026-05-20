@@ -8,22 +8,20 @@ import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
-import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
-import 'package:agendat/features/chat/presentation/screens/chat_screen.dart'
-    show FriendConversationScreen;
-import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/widgets/require_auth.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/features/chat/presentation/widgets/chat_row.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
+import 'package:agendat/features/social/presentation/widgets/social_list_tiles.dart';
 import 'package:agendat/core/state/root_tab_state.dart';
 
 class SocialScreen extends StatefulWidget {
@@ -35,7 +33,7 @@ class SocialScreen extends StatefulWidget {
 
 class _SocialScreenState extends State<SocialScreen>
     with SingleTickerProviderStateMixin {
-  static const _kPrimaryRed = Color(0xFFB71C1C);
+  static const _kPrimaryRed = AppThemeTokens.brandPrimary;
   static const Duration _debounceDuration = Duration(milliseconds: 350);
   final ChatsQuery _chatsQuery = ChatsQuery.instance;
 
@@ -175,21 +173,12 @@ class _SocialScreenState extends State<SocialScreen>
   bool get _isFriendsPopupVisible =>
       _popupController.status != AnimationStatus.dismissed;
 
-  bool get _isAuthenticated =>
-      currentAuthToken != null && currentAuthToken!.trim().isNotEmpty;
+  bool get _isAuthenticated => isAuthenticated();
 
   void _guardAuthenticated() {
-    if (_isAuthenticated || !mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cal iniciar sessió per accedir al cercador d\'usuaris.'),
-      ),
-    );
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
+    guardAuthenticated(
+      context,
+      message: 'Cal iniciar sessió per accedir al cercador d\'usuaris.',
     );
   }
 
@@ -263,9 +252,7 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   void _openProfile(UserSummary user) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+    unawaited(FeatureNavigation.openUserProfile(context, userId: user.id));
   }
 
   /// Llegeix les sol·licituds rebudes pendents per mostrar-les directament
@@ -597,11 +584,7 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   Future<void> _openChat(Chat chat) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => FriendConversationScreen(chat: chat),
-      ),
-    );
+    await FeatureNavigation.openFriendConversation(context, chat: chat);
     if (!mounted) return;
     await _loadChats(forceRefresh: true);
   }
@@ -799,7 +782,7 @@ class _SocialScreenState extends State<SocialScreen>
         ),
         itemBuilder: (context, index) {
           final request = _pendingRequests[index];
-          return _FriendRequestTile(
+          return SocialFriendRequestTile(
             request: request,
             isBusy: _busyRequestIds.contains(request.id),
             onAccept: () => _acceptRequest(request),
@@ -893,7 +876,7 @@ class _SocialScreenState extends State<SocialScreen>
         AppScreenSpacing.horizontal,
         AppScreenSpacing.bottom,
       ),
-      itemBuilder: (context, index) => _UserResultTile(
+      itemBuilder: (context, index) => SocialUserResultTile(
         user: _results[index],
         onTap: () => _openProfile(_results[index]),
       ),
@@ -1042,7 +1025,7 @@ class _SocialScreenState extends State<SocialScreen>
                           physics: const BouncingScrollPhysics(),
                           itemBuilder: (context, index) {
                             final rec = _recommendations[index];
-                            return _RecommendationTile(
+                            return SocialRecommendationTile(
                               recommendation: rec,
                               isBusy: _busyRecommendationIds.contains(rec.id),
                               onTap: () {
@@ -1162,406 +1145,6 @@ class _SocialScreenState extends State<SocialScreen>
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _UserResultTile extends StatelessWidget {
-  const _UserResultTile({required this.user, required this.onTap});
-
-  final UserSummary user;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0F000000),
-                blurRadius: 10,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              _Avatar(profileImage: user.profileImage),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.displayName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '@${user.username}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: Colors.grey.shade400),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecommendationTile extends StatelessWidget {
-  const _RecommendationTile({
-    required this.recommendation,
-    required this.isBusy,
-    required this.onTap,
-    required this.onAdd,
-  });
-
-  static const _kPrimaryRed = Color(0xFFB71C1C);
-
-  final FriendRecommendation recommendation;
-  final bool isBusy;
-  final VoidCallback onTap;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final reason = _recommendationReason;
-
-    return Material(
-      color: Colors.grey.shade50,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              _Avatar(profileImage: recommendation.profileImage),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      recommendation.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '@${recommendation.username}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      reason,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                height: 36,
-                child: ElevatedButton.icon(
-                  onPressed: isBusy ? null : onAdd,
-                  icon: isBusy
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      : const Icon(Icons.person_add_alt_1, size: 17),
-                  label: const Text(
-                    'Afegir',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _kPrimaryRed,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: _kPrimaryRed.withValues(
-                      alpha: 0.6,
-                    ),
-                    disabledForegroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    minimumSize: const Size(0, 36),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String get _recommendationReason {
-    final shared = recommendation.sharedConnectionsCount;
-    if (shared == 1) return '1 amic en comú';
-    return '$shared amics en comú';
-  }
-}
-
-class _FriendRequestTile extends StatelessWidget {
-  const _FriendRequestTile({
-    required this.request,
-    required this.isBusy,
-    required this.onAccept,
-    required this.onReject,
-    required this.onTap,
-  });
-
-  static const _kPrimaryRed = Color(0xFFB71C1C);
-
-  final PendingFriendRequest request;
-  final bool isBusy;
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final sender = request.counterpart ?? request.requestedBy;
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: sender == null ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0F000000),
-                blurRadius: 10,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _Avatar(profileImage: sender?.profileImage),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          sender?.displayName ?? 'Usuari desconegut',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (sender != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            '@${sender.username}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                        if (request.createdAt != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            _formatDate(request.createdAt!),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton.icon(
-                        onPressed: isBusy ? null : onAccept,
-                        icon: isBusy
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Icon(Icons.check, size: 18),
-                        label: const Text(
-                          'Acceptar',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _kPrimaryRed,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: _kPrimaryRed.withValues(
-                            alpha: 0.6,
-                          ),
-                          disabledForegroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: OutlinedButton.icon(
-                        onPressed: isBusy ? null : onReject,
-                        icon: const Icon(Icons.close, size: 18),
-                        label: const Text(
-                          'Rebutjar',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _kPrimaryRed,
-                          side: const BorderSide(color: _kPrimaryRed),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime dt) {
-    final local = dt.toLocal();
-    final y = local.year.toString().padLeft(4, '0');
-    final m = local.month.toString().padLeft(2, '0');
-    final d = local.day.toString().padLeft(2, '0');
-    final hh = local.hour.toString().padLeft(2, '0');
-    final mm = local.minute.toString().padLeft(2, '0');
-    return '$d/$m/$y · $hh:$mm';
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.profileImage});
-
-  final String? profileImage;
-
-  @override
-  Widget build(BuildContext context) {
-    const radius = 26.0;
-    const size = radius * 2;
-    final imageUrl = resolveProfileImageUrl(profileImage);
-
-    if (imageUrl == null) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: Colors.grey.shade200,
-        child: Icon(Icons.person, size: 28, color: Colors.grey.shade400),
-      );
-    }
-
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) => Container(
-            color: Colors.grey.shade200,
-            alignment: Alignment.center,
-            child: Icon(Icons.person, size: 28, color: Colors.grey.shade400),
-          ),
         ),
       ),
     );

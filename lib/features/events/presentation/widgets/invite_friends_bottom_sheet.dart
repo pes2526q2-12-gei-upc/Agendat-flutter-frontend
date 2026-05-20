@@ -6,9 +6,11 @@ import 'package:agendat/core/models/event_invitation.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/core/widgets/avatars.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/features/events/presentation/widgets/invite_friend_tile.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/user_list_utils.dart';
 
 /// Modal bottom sheet que mostra els amics de l'usuari autenticat per
 /// convidar-los a una sessió concreta d'un esdeveniment. Permet cerca per
@@ -64,7 +66,7 @@ class InviteFriendError {
 }
 
 class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
-  static const Color _accentRed = Color(0xFFB71C1C);
+  static const Color _accentRed = AppThemeTokens.brandPrimary;
 
   final ProfileQuery _profileQuery = ProfileQuery.instance;
   final InvitationsQuery _invitationsQuery = InvitationsQuery.instance;
@@ -125,7 +127,9 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
 
       if (!mounted) return;
       setState(() {
-        _friends = _sortAlphabetically(_filterAuthorisedFriends(friends, myId));
+        _friends = sortUsersByDisplayName(
+          _filterAuthorisedFriends(friends, myId),
+        );
         _existingByRecipient = <int, EventInvitation>{
           for (final inv in existing)
             if (inv.recipient != null) inv.recipient!.id: inv,
@@ -160,26 +164,8 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
         .toList();
   }
 
-  List<UserSummary> _sortAlphabetically(List<UserSummary> users) {
-    final sorted = [...users];
-    sorted.sort((a, b) {
-      final aKey = a.displayName.toLowerCase();
-      final bKey = b.displayName.toLowerCase();
-      final byName = aKey.compareTo(bKey);
-      if (byName != 0) return byName;
-      return a.username.toLowerCase().compareTo(b.username.toLowerCase());
-    });
-    return sorted;
-  }
-
-  List<UserSummary> get _visibleFriends {
-    if (_filter.isEmpty) return _friends;
-    final lowered = _filter.toLowerCase();
-    return _friends.where((u) {
-      return u.username.toLowerCase().contains(lowered) ||
-          u.displayName.toLowerCase().contains(lowered);
-    }).toList();
-  }
+  List<UserSummary> get _visibleFriends =>
+      filterUsersByQuery(_friends, _filter);
 
   bool _isAlreadyInvited(UserSummary friend) =>
       _existingByRecipient.containsKey(friend.id);
@@ -406,7 +392,7 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
         final existing = _existingByRecipient[friend.id];
         final disabled = existing != null;
         final selected = _selectedIds.contains(friend.id);
-        return _FriendInviteTile(
+        return InviteFriendTile(
           friend: friend,
           selected: selected,
           disabled: disabled,
@@ -496,127 +482,6 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FriendInviteTile extends StatelessWidget {
-  const _FriendInviteTile({
-    required this.friend,
-    required this.selected,
-    required this.disabled,
-    required this.existingStatus,
-    required this.onTap,
-  });
-
-  final UserSummary friend;
-  final bool selected;
-  final bool disabled;
-  final EventInvitationStatus? existingStatus;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    const selectionColor = Color(0xFFB71C1C);
-
-    return Opacity(
-      opacity: disabled ? 0.6 : 1,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: disabled ? null : onTap,
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: selected ? selectionColor : Colors.grey.shade200,
-                width: selected ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                ProfileCircleAvatar(
-                  radius: 22,
-                  profileImage: friend.profileImage,
-                  fallbackLabel: friend.displayName,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        friend.displayName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '@${friend.username}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                if (existingStatus != null) ...[
-                  _StatusBadge(status: existingStatus!),
-                ] else ...[
-                  Checkbox(
-                    value: selected,
-                    onChanged: disabled ? null : (_) => onTap(),
-                    activeColor: selectionColor,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final EventInvitationStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      EventInvitationStatus.pending => ('Pendent', Colors.orange),
-      EventInvitationStatus.accepted => ('Acceptada', Colors.green),
-      EventInvitationStatus.denied => ('Denegada', Colors.redAccent),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
         ),
       ),
     );

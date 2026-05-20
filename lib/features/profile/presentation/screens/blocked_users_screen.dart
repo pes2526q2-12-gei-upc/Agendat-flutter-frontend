@@ -6,11 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/blocked_user_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/blocked_users_centered_message.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/utils/user_list_utils.dart';
+import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 class BlockedUsersScreen extends StatefulWidget {
   const BlockedUsersScreen({super.key});
@@ -45,28 +46,13 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
     super.dispose();
   }
 
-  bool get _isAuthenticated =>
-      currentAuthToken != null &&
-      currentAuthToken!.trim().isNotEmpty &&
-      currentLoggedInUser?['id'] is int;
+  bool get _isAuthenticated => isAuthenticated(requireUserId: true);
 
-  bool _guardAuthenticated() {
-    if (_isAuthenticated || !mounted) return _isAuthenticated;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Cal iniciar sessió per veure el llistat d\'usuaris bloquejats.',
-        ),
-      ),
-    );
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
-    return false;
-  }
+  bool _guardAuthenticated() => guardAuthenticated(
+    context,
+    message: 'Cal iniciar sessió per veure el llistat d\'usuaris bloquejats.',
+    requireUserId: true,
+  );
 
   void _onFriendshipChange(FriendshipChange change) {
     if (!_isAuthenticated || !mounted) return;
@@ -90,7 +76,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
 
       if (!mounted) return;
       setState(() {
-        _blockedUsers = _sortAlphabetically(blocked);
+        _blockedUsers = sortUsersByDisplayName(blocked);
         _isLoading = false;
       });
     } catch (e) {
@@ -112,7 +98,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       final blocked = await _profileQuery.getBlockedUsers(myId);
       if (!mounted) return;
       setState(() {
-        _blockedUsers = _sortAlphabetically(blocked);
+        _blockedUsers = sortUsersByDisplayName(blocked);
         _errorMessage = null;
       });
     } catch (e) {
@@ -121,22 +107,8 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
     }
   }
 
-  List<UserSummary> _sortAlphabetically(List<UserSummary> users) {
-    final sorted = [...users];
-    sorted.sort((a, b) {
-      final byName = a.displayName.toLowerCase().compareTo(
-        b.displayName.toLowerCase(),
-      );
-      if (byName != 0) return byName;
-      return a.username.toLowerCase().compareTo(b.username.toLowerCase());
-    });
-    return sorted;
-  }
-
   Future<void> _openUserProfile(UserSummary user) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+    await FeatureNavigation.openUserProfile(context, userId: user.id);
     if (!mounted) return;
     setState(() {});
   }

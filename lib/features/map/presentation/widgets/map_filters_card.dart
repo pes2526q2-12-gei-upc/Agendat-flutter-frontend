@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/widgets/filter_section.dart';
-import 'package:agendat/features/map/presentation/models/map_filters.dart';
+import 'package:agendat/features/map/data/models/map_filters.dart';
 
 class MapFiltersCard extends StatefulWidget {
   const MapFiltersCard({

@@ -12,7 +12,7 @@ import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';

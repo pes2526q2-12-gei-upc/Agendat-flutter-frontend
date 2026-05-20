@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/review.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/main.dart' show RootNavigationScreen;
 
@@ -247,9 +249,7 @@ class _ReviewCardState extends State<ReviewCard> {
     // El backend envia reviewer_id; el fem servir per obrir el perfil.
     final userId = _authorUserId;
     if (userId == null) return;
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: userId)));
+    unawaited(FeatureNavigation.openUserProfile(context, userId: userId));
   }
 
   /// Formata una data ISO (com la que retorna el backend) a

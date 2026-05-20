@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/widgets/avatars.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Llista d'amics per iniciar un xat quan encara no hi ha converses.
 class ChatFriendsStarters extends StatelessWidget {

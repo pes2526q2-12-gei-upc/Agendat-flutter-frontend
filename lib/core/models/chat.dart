@@ -1,5 +1,5 @@
 import 'package:agendat/core/utils/chat_utils.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Conversa individual (partner 1‑a‑1) amb resum del darrer missatge i comptadors.
 class Chat {

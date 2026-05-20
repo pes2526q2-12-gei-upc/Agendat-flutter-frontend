@@ -1,10 +1,10 @@
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
-import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/agenda/presentation/screens/agendaDetail.dart';
-import 'package:agendat/features/agenda/presentation/screens/agendaList.dart';
+import 'package:agendat/features/agenda/presentation/screens/agenda_detail_screen.dart';
+import 'package:agendat/features/agenda/presentation/screens/agenda_list_screen.dart';
 import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:flutter/material.dart';
 
