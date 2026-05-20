@@ -5,6 +5,7 @@ import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/async_epoch.dart';
 import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/mainAppBar.dart';
@@ -38,10 +39,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   bool _hasMore = true;
   Object? _error;
 
-  /// Epoch incremented every time we kick off a fresh first-page load so we
-  /// can ignore the results of in-flight requests that were superseded
-  /// (filters changed, pull-to-refresh, etc.).
-  int _requestEpoch = 0;
+  final AsyncEpoch _requestEpoch = AsyncEpoch();
 
   /// Text de cerca aplicat al backend (paràmetre `name`). Només
   /// s'actualitza quan l'usuari prem Enter / botó de cerca.
@@ -120,7 +118,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Future<void> _loadFirstPage({bool forceRefresh = false}) async {
-    final epoch = ++_requestEpoch;
+    final epoch = _requestEpoch.bump();
     setState(() {
       _isInitialLoading = true;
       _isLoadingMore = false;
@@ -142,7 +140,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         limit: _pageSize,
         forceRefresh: forceRefresh,
       );
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() {
         _events
           ..clear()
@@ -152,7 +150,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       });
       _eventsQuery.publishEvents(_events);
     } catch (e) {
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() {
         _error = e;
         _isInitialLoading = false;
@@ -162,7 +160,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Future<void> _loadNextPage() async {
     if (_isLoadingMore || !_hasMore || _isInitialLoading) return;
-    final epoch = _requestEpoch;
+    final epoch = _requestEpoch.current;
     setState(() => _isLoadingMore = true);
 
     try {
@@ -171,7 +169,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         offset: _events.length,
         limit: _pageSize,
       );
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() {
         _events.addAll(page.events);
         _hasMore = page.hasMore;
@@ -179,7 +177,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       });
       _eventsQuery.publishEvents(_events);
     } catch (e) {
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() => _isLoadingMore = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

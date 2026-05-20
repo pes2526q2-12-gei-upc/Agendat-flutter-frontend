@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/async_epoch.dart';
 import 'package:agendat/features/map/data/device_location_service.dart';
 import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -50,9 +51,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _isLoadingPins = true;
   Object? _pinsError;
 
-  /// Epoch incrementat cada vegada que disparem una nova càrrega de pins
-  /// per descartar respostes obsoletes.
-  int _pinsEpoch = 0;
+  final AsyncEpoch _pinsEpoch = AsyncEpoch();
 
   MapEventMarker? _selectedMarker;
 
@@ -62,10 +61,7 @@ class _MapScreenState extends State<MapScreen> {
   EventPreview? _selectedPreview;
   bool _isLoadingPreview = false;
 
-  /// Epoch incrementat cada vegada que es selecciona una nova xinxeta. Ens
-  /// permet ignorar respostes lentes que han quedat obsoletes (l'usuari ha
-  /// canviat de marcador abans que arribés la resposta).
-  int _previewEpoch = 0;
+  final AsyncEpoch _previewEpoch = AsyncEpoch();
 
   bool _isFiltersOpen = false;
 
@@ -88,7 +84,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadPins({bool forceRefresh = false}) async {
-    final epoch = ++_pinsEpoch;
+    final epoch = _pinsEpoch.bump();
     setState(() {
       _isLoadingPins = true;
       _pinsError = null;
@@ -101,7 +97,7 @@ class _MapScreenState extends State<MapScreen> {
         name: _submittedName.isEmpty ? null : _submittedName,
         forceRefresh: forceRefresh,
       );
-      if (!mounted || epoch != _pinsEpoch) return;
+      if (!mounted || !_pinsEpoch.isCurrent(epoch)) return;
       final markers = buildMarkersFromPins(pins);
       setState(() {
         _markers = markers;
@@ -114,7 +110,7 @@ class _MapScreenState extends State<MapScreen> {
         }
       });
     } catch (e) {
-      if (!mounted || epoch != _pinsEpoch) return;
+      if (!mounted || !_pinsEpoch.isCurrent(epoch)) return;
       setState(() {
         _pinsError = e;
         _isLoadingPins = false;
@@ -173,7 +169,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _onMarkerTap(MapEventMarker marker) async {
-    final epoch = ++_previewEpoch;
+    final epoch = _previewEpoch.bump();
     setState(() {
       _selectedMarker = marker;
       _selectedPreview = null;
@@ -182,13 +178,13 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final preview = await _eventsQuery.getEventPreview(marker.code);
-      if (!mounted || epoch != _previewEpoch) return;
+      if (!mounted || !_previewEpoch.isCurrent(epoch)) return;
       setState(() {
         _selectedPreview = preview;
         _isLoadingPreview = false;
       });
     } catch (_) {
-      if (!mounted || epoch != _previewEpoch) return;
+      if (!mounted || !_previewEpoch.isCurrent(epoch)) return;
       setState(() => _isLoadingPreview = false);
     }
   }

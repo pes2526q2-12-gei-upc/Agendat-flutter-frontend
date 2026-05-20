@@ -15,7 +15,7 @@ import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
-import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/features/chat/presentation/widgets/chat_empty_pane.dart';
 import 'package:agendat/features/chat/presentation/widgets/chat_friends_starters.dart';
@@ -37,7 +37,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  static const Color _accentRed = Color(0xFFB71C1C);
+  static const Color _accentRed = AppThemeTokens.brandPrimary;
 
   final _chatsQuery = ChatsQuery.instance;
   final _profileQuery = ProfileQuery.instance;
@@ -71,24 +71,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  bool get _authenticated =>
-      currentAuthToken != null &&
-      currentAuthToken!.trim().isNotEmpty &&
-      currentLoggedInUser?['id'] is int;
-
-  bool _guardAuth() {
-    if (_authenticated || !mounted) return _authenticated;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cal iniciar sessió per veure els teus xats.'),
-      ),
-    );
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-    return false;
-  }
+  bool _guardAuth() => guardAuthenticated(
+    context,
+    message: 'Cal iniciar sessió per veure els teus xats.',
+    requireUserId: true,
+  );
 
   List<Chat> get _filtered {
     final q = _searchController.text.trim().toLowerCase();

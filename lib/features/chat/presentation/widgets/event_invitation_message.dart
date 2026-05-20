@@ -4,6 +4,7 @@ import 'package:agendat/core/models/event_invitation.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/core/models/user_summary.dart';
@@ -42,8 +43,8 @@ class EventInvitationMessage extends StatefulWidget {
 }
 
 class _EventInvitationMessageState extends State<EventInvitationMessage> {
-  static const Color _sentBubbleColor = Color(0xFFB71C1C);
-  static const Color _accentRed = Color(0xFFB71C1C);
+  static const Color _sentBubbleColor = AppThemeTokens.brandPrimary;
+  static const Color _accentRed = AppThemeTokens.brandPrimary;
 
   bool _isResponding = false;
 

@@ -12,8 +12,8 @@ import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/features/chat/presentation/screens/chat_screen.dart'
     show FriendConversationScreen;
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
@@ -35,7 +35,7 @@ class SocialScreen extends StatefulWidget {
 
 class _SocialScreenState extends State<SocialScreen>
     with SingleTickerProviderStateMixin {
-  static const _kPrimaryRed = Color(0xFFB71C1C);
+  static const _kPrimaryRed = AppThemeTokens.brandPrimary;
   static const Duration _debounceDuration = Duration(milliseconds: 350);
   final ChatsQuery _chatsQuery = ChatsQuery.instance;
 
@@ -175,21 +175,12 @@ class _SocialScreenState extends State<SocialScreen>
   bool get _isFriendsPopupVisible =>
       _popupController.status != AnimationStatus.dismissed;
 
-  bool get _isAuthenticated =>
-      currentAuthToken != null && currentAuthToken!.trim().isNotEmpty;
+  bool get _isAuthenticated => isAuthenticated();
 
   void _guardAuthenticated() {
-    if (_isAuthenticated || !mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cal iniciar sessió per accedir al cercador d\'usuaris.'),
-      ),
-    );
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
+    guardAuthenticated(
+      context,
+      message: 'Cal iniciar sessió per accedir al cercador d\'usuaris.',
     );
   }
 
@@ -1241,7 +1232,7 @@ class _RecommendationTile extends StatelessWidget {
     required this.onAdd,
   });
 
-  static const _kPrimaryRed = Color(0xFFB71C1C);
+  static const _kPrimaryRed = AppThemeTokens.brandPrimary;
 
   final FriendRecommendation recommendation;
   final bool isBusy;
@@ -1366,7 +1357,7 @@ class _FriendRequestTile extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _kPrimaryRed = Color(0xFFB71C1C);
+  static const _kPrimaryRed = AppThemeTokens.brandPrimary;
 
   final PendingFriendRequest request;
   final bool isBusy;

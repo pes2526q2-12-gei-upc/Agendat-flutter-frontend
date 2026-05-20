@@ -7,8 +7,10 @@ import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/widgets/avatars.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/user_list_utils.dart';
 
 /// Modal bottom sheet que mostra els amics de l'usuari autenticat per
 /// convidar-los a una sessió concreta d'un esdeveniment. Permet cerca per
@@ -64,7 +66,7 @@ class InviteFriendError {
 }
 
 class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
-  static const Color _accentRed = Color(0xFFB71C1C);
+  static const Color _accentRed = AppThemeTokens.brandPrimary;
 
   final ProfileQuery _profileQuery = ProfileQuery.instance;
   final InvitationsQuery _invitationsQuery = InvitationsQuery.instance;
@@ -125,7 +127,9 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
 
       if (!mounted) return;
       setState(() {
-        _friends = _sortAlphabetically(_filterAuthorisedFriends(friends, myId));
+        _friends = sortUsersByDisplayName(
+          _filterAuthorisedFriends(friends, myId),
+        );
         _existingByRecipient = <int, EventInvitation>{
           for (final inv in existing)
             if (inv.recipient != null) inv.recipient!.id: inv,
@@ -160,26 +164,8 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
         .toList();
   }
 
-  List<UserSummary> _sortAlphabetically(List<UserSummary> users) {
-    final sorted = [...users];
-    sorted.sort((a, b) {
-      final aKey = a.displayName.toLowerCase();
-      final bKey = b.displayName.toLowerCase();
-      final byName = aKey.compareTo(bKey);
-      if (byName != 0) return byName;
-      return a.username.toLowerCase().compareTo(b.username.toLowerCase());
-    });
-    return sorted;
-  }
-
-  List<UserSummary> get _visibleFriends {
-    if (_filter.isEmpty) return _friends;
-    final lowered = _filter.toLowerCase();
-    return _friends.where((u) {
-      return u.username.toLowerCase().contains(lowered) ||
-          u.displayName.toLowerCase().contains(lowered);
-    }).toList();
-  }
+  List<UserSummary> get _visibleFriends =>
+      filterUsersByQuery(_friends, _filter);
 
   bool _isAlreadyInvited(UserSummary friend) =>
       _existingByRecipient.containsKey(friend.id);
@@ -519,7 +505,7 @@ class _FriendInviteTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const selectionColor = Color(0xFFB71C1C);
+    const selectionColor = AppThemeTokens.brandPrimary;
 
     return Opacity(
       opacity: disabled ? 0.6 : 1,
