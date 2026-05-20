@@ -1,4 +1,4 @@
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Estat de la relació d'amistat del meu usuari amb un altre usuari.
 ///

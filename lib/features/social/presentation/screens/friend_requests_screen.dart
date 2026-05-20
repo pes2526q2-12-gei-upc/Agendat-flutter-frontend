@@ -11,8 +11,8 @@ import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 
 /// Pantalla que llista les sol·licituds d'amistat pendents rebudes per
 /// l'usuari autenticat i permet acceptar-les o rebutjar-les.

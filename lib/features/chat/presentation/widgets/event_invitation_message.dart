@@ -6,7 +6,7 @@ import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/features/events/presentation/screens/eventView.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Bombolla especial per representar una invitació a una sessió d'esdeveniment
 /// dins d'una conversa de xat. Mostra el títol de l'esdeveniment, la data/hora

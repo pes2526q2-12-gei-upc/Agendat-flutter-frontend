@@ -6,8 +6,8 @@ import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/core/realtime/friendship_realtime_event.dart';
 import 'package:agendat/core/state/auth_session.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

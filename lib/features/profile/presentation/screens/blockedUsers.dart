@@ -10,7 +10,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 class BlockedUsersScreen extends StatefulWidget {
   const BlockedUsersScreen({super.key});

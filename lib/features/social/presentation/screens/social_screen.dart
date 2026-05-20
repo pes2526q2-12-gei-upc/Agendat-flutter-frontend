@@ -19,8 +19,8 @@ import 'package:agendat/features/chat/presentation/screens/chat_screen.dart'
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';

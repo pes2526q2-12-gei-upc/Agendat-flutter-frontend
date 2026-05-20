@@ -12,7 +12,7 @@ import 'package:agendat/features/events/presentation/screens/eventView.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/chats_query.dart';

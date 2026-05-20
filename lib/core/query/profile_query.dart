@@ -5,11 +5,11 @@ import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/core/realtime/friendship_realtime_event.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 class FriendshipChange {
   const FriendshipChange({

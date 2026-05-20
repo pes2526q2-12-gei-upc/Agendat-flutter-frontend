@@ -1,4 +1,4 @@
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Estats possibles d'una invitació segons el backend.
 enum EventInvitationStatus {

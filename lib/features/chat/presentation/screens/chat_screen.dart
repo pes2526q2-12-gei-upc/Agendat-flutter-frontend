@@ -26,7 +26,7 @@ import 'package:agendat/features/chat/presentation/widgets/inactive_conversation
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Pantalla de llista de xats (dades reals des de backend via [ChatsQuery]).
 class ChatScreen extends StatefulWidget {

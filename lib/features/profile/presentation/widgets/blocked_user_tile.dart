@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/profile_image_url.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 class BlockedUserTile extends StatelessWidget {
   const BlockedUserTile({

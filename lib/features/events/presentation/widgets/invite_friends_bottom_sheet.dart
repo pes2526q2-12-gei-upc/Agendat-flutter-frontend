@@ -8,7 +8,7 @@ import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Modal bottom sheet que mostra els amics de l'usuari autenticat per
 /// convidar-los a una sessió concreta d'un esdeveniment. Permet cerca per
