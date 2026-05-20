@@ -145,6 +145,35 @@ class UserProfile {
     );
   }
 
+  UserProfile copyWithPreferences({
+    bool? notificationsAllowed,
+    bool? eventRemindersAllowed,
+    bool? eventUpdatesAllowed,
+    bool? socialAlertsAllowed,
+    bool? calendarSyncAllowed,
+  }) {
+    return UserProfile(
+      id: id,
+      username: username,
+      reputacio: reputacio,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      birthDate: birthDate,
+      profileImage: profileImage,
+      locationAllowed: locationAllowed,
+      notificationsAllowed: notificationsAllowed ?? this.notificationsAllowed,
+      eventRemindersAllowed:
+          eventRemindersAllowed ?? this.eventRemindersAllowed,
+      eventUpdatesAllowed: eventUpdatesAllowed ?? this.eventUpdatesAllowed,
+      socialAlertsAllowed: socialAlertsAllowed ?? this.socialAlertsAllowed,
+      calendarSyncAllowed: calendarSyncAllowed ?? this.calendarSyncAllowed,
+      description: description,
+      friendshipStatus: friendshipStatus,
+    );
+  }
+
   /// Vista lleugera (`UserSummary`) que coincideix amb la representació que
   /// retornen els endpoints de llistat (cerca, amics, sol·licituds). Útil per
   /// inserir aquest perfil dins d'una llista cachejada sense haver de

@@ -342,6 +342,55 @@ the currently authenticated backend user has no active FCM token.
 
 If it returns `502` with Firebase errors, the token exists but Firebase rejected delivery. The most common cause is that the mobile app and backend credentials are from different Firebase projects.
 
+### Android Chat Push Payloads
+
+Android chat notifications must be sent as data-only FCM messages when the app
+needs its local notification styling, including the Agenda't notification icon.
+If the backend includes an FCM `notification` block, Android displays
+Firebase's automatic notification UI while the app is backgrounded or locked,
+and the Flutter local notification path is skipped to avoid duplicate
+notifications.
+
+For chat pushes, send display fields under `data`:
+
+```json
+{
+  "data": {
+    "title": "New message",
+    "body": "Hello!",
+    "actor_name": "Alex",
+    "chat_id": "42",
+    "message_id": "123",
+    "conversation_title": "Alex"
+  },
+  "android": {
+    "priority": "high"
+  }
+}
+```
+
+Do not include these fields for Android chat pushes:
+
+```json
+{
+  "notification": {
+    "title": "New message",
+    "body": "Hello!",
+    "image": "https://example.com/attached-photo.png"
+  }
+}
+```
+
+During testing, the Flutter console should show:
+
+```text
+[PushNotifications] Android push received (hasNotification=false, dataKeys=[...])
+[PushNotifications] local chat notification shown (id=...)
+```
+
+If the console instead shows `hasNotification=true` or `contains a notification
+block`, the backend payload is still using automatic FCM notification display.
+
 ## 6. Troubleshooting
 
 ### `Firebase initialization failed`

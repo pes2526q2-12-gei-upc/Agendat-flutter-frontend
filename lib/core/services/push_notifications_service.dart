@@ -1,13 +1,29 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/services/notification_formatter.dart';
+import 'package:agendat/core/services/notification_navigation.dart';
+import 'package:agendat/core/services/notification_payload.dart';
 import 'package:agendat/core/services/token_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 const String _logPrefix = '[PushNotifications]';
+const String _androidChatChannelId = 'agendat_chat_messages';
+const String _androidChatChannelName = 'Agenda\'t notifications';
+const String _androidChatChannelDescription =
+    'Notifications for Agenda\'t activity and reminders.';
+const String _androidNotificationSmallIcon = 'ic_stat_agendat';
+const ui.Color _androidNotificationColor = ui.Color(0xFFE53935);
+
+final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+bool _localNotificationsInitialized = false;
 
 bool get _supportsFirebaseMessaging {
   if (kIsWeb) return false;
@@ -18,11 +34,18 @@ bool get _supportsFirebaseMessaging {
   };
 }
 
+bool get _supportsAndroidLocalNotifications {
+  if (kIsWeb) return false;
+  return defaultTargetPlatform == TargetPlatform.android;
+}
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (!_supportsFirebaseMessaging) return;
 
   try {
+    WidgetsFlutterBinding.ensureInitialized();
+    ui.DartPluginRegistrant.ensureInitialized();
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
@@ -34,6 +57,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   } catch (e) {
     debugPrint('$_logPrefix background Firebase init failed: $e');
   }
+
+  await _showAndroidStructuredNotification(message);
 }
 
 class PushNotificationsService {
@@ -43,6 +68,8 @@ class PushNotificationsService {
 
   FirebaseMessaging? _messaging;
   StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
+  StreamSubscription<RemoteMessage>? _openedMessageSubscription;
   bool _initialized = false;
   bool _firebaseReady = false;
 
@@ -85,6 +112,28 @@ class PushNotificationsService {
     }
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await _initializeLocalNotifications();
+
+    await _foregroundMessageSubscription?.cancel();
+    _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen(
+      _showAndroidStructuredNotification,
+      onError: (Object e) {
+        debugPrint('$_logPrefix foreground message listener failed: $e');
+      },
+    );
+
+    await _openedMessageSubscription?.cancel();
+    _openedMessageSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+      (message) => unawaited(openNotificationFromData(message.data)),
+      onError: (Object e) {
+        debugPrint('$_logPrefix opened message listener failed: $e');
+      },
+    );
+
+    final initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      unawaited(openNotificationFromData(initialMessage.data));
+    }
 
     await _tokenRefreshSubscription?.cancel();
     _tokenRefreshSubscription = _messaging!.onTokenRefresh.listen(
@@ -105,6 +154,7 @@ class PushNotificationsService {
       },
     );
     debugPrint('$_logPrefix token refresh listener registered');
+    debugPrint('$_logPrefix foreground/opened message listeners registered');
   }
 
   Future<void> requestPermissionAndRegisterDevice() async {
@@ -227,4 +277,154 @@ class PushNotificationsService {
       _ => 'unknown',
     };
   }
+}
+
+Future<void> _initializeLocalNotifications() async {
+  if (!_supportsAndroidLocalNotifications || _localNotificationsInitialized) {
+    return;
+  }
+
+  const initializationSettings = InitializationSettings(
+    android: AndroidInitializationSettings(_androidNotificationSmallIcon),
+  );
+
+  await _localNotificationsPlugin.initialize(
+    settings: initializationSettings,
+    onDidReceiveNotificationResponse: (response) {
+      unawaited(openNotificationPayloadString(response.payload));
+    },
+  );
+  const channel = AndroidNotificationChannel(
+    _androidChatChannelId,
+    _androidChatChannelName,
+    description: _androidChatChannelDescription,
+    importance: Importance.high,
+  );
+
+  await _localNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >()
+      ?.createNotificationChannel(channel);
+  _localNotificationsInitialized = true;
+}
+
+Future<void> _showAndroidStructuredNotification(RemoteMessage message) async {
+  if (!_supportsAndroidLocalNotifications) return;
+
+  final dataKeys = _sortedDataKeys(message.data);
+  debugPrint(
+    '$_logPrefix Android push received '
+    '(hasNotification=${message.notification != null}, dataKeys=$dataKeys)',
+  );
+
+  if (message.notification != null) {
+    debugPrint(
+      '$_logPrefix local chat notification skipped because this FCM payload '
+      'contains a notification block. Android will show Firebase automatic UI; '
+      'backend must send Android chat pushes as data-only to show the '
+      'custom Agenda\'t notification icon locally.',
+    );
+    return;
+  }
+
+  final payload = NotificationPayload.fromData(message.data);
+  if (payload == null) {
+    debugPrint(
+      '$_logPrefix local notification skipped because no structured or '
+      'fallback display fields were found (dataKeys=$dataKeys)',
+    );
+    return;
+  }
+
+  try {
+    await _initializeLocalNotifications();
+    final notificationTitle = formatNotificationTitle(payload);
+    final notificationBody = formatNotificationSubtitle(payload);
+    if (notificationTitle.isEmpty && notificationBody.isEmpty) {
+      debugPrint(
+        '$_logPrefix local notification skipped because formatted display '
+        'text is empty (dataKeys=$dataKeys)',
+      );
+      return;
+    }
+
+    final notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _androidChatChannelId,
+        _androidChatChannelName,
+        channelDescription: _androidChatChannelDescription,
+        icon: _androidNotificationSmallIcon,
+        category: _androidCategoryFor(payload),
+        importance: Importance.high,
+        priority: Priority.high,
+        color: _androidNotificationColor,
+        shortcutId: _conversationShortcutId(payload),
+        ticker: notificationBody.isEmpty ? notificationTitle : notificationBody,
+        styleInformation: notificationBody.isEmpty
+            ? null
+            : BigTextStyleInformation(notificationBody),
+      ),
+    );
+
+    final notificationId = _notificationIdFor(message, payload);
+    await _localNotificationsPlugin.show(
+      id: notificationId,
+      title: notificationTitle.isEmpty ? null : notificationTitle,
+      body: notificationBody.isEmpty ? null : notificationBody,
+      notificationDetails: notificationDetails,
+      payload: jsonEncode(payload.toNotificationPayload()),
+    );
+    debugPrint(
+      '$_logPrefix local notification shown '
+      '(id=$notificationId)',
+    );
+  } catch (e) {
+    debugPrint('$_logPrefix local notification failed: $e');
+  }
+}
+
+List<String> _sortedDataKeys(Map<String, dynamic> data) {
+  final keys = data.keys.map((key) => key.toString()).toList()..sort();
+  return keys;
+}
+
+int _notificationIdFor(RemoteMessage message, NotificationPayload payload) {
+  final raw = payload.id ??
+      _routeParam(payload, 'message_id') ??
+      _routeParam(payload, 'invitation_id') ??
+      _routeParam(payload, 'review_id') ??
+      _routeParam(payload, 'session_id') ??
+      message.messageId ??
+      message.sentTime?.toString();
+  if (raw == null || raw.isEmpty) {
+    return DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
+  }
+  return raw.hashCode & 0x7fffffff;
+}
+
+String? _conversationShortcutId(NotificationPayload payload) {
+  if (payload.action?.key != 'chat.message') return null;
+  final chatId = _routeParam(payload, 'chat_id') ?? payload.target?.id;
+  if (chatId == null) return null;
+
+  final normalized = chatId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+  return normalized.isEmpty ? null : 'chat_$normalized';
+}
+
+AndroidNotificationCategory _androidCategoryFor(NotificationPayload payload) {
+  return switch (payload.action?.key) {
+    'chat.message' => AndroidNotificationCategory.message,
+    'event.reminder' => AndroidNotificationCategory.reminder,
+    'friend_request.sent' || 'friend_request.accepted' =>
+      AndroidNotificationCategory.social,
+    _ => AndroidNotificationCategory.status,
+  };
+}
+
+String? _routeParam(NotificationPayload payload, String key) {
+  final params = payload.target?.route?.params;
+  final value = params?[key]?.toString().trim();
+  if (value == null || value.isEmpty) return null;
+  return value;
 }

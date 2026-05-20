@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agendat/core/navigation/app_navigator.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
@@ -75,6 +76,7 @@ class MyApp extends StatelessWidget {
       valueListenable: AppLanguage.listenable,
       builder: (context, _, __) {
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           debugShowCheckedModeBanner: false,
           title: 'Agenda\'t',
           localizationsDelegates: const [
