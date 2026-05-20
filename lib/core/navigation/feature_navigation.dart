@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/chat.dart';
-import 'package:agendat/features/chat/presentation/screens/chat_screen.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
-import 'package:agendat/features/profile/presentation/screens/blockedUsers.dart';
+import 'package:agendat/features/chat/presentation/screens/friend_conversation_screen.dart';
+import 'package:agendat/features/events/presentation/screens/event_view_screen.dart';
+import 'package:agendat/features/profile/presentation/screens/blocked_users_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
 
 /// Central entry points for cross-feature navigation.

@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/profile/presentation/screens/deleteAccount.dart';
+import 'package:agendat/features/profile/presentation/screens/delete_account_screen.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/profile_query.dart';

@@ -7,7 +7,7 @@ import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
-import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/main.dart';
