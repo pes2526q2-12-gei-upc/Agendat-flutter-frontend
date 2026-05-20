@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
@@ -7,7 +9,7 @@ import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/main.dart';
 import 'package:flutter/material.dart';
 
@@ -267,10 +269,10 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EventScreen(eventCode: session.event),
+            unawaited(
+              FeatureNavigation.openEventDetail(
+                context,
+                eventCode: session.event,
               ),
             );
           },

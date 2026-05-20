@@ -10,7 +10,7 @@ import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/utils/user_list_utils.dart';
 import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/models/user_summary.dart';
 
 class BlockedUsersScreen extends StatefulWidget {
@@ -108,9 +108,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 
   Future<void> _openUserProfile(UserSummary user) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+    await FeatureNavigation.openUserProfile(context, userId: user.id);
     if (!mounted) return;
     setState(() {});
   }

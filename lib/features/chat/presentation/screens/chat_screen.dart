@@ -25,7 +25,7 @@ import 'package:agendat/features/chat/presentation/widgets/event_invitation_mess
 import 'package:agendat/features/chat/presentation/widgets/inactive_conversation_banner.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/models/user_summary.dart';
 
 /// Pantalla de llista de xats (dades reals des de backend via [ChatsQuery]).
@@ -157,11 +157,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _openChat(Chat chat) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => FriendConversationScreen(chat: chat),
-      ),
-    );
+    await FeatureNavigation.openFriendConversation(context, chat: chat);
     if (!mounted) return;
     await _reload(forceRefresh: true);
   }
@@ -825,11 +821,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   }
 
   void _openPartnerProfile() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => ProfileScreen(userId: _partner.id),
-      ),
-    );
+    unawaited(FeatureNavigation.openUserProfile(context, userId: _partner.id));
   }
 
   @override

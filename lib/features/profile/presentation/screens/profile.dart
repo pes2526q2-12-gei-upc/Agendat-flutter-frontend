@@ -8,7 +8,7 @@ import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
@@ -1108,15 +1108,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(builder: (_) => EventScreen(eventCode: eventCode)),
-        )
-        .then((_) {
-          if (mounted) {
-            _loadProfile(forceRefresh: true);
-          }
-        });
+    FeatureNavigation.openEventDetail(context, eventCode: eventCode).then((_) {
+      if (mounted) {
+        _loadProfile(forceRefresh: true);
+      }
+    });
   }
 
   void _openSessionEvent(Session session) {
@@ -1127,8 +1123,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => EventScreen(eventCode: session.event)),
+    unawaited(
+      FeatureNavigation.openEventDetail(context, eventCode: session.event),
     );
   }
 }

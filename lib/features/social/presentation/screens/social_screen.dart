@@ -14,11 +14,9 @@ import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/widgets/require_auth.dart';
-import 'package:agendat/features/chat/presentation/screens/chat_screen.dart'
-    show FriendConversationScreen;
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/chat/presentation/widgets/chatRow.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/core/models/user_summary.dart';
 import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/features/social/presentation/screens/friends_list_screen.dart';
@@ -254,9 +252,7 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   void _openProfile(UserSummary user) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+    unawaited(FeatureNavigation.openUserProfile(context, userId: user.id));
   }
 
   /// Llegeix les sol·licituds rebudes pendents per mostrar-les directament
@@ -588,11 +584,7 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   Future<void> _openChat(Chat chat) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => FriendConversationScreen(chat: chat),
-      ),
-    );
+    await FeatureNavigation.openFriendConversation(context, chat: chat);
     if (!mounted) return;
     await _loadChats(forceRefresh: true);
   }

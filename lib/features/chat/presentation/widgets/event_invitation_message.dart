@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/event_invitation.dart';
@@ -6,7 +8,7 @@ import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/avatars.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/models/user_summary.dart';
 
 /// Bombolla especial per representar una invitació a una sessió d'esdeveniment
@@ -135,9 +137,10 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
   }
 
   void _openEventDetail() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => EventScreen(eventCode: _invitation.eventCode),
+    unawaited(
+      FeatureNavigation.openEventDetail(
+        context,
+        eventCode: _invitation.eventCode,
       ),
     );
   }

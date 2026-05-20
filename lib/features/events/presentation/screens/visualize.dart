@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:agendat/core/api/events_api.dart';
@@ -10,7 +12,7 @@ import 'package:agendat/core/widgets/filterButton.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -323,11 +325,8 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EventScreen(eventCode: event.code),
-            ),
+          unawaited(
+            FeatureNavigation.openEventDetail(context, eventCode: event.code),
           );
         },
         child: Container(

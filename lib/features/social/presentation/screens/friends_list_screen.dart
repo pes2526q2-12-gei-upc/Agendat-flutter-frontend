@@ -10,7 +10,7 @@ import 'package:agendat/core/utils/user_list_utils.dart';
 import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/models/user_summary.dart';
 
 /// Pantalla que llista els amics de l'usuari autenticat.
@@ -148,9 +148,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   }
 
   Future<void> _openProfile(UserSummary user) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+    await FeatureNavigation.openUserProfile(context, userId: user.id);
     if (!mounted) return;
 
     // En tornar del perfil, l'estat local pot haver canviat: el `ProfileScreen`

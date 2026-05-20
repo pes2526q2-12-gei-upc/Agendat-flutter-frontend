@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -12,7 +13,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/mainAppBar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/map/presentation/models/map_filters.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
@@ -153,8 +154,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _openEventDetails(MapEventMarker marker) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => EventScreen(eventCode: marker.code)),
+    unawaited(
+      FeatureNavigation.openEventDetail(context, eventCode: marker.code),
     );
   }
 
