@@ -1,3 +1,4 @@
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -31,12 +32,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? null : Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   String _messageForFailure(ForgotPasswordFailure f) {

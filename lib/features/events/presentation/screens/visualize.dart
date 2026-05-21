@@ -7,6 +7,7 @@ import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/async_epoch.dart';
 import 'package:agendat/core/widgets/filter_button.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
@@ -181,10 +182,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     } catch (e) {
       if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() => _isLoadingMore = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No s\'han pogut carregar més esdeveniments: $e'),
-        ),
+      AppSnackBar.show(
+        context,
+        'No s\'han pogut carregar més esdeveniments: $e',
       );
     }
   }

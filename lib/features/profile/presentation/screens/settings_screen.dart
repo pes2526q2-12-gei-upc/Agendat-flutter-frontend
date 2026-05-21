@@ -10,6 +10,7 @@ import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/profile/presentation/widgets/language_selector_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/notification_alerts_block.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -203,9 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   @override

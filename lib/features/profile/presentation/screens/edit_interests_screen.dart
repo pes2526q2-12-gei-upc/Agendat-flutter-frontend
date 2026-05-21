@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/categories_query.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
@@ -122,9 +123,7 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   @override

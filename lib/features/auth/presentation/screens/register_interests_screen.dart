@@ -4,6 +4,7 @@ import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/profile_query.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:flutter/material.dart';
 
 typedef RegisterCategoriesLoader = Future<List<CategoryDto>> Function();
@@ -129,9 +130,7 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   @override

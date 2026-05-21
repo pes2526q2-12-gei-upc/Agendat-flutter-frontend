@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
@@ -342,9 +343,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   /// Es crida quan l'usuari prem "Afegir"/"Desar" al formulari.

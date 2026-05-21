@@ -13,6 +13,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/map/data/models/map_filters.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
@@ -147,9 +148,7 @@ class _MapScreenState extends State<MapScreen> {
       destination: marker.point,
     );
     if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open navigation.')),
-      );
+      AppSnackBar.show(context, 'Could not open navigation.');
     }
   }
 
