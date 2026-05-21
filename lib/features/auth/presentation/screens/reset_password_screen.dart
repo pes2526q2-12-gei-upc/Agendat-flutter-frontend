@@ -4,6 +4,7 @@ import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/models/reset_password_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/features/auth/utils/password_validator.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 
 /// Pantalla 2 del flux: rep [email] i envia codi + nova contrasenya
@@ -85,8 +86,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _showSnackBar('El codi ha de tenir 6 dígits.');
       return;
     }
-    if (password.length < 4) {
-      _showSnackBar('La contrasenya ha de tenir almenys 4 caràcters.');
+    final passwordError = PasswordValidator.validate(password);
+    if (passwordError != null) {
+      _showSnackBar(passwordError);
       return;
     }
     if (password != confirm) {
@@ -219,7 +221,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 FocusScope.of(context).requestFocus(_confirmFocusNode);
               },
               decoration: InputDecoration(
-                hintText: 'Mínim 8 caràcters',
+                hintText: PasswordValidator.requirementsHint,
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 filled: true,
                 fillColor: Colors.white,

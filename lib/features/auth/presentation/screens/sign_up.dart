@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/features/auth/utils/password_validator.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/signup_code_screen.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -76,8 +77,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showSnackBar('Introdueix el correu electrònic.');
       return;
     }
-    if (password.length < 8) {
-      _showSnackBar('La contrasenya ha de tenir almenys 8 caràcters.');
+    final passwordError = PasswordValidator.validate(password);
+    if (passwordError != null) {
+      _showSnackBar(passwordError);
       return;
     }
     if (password != confirmPassword) {
@@ -323,7 +325,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   _buildTextField(
                     controller: _passwordController,
                     focusNode: _passwordFocusNode,
-                    hintText: 'Mínim 8 caràcters',
+                    hintText: PasswordValidator.requirementsHint,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.next,
                     onSubmitted: (_) {
