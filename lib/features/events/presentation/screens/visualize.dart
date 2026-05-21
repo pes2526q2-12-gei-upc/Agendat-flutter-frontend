@@ -353,19 +353,27 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 ],
               ),
               if (event.subtitle?.trim().isNotEmpty ?? false) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 eventSubtitle(event),
-                const SizedBox(height: 10),
+                const SizedBox(height: 2),
               ] else
-                const SizedBox(height: 10),
+                const SizedBox(height: 2),
               Row(
                 children: [
                   eventDate(event),
                   const Spacer(),
-                  eventPayment(event),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      eventPrivacy(event),
+                      const SizedBox(height: 2),
+                      eventPayment(event),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               eventPlace(event),
             ],
           ),
@@ -391,6 +399,20 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: Colors.black,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  Text eventPrivacy(Event event) {
+    return Text(
+      event.displayPrivacy,
+      textAlign: TextAlign.end,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color.fromARGB(255, 109, 109, 109),
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,

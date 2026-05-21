@@ -6,6 +6,7 @@ class Event {
   final String? subtitle;
   final String? description;
   final bool free;
+  final bool isPrivate;
   final List<String> categories;
   final String? provincia;
   final String? comarca;
@@ -21,6 +22,7 @@ class Event {
     this.subtitle,
     this.description,
     this.free = false,
+    this.isPrivate = false,
     this.categories = const [],
     this.provincia,
     this.comarca,
@@ -70,6 +72,8 @@ class Event {
         'General';
   }
 
+  String get displayPrivacy => isPrivate ? 'Privat' : 'Públic';
+
   String get displaySubtitle {
     final raw = subtitle?.trim();
     return (raw == null || raw.isEmpty) ? 'Sense descripció' : raw;
@@ -97,6 +101,7 @@ class EventExtended extends Event {
     super.subtitle,
     super.description,
     super.free = false,
+    super.isPrivate = false,
     super.categories = const [],
     super.provincia,
     super.comarca,
