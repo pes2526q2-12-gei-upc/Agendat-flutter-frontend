@@ -734,6 +734,12 @@ class _EventScreenState extends State<EventScreen> {
                         ),
 
                       InfoRow(
+                        icon: Icons.lock_outline_rounded,
+                        label: 'Privacitat',
+                        value: event.displayPrivacy,
+                      ),
+
+                      InfoRow(
                         icon: Icons.euro_rounded,
                         label: 'Preu',
                         value: event.free ? 'Gratuït' : 'De pagament',
