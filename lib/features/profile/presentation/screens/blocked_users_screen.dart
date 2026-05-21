@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/blocked_user_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/blocked_users_centered_message.dart';
@@ -84,8 +85,10 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage =
-            'No s\'ha pogut carregar el llistat de bloquejats. Comprova la connexió.';
+        _errorMessage = userMessageFromError(
+          e,
+          fallback: 'No s\'ha pogut carregar el llistat de bloquejats.',
+        );
       });
     }
   }

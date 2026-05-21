@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/dto/session_dto.dart';
 import 'package:agendat/core/mappers/session_mapper.dart';
 import 'package:agendat/core/models/session.dart';
@@ -30,9 +31,10 @@ class ProfileNotFound extends ProfileResult {}
 class ProfileUnavailable extends ProfileResult {}
 
 class ProfileFailure extends ProfileResult {
-  ProfileFailure({required this.statusCode, this.error});
+  ProfileFailure({required this.statusCode, this.error, this.message});
   final int statusCode;
   final Object? error;
+  final String? message;
 }
 
 sealed class UpdateProfileResult {}
@@ -80,9 +82,23 @@ Future<ProfileResult> fetchUserProfile(int userId) async {
   } on ApiException catch (e) {
     if (e.statusCode == 404) return ProfileNotFound();
     if (e.statusCode == 403 || e.statusCode == 410) return ProfileUnavailable();
-    return ProfileFailure(statusCode: e.statusCode);
+    return ProfileFailure(
+      statusCode: e.statusCode,
+      error: e,
+      message: userMessageFromApiException(
+        e,
+        fallback: 'No s\'ha pogut carregar el perfil.',
+      ),
+    );
   } catch (e) {
-    return ProfileFailure(statusCode: -1, error: e);
+    return ProfileFailure(
+      statusCode: -1,
+      error: e,
+      message: userMessageFromError(
+        e,
+        fallback: 'No s\'ha pogut carregar el perfil.',
+      ),
+    );
   }
 }
 
@@ -212,31 +228,31 @@ Future<UpdateProfileResult> updateUserProfile(
         if (body['email'] != null) {
           return UpdateProfileValidationError(
             field: 'email',
-            message: _extractErrorMessage(body['email']),
+            message: _fieldErrorMessage(body['email']),
           );
         }
         if (body['username'] != null) {
           return UpdateProfileValidationError(
             field: 'username',
-            message: _extractErrorMessage(body['username']),
+            message: _fieldErrorMessage(body['username']),
           );
         }
         if (body['first_name'] != null) {
           return UpdateProfileValidationError(
             field: 'first_name',
-            message: _extractErrorMessage(body['first_name']),
+            message: _fieldErrorMessage(body['first_name']),
           );
         }
         if (body['last_name'] != null) {
           return UpdateProfileValidationError(
             field: 'last_name',
-            message: _extractErrorMessage(body['last_name']),
+            message: _fieldErrorMessage(body['last_name']),
           );
         }
         if (body['password'] != null) {
           return UpdateProfileValidationError(
             field: 'password',
-            message: _extractErrorMessage(body['password']),
+            message: _fieldErrorMessage(body['password']),
           );
         }
       } catch (_) {}
@@ -262,9 +278,6 @@ Future<DeleteAccountResult> deleteUserAccount(int userId) async {
   }
 }
 
-String _extractErrorMessage(dynamic value) {
-  if (value is List && value.isNotEmpty) {
-    return value.first.toString();
-  }
-  return value.toString();
+String _fieldErrorMessage(dynamic value) {
+  return extractApiErrorMessage(value) ?? value.toString();
 }

@@ -146,7 +146,13 @@ Future<CreateUserResult> createUser(CreateUserRequest request) async {
         : null;
     return CreateUserSuccess(statusCode: response.statusCode, body: decoded);
   } on ApiException catch (e) {
-    return CreateUserFailure(statusCode: e.statusCode, error: e);
+    Map<String, dynamic>? body;
+    if (e.body.isNotEmpty) {
+      try {
+        body = jsonDecode(e.body) as Map<String, dynamic>?;
+      } catch (_) {}
+    }
+    return CreateUserFailure(statusCode: e.statusCode, body: body, error: e);
   } catch (e) {
     return CreateUserFailure(statusCode: -1, error: e);
   }
@@ -232,7 +238,13 @@ Future<LoginUserResult> loginUser(LoginUserRequest request) async {
         .requestPermissionAndRegisterDevice();
     return LoginUserSuccess(statusCode: response.statusCode, body: decoded);
   } on ApiException catch (e) {
-    return LoginUserFailure(statusCode: e.statusCode, error: e);
+    Map<String, dynamic>? body;
+    if (e.body.isNotEmpty) {
+      try {
+        body = jsonDecode(e.body) as Map<String, dynamic>?;
+      } catch (_) {}
+    }
+    return LoginUserFailure(statusCode: e.statusCode, body: body, error: e);
   } catch (e) {
     return LoginUserFailure(statusCode: -1, error: e);
   }

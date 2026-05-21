@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/api/sessions_api.dart';
@@ -172,16 +173,22 @@ class _EventScreenState extends State<EventScreen> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      final detail = e.body.trim();
       AppSnackBar.show(
         context,
-        detail.isEmpty
-            ? 'No s\'ha pogut registrar l\'assistència (${e.statusCode}).'
-            : 'No s\'ha pogut registrar l\'assistència (${e.statusCode}): $detail',
+        userMessageFromApiException(
+          e,
+          fallback: 'No s\'ha pogut registrar l\'assistència.',
+        ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      AppSnackBar.show(context, 'No s\'ha pogut registrar l\'assistència.');
+      AppSnackBar.show(
+        context,
+        userMessageFromError(
+          e,
+          fallback: 'No s\'ha pogut registrar l\'assistència.',
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -457,7 +464,10 @@ class _EventScreenState extends State<EventScreen> {
       if (!mounted) return null;
       AppSnackBar.show(
         context,
-        'No s\'ha pogut crear la sessió per convidar (${e.statusCode}).',
+        userMessageFromApiException(
+          e,
+          fallback: 'No s\'ha pogut crear la sessió per convidar.',
+        ),
       );
       return null;
     } catch (_) {
@@ -584,7 +594,10 @@ class _EventScreenState extends State<EventScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Error: ${snapshot.error}',
+                      userMessageFromError(
+                        snapshot.error!,
+                        fallback: 'No s\'ha pogut carregar l\'esdeveniment.',
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),

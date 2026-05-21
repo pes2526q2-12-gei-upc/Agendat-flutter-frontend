@@ -56,10 +56,7 @@ class ApiClient {
     final response = await http.get(uri, headers: _headers()).timeout(timeout);
 
     if (response.statusCode != 200) {
-      final snippet = response.body.length > 200
-          ? '${response.body.substring(0, 200)}...'
-          : response.body;
-      throw ApiException(response.statusCode, snippet, uri);
+      throw ApiException(response.statusCode, response.body, uri);
     }
 
     return response;
@@ -150,10 +147,7 @@ class ApiClient {
         ? acceptedStatusCodes.contains(response.statusCode)
         : response.statusCode == expectedStatusCode;
     if (!ok) {
-      final snippet = response.body.length > 200
-          ? '${response.body.substring(0, 200)}...'
-          : response.body;
-      throw ApiException(response.statusCode, snippet, uri);
+      throw ApiException(response.statusCode, response.body, uri);
     }
   }
 
@@ -177,10 +171,7 @@ class ApiClient {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode != expectedStatusCode) {
-      final snippet = response.body.length > 200
-          ? '${response.body.substring(0, 200)}...'
-          : response.body;
-      throw ApiException(response.statusCode, snippet, uri);
+      throw ApiException(response.statusCode, response.body, uri);
     }
 
     return response;
@@ -206,10 +197,7 @@ class ApiClient {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode != expectedStatusCode) {
-      final snippet = response.body.length > 200
-          ? '${response.body.substring(0, 200)}...'
-          : response.body;
-      throw ApiException(response.statusCode, snippet, uri);
+      throw ApiException(response.statusCode, response.body, uri);
     }
 
     return response;
@@ -281,5 +269,8 @@ class ApiException implements Exception {
   const ApiException(this.statusCode, this.body, this.uri);
 
   @override
-  String toString() => 'ApiException(HTTP $statusCode) for $uri — $body';
+  String toString() {
+    final snippet = body.length > 200 ? '${body.substring(0, 200)}...' : body;
+    return 'ApiException(HTTP $statusCode) for $uri — $snippet';
+  }
 }

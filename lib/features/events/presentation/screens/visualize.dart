@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/events_api.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
@@ -184,7 +185,10 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       setState(() => _isLoadingMore = false);
       AppSnackBar.show(
         context,
-        'No s\'han pogut carregar més esdeveniments: $e',
+        userMessageFromError(
+          e,
+          fallback: 'No s\'han pogut carregar més esdeveniments.',
+        ),
       );
     }
   }
@@ -258,7 +262,13 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Error: $_error', textAlign: TextAlign.center),
+              Text(
+                userMessageFromError(
+                  _error!,
+                  fallback: 'No s\'han pogut carregar els esdeveniments.',
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 10),
               ElevatedButton(
                 onPressed: _refresh,

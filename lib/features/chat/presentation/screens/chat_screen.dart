@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/state/auth_session.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
@@ -123,7 +124,10 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'No s\'ha pogut carregar els xats. Comprova la connexió.';
+        _error = userMessageFromError(
+          e,
+          fallback: 'No s\'ha pogut carregar els xats.',
+        );
       });
     }
   }
@@ -184,7 +188,13 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e, st) {
       if (kDebugMode) debugPrint('[chat_screen] start chat failed: $e\n$st');
       if (!mounted) return;
-      AppSnackBar.show(context, 'No s\'ha pogut obrir el xat amb aquest amic.');
+      AppSnackBar.show(
+        context,
+        userMessageFromError(
+          e,
+          fallback: 'No s\'ha pogut obrir el xat amb aquest amic.',
+        ),
+      );
     }
   }
 
@@ -555,7 +565,10 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'No s\'han pogut carregar els missatges.';
+        _error = userMessageFromError(
+          e,
+          fallback: 'No s\'han pogut carregar els missatges.',
+        );
       });
     }
   }
@@ -589,7 +602,10 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     } catch (e, st) {
       if (kDebugMode) debugPrint('[friend_conversation] send: $e\n$st');
       if (!mounted) return;
-      AppSnackBar.show(context, 'No s\'ha pogut enviar el missatge.');
+      AppSnackBar.show(
+        context,
+        userMessageFromError(e, fallback: 'No s\'ha pogut enviar el missatge.'),
+      );
     } finally {
       if (mounted) {
         setState(() => _sending = false);

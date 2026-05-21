@@ -1,3 +1,4 @@
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -79,11 +80,14 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
             .toList();
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'No s\'han pogut carregar els interessos.';
+        _errorMessage = userMessageFromError(
+          e,
+          fallback: 'No s\'han pogut carregar els interessos.',
+        );
       });
     }
   }

@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/services/google_auth_config.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -211,7 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('Error durant el login amb Google: $e');
+      _showSnackBar(
+        userMessageFromError(e, fallback: 'Error durant el login amb Google.'),
+      );
     }
   }
 

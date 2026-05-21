@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
@@ -57,11 +58,14 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
         _categories = categories;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error al carregar les categories, refresca la pàgina';
+        _errorMessage = userMessageFromError(
+          e,
+          fallback: 'Error al carregar les categories, refresca la pàgina',
+        );
       });
     }
   }

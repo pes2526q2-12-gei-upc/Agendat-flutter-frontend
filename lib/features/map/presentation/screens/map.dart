@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -355,7 +356,11 @@ class _MapScreenState extends State<MapScreen> {
                                           horizontal: 24,
                                         ),
                                         child: Text(
-                                          'No s\'han pogut carregar els esdeveniments.',
+                                          userMessageFromError(
+                                            _pinsError!,
+                                            fallback:
+                                                'No s\'han pogut carregar els esdeveniments.',
+                                          ),
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
                                             fontSize: 15,

@@ -5,6 +5,7 @@ import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
@@ -220,12 +221,17 @@ class _ProfileScreenState extends State<ProfileScreen>
           _isLoading = false;
           _errorMessage = 'Aquest perfil no està disponible.';
         });
-      case ProfileFailure(:final statusCode, :final error):
+      case ProfileFailure(:final message, :final statusCode, :final error):
         setState(() {
           _isLoading = false;
-          _errorMessage = error != null
-              ? 'Error de connexió. Comprova la teva connexió a internet.'
-              : 'Error del servidor (codi $statusCode).';
+          _errorMessage =
+              message ??
+              (error != null
+                  ? userMessageFromError(
+                      error,
+                      fallback: 'Error del servidor (codi $statusCode).',
+                    )
+                  : 'Error del servidor (codi $statusCode).');
         });
     }
   }
@@ -396,9 +402,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         setState(() => _isFriendshipActionInProgress = false);
         final text =
             message ??
-            (error != null && statusCode == -1
-                ? 'Error de connexió. Comprova la teva connexió a internet.'
-                : genericErrorMessage);
+            userMessageFromError(
+              error ?? Exception('Friend action failed'),
+              fallback: genericErrorMessage,
+            );
         AppSnackBar.show(context, text);
         // que el 409: estat incoherent. Ho tractem igual i resincronitzem.
         if (statusCode == 400 || statusCode == 410) {
@@ -844,13 +851,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                   : 'Aquest usuari ja estava bloquejat.'),
           refreshChatsListOnSuccess: refreshChatsListOnSuccess,
         );
-      case BlockActionFailure(:final statusCode, :final message, :final error):
+      case BlockActionFailure(:final message, :final error):
         setState(() => _isBlockActionInProgress = false);
         final text =
             message ??
-            (error != null && statusCode == -1
-                ? 'Error de connexió. Comprova la teva connexió a internet.'
-                : genericErrorMessage);
+            userMessageFromError(
+              error ?? Exception('Friend action failed'),
+              fallback: genericErrorMessage,
+            );
         AppSnackBar.show(context, text);
     }
   }
