@@ -1,3 +1,4 @@
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -47,12 +48,7 @@ class _SignupCodeScreenState extends State<SignupCodeScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? null : Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   String _messageForFailure(ConfirmSignupCodeFailure failure) {

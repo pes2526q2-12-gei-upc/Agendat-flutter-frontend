@@ -7,3 +7,11 @@ Future<UpdateProfileResult> updateCalendarSyncAllowed(
 ) {
   return updateUserProfile(userId, {'calendar_sync_allowed': enabled});
 }
+
+/// Actualitza l'idioma seleccionat de l'usuari al backend.
+Future<UpdateProfileResult> updateSelectedLanguage(
+  int userId,
+  String languageCode,
+) {
+  return updateUserProfile(userId, {'selected_language': languageCode});
+}

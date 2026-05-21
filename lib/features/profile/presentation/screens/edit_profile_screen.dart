@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/screens/delete_account_screen.dart';
@@ -190,12 +191,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? null : Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _submitWithKeyboard() {
@@ -305,9 +301,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 onPressed: _isLoading
                     ? null
                     : () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('pendent')),
-                        );
+                        AppSnackBar.show(context, 'pendent');
                       },
                 style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(

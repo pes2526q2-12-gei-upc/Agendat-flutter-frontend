@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/services/google_auth_config.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -10,6 +11,7 @@ import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/register_interests_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 
@@ -150,12 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? null : Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _submitWithKeyboard() {
@@ -215,7 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('Error durant el login amb Google: $e');
+      _showSnackBar(
+        userMessageFromError(e, fallback: 'Error durant el login amb Google.'),
+      );
     }
   }
 
