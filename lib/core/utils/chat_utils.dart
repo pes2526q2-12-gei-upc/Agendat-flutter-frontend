@@ -39,20 +39,24 @@ abstract final class ChatTimestampFormat {
   static String listRow(BuildContext context, DateTime at) {
     final locale = MaterialLocalizations.of(context);
     final now = DateTime.now();
-    final tod = TimeOfDay(hour: at.hour, minute: at.minute);
-    if (DateUtils.isSameDay(at, now)) return locale.formatTimeOfDay(tod);
-    return locale.formatCompactDate(at);
+    final localAt = chatDisplayDateTime(at);
+    final tod = TimeOfDay(hour: localAt.hour, minute: localAt.minute);
+    if (DateUtils.isSameDay(localAt, now)) return locale.formatTimeOfDay(tod);
+    return locale.formatCompactDate(localAt);
   }
 
   /// Bombolla de missatge: avui només hora; sinó data + hora.
   static String messageDetail(BuildContext context, DateTime at) {
     final locale = MaterialLocalizations.of(context);
     final now = DateTime.now();
-    final tod = TimeOfDay(hour: at.hour, minute: at.minute);
-    if (DateUtils.isSameDay(at, now)) return locale.formatTimeOfDay(tod);
-    return '${locale.formatCompactDate(at)} · ${locale.formatTimeOfDay(tod)}';
+    final localAt = chatDisplayDateTime(at);
+    final tod = TimeOfDay(hour: localAt.hour, minute: localAt.minute);
+    if (DateUtils.isSameDay(localAt, now)) return locale.formatTimeOfDay(tod);
+    return '${locale.formatCompactDate(localAt)} · ${locale.formatTimeOfDay(tod)}';
   }
 }
+
+DateTime chatDisplayDateTime(DateTime at) => at.toLocal();
 
 /// Parseja valors típics d’API (ISO string, ms o s unix). Fallback: epoch 0.
 DateTime parseFlexibleDateTime(Object? value) {
