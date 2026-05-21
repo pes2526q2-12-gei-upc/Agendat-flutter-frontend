@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/api/profile_api.dart';
-import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -63,7 +62,6 @@ class _LanguageSelectorTileState extends State<LanguageSelectorTile> {
           'id': profile.id,
           'selected_language': code,
         });
-        EventsQuery.instance.invalidateAll();
       case UpdateProfileFailure(:final statusCode):
         await _revertLanguage(previous);
         if (statusCode == 401 || statusCode == 403) {

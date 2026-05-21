@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:agendat/core/api/api_error_utils.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
@@ -267,10 +265,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = userMessageFromError(
-          e,
-          fallback: 'No s\'han pogut carregar els missatges.',
-        );
+        _error = 'No s\'han pogut carregar els missatges.';
       });
     }
   }
@@ -361,9 +356,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     } catch (e, st) {
       if (kDebugMode) debugPrint('[friend_conversation] send: $e\n$st');
       if (!mounted) return;
-      AppSnackBar.show(
-        context,
-        userMessageFromError(e, fallback: 'No s\'ha pogut enviar el missatge.'),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No s\'ha pogut enviar el missatge.')),
       );
     } finally {
       if (mounted) {

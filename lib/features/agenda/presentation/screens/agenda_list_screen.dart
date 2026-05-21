@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
@@ -181,10 +180,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
               const Icon(Icons.error_outline_rounded, size: 48),
               const SizedBox(height: 12),
               Text(
-                userMessageFromError(
-                  snapshot.error!,
-                  fallback: 'No s\'ha pogut carregar la llista.',
-                ),
+                'No s\'ha pogut carregar la llista.\n${snapshot.error}',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),

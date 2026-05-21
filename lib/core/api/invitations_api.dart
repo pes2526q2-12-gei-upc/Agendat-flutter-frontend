@@ -1,5 +1,6 @@
+import 'dart:convert';
+
 import 'package:agendat/core/api/api_client.dart';
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/dto/event_invitation_dto.dart';
 
 /// Resultat tipat per `InvitationsApi.sendInvitation`. Manté separats els
@@ -176,17 +177,15 @@ class InvitationsApi {
       return SendInvitationUnauthorized();
     }
     if (e.statusCode == 409) {
-      return SendInvitationDuplicate(
-        message: extractApiErrorMessageFromBody(e.body),
-      );
+      return SendInvitationDuplicate(message: _extractErrorMessage(e.body));
     }
     if (e.statusCode == 404) {
       return SendInvitationInvalidRecipient(
-        message: extractApiErrorMessageFromBody(e.body),
+        message: _extractErrorMessage(e.body),
       );
     }
     if (e.statusCode == 400 || e.statusCode == 422) {
-      final message = extractApiErrorMessageFromBody(e.body) ?? '';
+      final message = _extractErrorMessage(e.body) ?? '';
       final lowered = message.toLowerCase();
       final isEventIssue = _matchesAny(lowered, const [
         'event',
@@ -215,7 +214,7 @@ class InvitationsApi {
     }
     return SendInvitationFailure(
       statusCode: e.statusCode,
-      message: extractApiErrorMessageFromBody(e.body),
+      message: _extractErrorMessage(e.body),
       error: e,
     );
   }
@@ -229,13 +228,11 @@ class InvitationsApi {
         e.statusCode == 410 ||
         e.statusCode == 400 ||
         e.statusCode == 422) {
-      return RespondInvitationInvalid(
-        message: extractApiErrorMessageFromBody(e.body),
-      );
+      return RespondInvitationInvalid(message: _extractErrorMessage(e.body));
     }
     return RespondInvitationFailure(
       statusCode: e.statusCode,
-      message: extractApiErrorMessageFromBody(e.body),
+      message: _extractErrorMessage(e.body),
       error: e,
     );
   }
@@ -245,5 +242,35 @@ class InvitationsApi {
       if (text.contains(needle)) return true;
     }
     return false;
+  }
+
+  String? _extractErrorMessage(String body) {
+    if (body.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        for (final key in const ['detail', 'message', 'error']) {
+          final value = decoded[key];
+          if (value is String && value.trim().isNotEmpty) return value.trim();
+        }
+        for (final entry in decoded.entries) {
+          final value = entry.value;
+          if (value is String && value.trim().isNotEmpty) return value.trim();
+          if (value is List && value.isNotEmpty) {
+            final first = value.first;
+            if (first is String && first.trim().isNotEmpty) {
+              return first.trim();
+            }
+          }
+        }
+      }
+      if (decoded is List && decoded.isNotEmpty) {
+        final first = decoded.first;
+        if (first is String && first.trim().isNotEmpty) return first.trim();
+      }
+    } catch (_) {
+      // Not valid JSON; ignore and fall back to null.
+    }
+    return null;
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Fila que, en tocar-la, obre [uri] al navegador extern.
@@ -22,7 +21,9 @@ class LinkTile extends StatelessWidget {
   Future<void> _openLink(BuildContext context) async {
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!context.mounted || opened) return;
-    AppSnackBar.show(context, 'No s\'ha pogut obrir l\'enllaç');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No s\'ha pogut obrir l\'enllaç')),
+    );
   }
 
   @override

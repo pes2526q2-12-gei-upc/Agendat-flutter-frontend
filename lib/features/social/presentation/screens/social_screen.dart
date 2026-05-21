@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -235,10 +233,7 @@ class _SocialScreenState extends State<SocialScreen>
           _isLoading = false;
           _results = const [];
           _errorMessage = error != null
-              ? userMessageFromError(
-                  error,
-                  fallback: 'Error del servidor (codi $statusCode).',
-                )
+              ? 'Error de connexió. Comprova la teva connexió a internet.'
               : 'Error del servidor (codi $statusCode).';
         });
     }
@@ -286,14 +281,12 @@ class _SocialScreenState extends State<SocialScreen>
         _isLoadingRequests = false;
       });
       syncPendingFriendRequestsBadge(pending.length);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoadingRequests = false;
-        _requestsErrorMessage = userMessageFromError(
-          e,
-          fallback: 'No s\'han pogut carregar les sol·licituds.',
-        );
+        _requestsErrorMessage =
+            'No s\'han pogut carregar les sol·licituds. Comprova la teva connexió.';
       });
     }
   }
@@ -388,7 +381,7 @@ class _SocialScreenState extends State<SocialScreen>
         _removeRequest(request.id);
         _showSnack(message ?? 'Aquesta sol·licitud ja no és vàlida.');
         _invalidateCaches(targetUserId: sender.id);
-      case FriendActionFailure(:final statusCode, :final message, :final error):
+      case FriendActionFailure(:final statusCode, :final error):
         setState(() => _busyRequestIds.remove(request.id));
         if (_isInvalidRequestStatus(statusCode)) {
           _removeRequest(request.id);
@@ -396,13 +389,10 @@ class _SocialScreenState extends State<SocialScreen>
           _invalidateCaches(targetUserId: sender.id);
           return;
         }
-        _showSnack(
-          message ??
-              userMessageFromError(
-                error ?? Exception('Friend action failed'),
-                fallback: '$genericErrorMessage (codi $statusCode)',
-              ),
-        );
+        final text = error != null && statusCode == -1
+            ? 'Error de connexió. Comprova la teva connexió a internet.'
+            : '$genericErrorMessage (codi $statusCode)';
+        _showSnack(text);
     }
   }
 
@@ -433,7 +423,9 @@ class _SocialScreenState extends State<SocialScreen>
 
   void _showSnack(String message) {
     if (!mounted) return;
-    AppSnackBar.show(context, message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openFriendsList() {
@@ -474,14 +466,12 @@ class _SocialScreenState extends State<SocialScreen>
         _isLoadingChats = false;
       });
       syncUnreadChatConversationsBadge(chats);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoadingChats = false;
-        _chatsErrorMessage = userMessageFromError(
-          e,
-          fallback: 'No s\'ha pogut carregar els xats.',
-        );
+        _chatsErrorMessage =
+            'No s\'ha pogut carregar els xats. Comprova la teva connexió.';
       });
     }
   }
@@ -543,10 +533,8 @@ class _SocialScreenState extends State<SocialScreen>
       if (!mounted) return;
       setState(() {
         _isLoadingRecommendations = false;
-        _recommendationsErrorMessage = userMessageFromError(
-          e,
-          fallback: 'No s\'han pogut carregar les recomanacions.',
-        );
+        _recommendationsErrorMessage =
+            'No s\'han pogut carregar les recomanacions.';
       });
     }
   }
@@ -654,13 +642,12 @@ class _SocialScreenState extends State<SocialScreen>
           _showSnack(message ?? 'Aquesta recomanació ja no és vàlida.');
           return;
         }
-        _showSnack(
-          message ??
-              userMessageFromError(
-                error ?? Exception('Friend action failed'),
-                fallback: 'No s\'ha pogut enviar la sol·licitud.',
-              ),
-        );
+        final text =
+            message ??
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : 'No s\'ha pogut enviar la sol·licitud.');
+        _showSnack(text);
     }
   }
 

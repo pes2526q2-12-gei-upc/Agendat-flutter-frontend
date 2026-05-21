@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/categories_query.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
@@ -58,14 +56,11 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
         _categories = categories;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = userMessageFromError(
-          e,
-          fallback: 'Error al carregar les categories, refresca la pàgina',
-        );
+        _errorMessage = 'Error al carregar les categories, refresca la pàgina';
       });
     }
   }
@@ -127,7 +122,9 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
   }
 
   void _showSnackBar(String message) {
-    AppSnackBar.show(context, message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

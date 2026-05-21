@@ -1,7 +1,5 @@
 import 'package:agendat/core/api/api_client.dart';
-import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
-import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/realtime/friendship_realtime_service.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/token_storage.dart';
@@ -15,23 +13,6 @@ Future<void> setCurrentLoggedInUser(Map<String, dynamic>? userJson) async {
   final normalizedUser = _normalizeLoggedInUser(userJson);
   currentLoggedInUser = normalizedUser;
   await TokenStorage.writeUser(normalizedUser);
-
-  final selectedLanguage = normalizedUser?['selected_language'];
-  if (selectedLanguage != null) {
-    await AppLanguage.syncFromBackend(selectedLanguage.toString());
-  }
-}
-
-/// Sincronitza l'idioma local amb el perfil de l'usuari autenticat al backend.
-Future<void> syncAuthenticatedUserLanguageFromBackend(int userId) async {
-  final result = await fetchUserProfile(userId);
-  if (result is! ProfileSuccess) return;
-
-  await setCurrentLoggedInUser({
-    ...currentLoggedInUser ?? <String, dynamic>{},
-    ...result.profile.toJson(),
-    'id': result.profile.id,
-  });
 }
 
 Map<String, dynamic>? _normalizeLoggedInUser(Map<String, dynamic>? userJson) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/sessions_query.dart';
@@ -98,11 +97,7 @@ class _SessionPickerDialogState extends State<SessionPickerDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    userMessageFromError(
-                      snapshot.error!,
-                      fallback:
-                          'No s\'han pogut carregar les teves sessions per a aquest esdeveniment.',
-                    ),
+                    'No s\'han pogut carregar les teves sessions per a aquest esdeveniment.',
                     style: TextStyle(color: Colors.grey.shade700),
                   ),
                   const SizedBox(height: 12),

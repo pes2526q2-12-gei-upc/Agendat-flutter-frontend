@@ -37,7 +37,6 @@ Future<void> main() async {
     final myId = currentLoggedInUser?['id'];
     if (myId is int) {
       await ProfileQuery.instance.bootstrapForAuthenticatedUser(myId);
-      await syncAuthenticatedUserLanguageFromBackend(myId);
     }
   }
 
@@ -79,10 +78,6 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color.fromARGB(255, 255, 105, 105),
-            ),
-            snackBarTheme: const SnackBarThemeData(
-              behavior: SnackBarBehavior.floating,
-              showCloseIcon: true,
             ),
           ),
           home: initialHome,

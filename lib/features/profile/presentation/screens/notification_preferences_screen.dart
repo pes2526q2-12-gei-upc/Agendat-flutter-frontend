@@ -4,7 +4,6 @@ import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/notification_alerts_block.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/models/user_profile.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/api/profile_api.dart';
 
 class NotificationPreferencesScreen extends StatefulWidget {
@@ -140,7 +139,9 @@ class _NotificationPreferencesScreenState
   }
 
   void _showMessage(String message) {
-    AppSnackBar.show(context, message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

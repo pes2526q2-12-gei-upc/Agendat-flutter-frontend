@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -14,7 +13,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/map/data/models/map_filters.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
@@ -149,7 +147,9 @@ class _MapScreenState extends State<MapScreen> {
       destination: marker.point,
     );
     if (!launched && mounted) {
-      AppSnackBar.show(context, 'Could not open navigation.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open navigation.')),
+      );
     }
   }
 
@@ -356,11 +356,7 @@ class _MapScreenState extends State<MapScreen> {
                                           horizontal: 24,
                                         ),
                                         child: Text(
-                                          userMessageFromError(
-                                            _pinsError!,
-                                            fallback:
-                                                'No s\'han pogut carregar els esdeveniments.',
-                                          ),
+                                          'No s\'han pogut carregar els esdeveniments.',
                                           textAlign: TextAlign.center,
                                           style: const TextStyle(
                                             fontSize: 15,

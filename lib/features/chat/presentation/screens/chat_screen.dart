@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -117,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'No s\'ha pogut carregar els xats. Comprova la connexi├│.';
+        _error = 'No s\'ha pogut carregar els xats. Comprova la connexió.';
       });
     }
   }
@@ -169,7 +169,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Aquest xat encara no est├á disponible. Torna-ho a provar en uns segons.',
+              'Aquest xat encara no està disponible. Torna-ho a provar en uns segons.',
             ),
           ),
         );

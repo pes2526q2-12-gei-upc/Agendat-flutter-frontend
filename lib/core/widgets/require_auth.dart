@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/auth/auth_session_service.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 
 /// Whether the user has a non-empty auth token (and optionally a logged-in id).
@@ -23,7 +22,7 @@ bool guardAuthenticated(
     return isAuthenticated(requireUserId: requireUserId);
   }
 
-  AppSnackBar.show(context, message);
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
   Navigator.of(context).pushAndRemoveUntil(
     MaterialPageRoute(builder: (_) => const LoginScreen()),

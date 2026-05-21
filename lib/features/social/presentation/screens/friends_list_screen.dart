@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -112,10 +111,8 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = userMessageFromError(
-          e,
-          fallback: 'No s\'ha pogut carregar el llistat d\'amics.',
-        );
+        _errorMessage =
+            'No s\'ha pogut carregar el llistat d\'amics. Comprova la teva connexió.';
       });
     }
   }

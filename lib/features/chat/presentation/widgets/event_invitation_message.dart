@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event_invitation.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/invitations_query.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/avatars.dart';
@@ -102,13 +101,14 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
           _resolvedInvitation = invitation;
           _isResponding = false;
         });
-        final accepted = invitation.isAccepted;
-        AppSnackBar.show(
-          context,
-          accepted
-              ? 'Invitació acceptada. Assistència registrada.'
-              : 'Invitació rebutjada.',
-          isError: !accepted,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              invitation.isAccepted
+                  ? 'Invitació acceptada. Assistència registrada.'
+                  : 'Invitació rebutjada.',
+            ),
+          ),
         );
         return;
       case RespondInvitationOutcomeError(:final result):
@@ -121,6 +121,7 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
   }
 
   void _showRespondErrorSnackbar(RespondInvitationResult result) {
+    final messenger = ScaffoldMessenger.of(context);
     final String text;
     switch (result) {
       case RespondInvitationUnauthorized():
@@ -132,7 +133,7 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
       case RespondInvitationSuccess():
         return;
     }
-    AppSnackBar.show(context, text);
+    messenger.showSnackBar(SnackBar(content: Text(text)));
   }
 
   void _openEventDetail() {

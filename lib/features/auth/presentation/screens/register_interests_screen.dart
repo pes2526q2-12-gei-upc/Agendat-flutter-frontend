@@ -1,11 +1,9 @@
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:flutter/material.dart';
 
 typedef RegisterCategoriesLoader = Future<List<CategoryDto>> Function();
@@ -80,14 +78,11 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
             .toList();
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = userMessageFromError(
-          e,
-          fallback: 'No s\'han pogut carregar els interessos.',
-        );
+        _errorMessage = 'No s\'han pogut carregar els interessos.';
       });
     }
   }
@@ -134,7 +129,9 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
   }
 
   void _showSnackBar(String message) {
-    AppSnackBar.show(context, message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

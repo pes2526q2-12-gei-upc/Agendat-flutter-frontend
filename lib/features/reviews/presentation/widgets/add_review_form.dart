@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 
 /// Formulari inline per afegir o editar una valoració d'un esdeveniment.
@@ -203,7 +202,9 @@ class _AddReviewFormState extends State<AddReviewForm> {
 
   void _showSnack(String message) {
     if (!mounted) return;
-    AppSnackBar.show(context, message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

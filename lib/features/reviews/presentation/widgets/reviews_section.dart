@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/api/api_error_utils.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
@@ -90,15 +88,12 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _reviews = reviews;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       // En mode silenciós no mostrem error: només era un refresc de fons.
       if (silent) return;
       setState(() {
-        _error = userMessageFromError(
-          e,
-          fallback: 'No s\'han pogut carregar les valoracions.',
-        );
+        _error = 'No s\'han pogut carregar les valoracions.';
         _isLoading = false;
       });
     }
@@ -347,7 +342,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
   void _showSnack(String message) {
     if (!mounted) return;
-    AppSnackBar.show(context, message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// Es crida quan l'usuari prem "Afegir"/"Desar" al formulari.
@@ -441,16 +438,13 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       _showAlreadyReviewedDialog();
       // Recarreguem per ensenyar la valoració existent.
       _fetchReviews();
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       _showSnack(
-        userMessageFromError(
-          e,
-          fallback: existing != null
-              ? 'No s\'ha pogut actualitzar la valoració.'
-              : 'No s\'ha pogut publicar la valoració.',
-        ),
+        existing != null
+            ? 'No s\'ha pogut actualitzar la valoració.'
+            : 'No s\'ha pogut publicar la valoració.',
       );
     }
   }
@@ -491,14 +485,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         if (_editingIndex != null) _closeForm();
       });
       _showSnack('Valoració eliminada.');
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      _showSnack(
-        userMessageFromError(
-          e,
-          fallback: 'No s\'ha pogut eliminar la valoració.',
-        ),
-      );
+      _showSnack('No s\'ha pogut eliminar la valoració.');
     }
   }
 
@@ -538,19 +527,14 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       }
       if (!mounted) return;
       setState(() => _busyLikeIds.remove(reviewId));
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         final current = _reviews.indexWhere((r) => r.id == reviewId);
         if (current >= 0) _reviews[current] = original;
         _busyLikeIds.remove(reviewId);
       });
-      _showSnack(
-        userMessageFromError(
-          e,
-          fallback: 'No s\'ha pogut actualitzar el like.',
-        ),
-      );
+      _showSnack('No s\'ha pogut actualitzar el like.');
     }
   }
 
@@ -611,12 +595,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _translatingReviewIds.remove(reviewId));
-      _showSnack(
-        userMessageFromError(
-          e,
-          fallback: 'No s\'ha pogut traduir la valoració.',
-        ),
-      );
+      _showSnack('No s\'ha pogut traduir la valoració.');
     }
   }
 

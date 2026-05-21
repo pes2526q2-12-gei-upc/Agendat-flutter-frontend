@@ -1,4 +1,3 @@
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -208,10 +207,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             const Icon(Icons.error_outline_rounded, size: 48),
             const SizedBox(height: 12),
             Text(
-              userMessageFromError(
-                error ?? 'Error desconegut',
-                fallback: 'No s\'ha pogut carregar l\'agenda.',
-              ),
+              'No s\'ha pogut carregar l\'agenda.\n$error',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

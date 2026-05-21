@@ -49,13 +49,6 @@ class AppLanguage {
     await prefs.setString(_storageKey, _current.value);
   }
 
-  /// Sincronitza l'idioma local amb el valor del perfil d'usuari al backend.
-  static Future<void> syncFromBackend(String? selectedLanguage) async {
-    if (selectedLanguage == null || selectedLanguage.trim().isEmpty) return;
-    setCode(selectedLanguage);
-    await persist();
-  }
-
   /// Converteix el codi actiu a [Locale] per a MaterialApp o capçaleres HTTP.
   static Locale toLocale([String? code]) {
     switch (_normalize(code ?? _current.value)) {

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/api/sessions_api.dart';
@@ -112,17 +110,23 @@ class _EventScreenState extends State<EventScreen> {
         : DateUtils.dateOnly(event.endDate!);
 
     if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
-      AppSnackBar.show(
-        context,
-        'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
+          ),
+        ),
       );
       return;
     }
 
     if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
-      AppSnackBar.show(
-        context,
-        'La sessió seleccionada és posterior al final de l\'esdeveniment.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessió seleccionada és posterior al final de l\'esdeveniment.',
+          ),
+        ),
       );
       return;
     }
@@ -156,37 +160,39 @@ class _EventScreenState extends State<EventScreen> {
           );
 
           if (!calendarSuccess && mounted) {
-            AppSnackBar.show(
-              context,
-              'Assistència registrada, però no s\'ha pogut afegir a Google Calendar.',
-              duration: const Duration(seconds: 3),
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Assistència registrada, però no s\'ha pogut afegir a Google Calendar.',
+                ),
+                duration: Duration(seconds: 3),
+              ),
             );
           }
         }
       }
 
       if (!mounted) return;
-      AppSnackBar.show(
-        context,
-        'Assistència registrada correctament.',
-        isError: false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Assistència registrada correctament.')),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      AppSnackBar.show(
-        context,
-        userMessageFromApiException(
-          e,
-          fallback: 'No s\'ha pogut registrar l\'assistència.',
+      final detail = e.body.trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            detail.isEmpty
+                ? 'No s\'ha pogut registrar l\'assistència (${e.statusCode}).'
+                : 'No s\'ha pogut registrar l\'assistència (${e.statusCode}): $detail',
+          ),
         ),
       );
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      AppSnackBar.show(
-        context,
-        userMessageFromError(
-          e,
-          fallback: 'No s\'ha pogut registrar l\'assistència.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No s\'ha pogut registrar l\'assistència.'),
         ),
       );
     } finally {
@@ -359,12 +365,20 @@ class _EventScreenState extends State<EventScreen> {
     if (_isPreparingInvitation) return;
 
     if (!_isAuthenticated) {
-      AppSnackBar.show(context, 'Cal iniciar sessió per enviar invitacions.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cal iniciar sessió per enviar invitacions.'),
+        ),
+      );
       return;
     }
 
     if (!_canInviteToEvent(event)) {
-      AppSnackBar.show(context, 'No es pot convidar a aquest esdeveniment.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No es pot convidar a aquest esdeveniment.'),
+        ),
+      );
       return;
     }
 
@@ -434,16 +448,22 @@ class _EventScreenState extends State<EventScreen> {
         : DateUtils.dateOnly(event.endDate!);
 
     if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
-      AppSnackBar.show(
-        context,
-        'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
+          ),
+        ),
       );
       return null;
     }
     if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
-      AppSnackBar.show(
-        context,
-        'La sessió seleccionada és posterior al final de l\'esdeveniment.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La sessió seleccionada és posterior al final de l\'esdeveniment.',
+          ),
+        ),
       );
       return null;
     }
@@ -462,17 +482,21 @@ class _EventScreenState extends State<EventScreen> {
       return dto.toDomain();
     } on ApiException catch (e) {
       if (!mounted) return null;
-      AppSnackBar.show(
-        context,
-        userMessageFromApiException(
-          e,
-          fallback: 'No s\'ha pogut crear la sessió per convidar.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No s\'ha pogut crear la sessió per convidar (${e.statusCode}).',
+          ),
         ),
       );
       return null;
     } catch (_) {
       if (!mounted) return null;
-      AppSnackBar.show(context, 'No s\'ha pogut crear la sessió per convidar.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No s\'ha pogut crear la sessió per convidar.'),
+        ),
+      );
       return null;
     }
   }
@@ -480,16 +504,19 @@ class _EventScreenState extends State<EventScreen> {
   void _showInvitationSummary(InviteFriendsResult result) {
     if (result.totalRequested == 0) return;
 
+    final messenger = ScaffoldMessenger.of(context);
     final successes = result.successes.length;
     final errors = result.errors;
 
     if (errors.isEmpty) {
-      AppSnackBar.show(
-        context,
-        successes == 1
-            ? 'Invitació enviada correctament.'
-            : '$successes invitacions enviades correctament.',
-        isError: false,
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            successes == 1
+                ? 'Invitació enviada correctament.'
+                : '$successes invitacions enviades correctament.',
+          ),
+        ),
       );
       return;
     }
@@ -497,7 +524,9 @@ class _EventScreenState extends State<EventScreen> {
     // Hi ha errors: si tots són del mateix tipus i clarament identificables,
     // mostrem un text concret; si no, obrim un diàleg amb el detall per amic.
     if (successes == 0 && errors.length == 1) {
-      AppSnackBar.show(context, _friendlySendErrorMessage(errors.first.result));
+      messenger.showSnackBar(
+        SnackBar(content: Text(_friendlySendErrorMessage(errors.first.result))),
+      );
       return;
     }
 
@@ -594,10 +623,7 @@ class _EventScreenState extends State<EventScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      userMessageFromError(
-                        snapshot.error!,
-                        fallback: 'No s\'ha pogut carregar l\'esdeveniment.',
-                      ),
+                      'Error: ${snapshot.error}',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),

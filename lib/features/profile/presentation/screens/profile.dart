@@ -5,7 +5,6 @@ import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/models/user_profile.dart';
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
@@ -20,7 +19,6 @@ import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/state/root_tab_state.dart';
-import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_attended_sessions_tab.dart';
@@ -221,17 +219,12 @@ class _ProfileScreenState extends State<ProfileScreen>
           _isLoading = false;
           _errorMessage = 'Aquest perfil no està disponible.';
         });
-      case ProfileFailure(:final message, :final statusCode, :final error):
+      case ProfileFailure(:final statusCode, :final error):
         setState(() {
           _isLoading = false;
-          _errorMessage =
-              message ??
-              (error != null
-                  ? userMessageFromError(
-                      error,
-                      fallback: 'Error del servidor (codi $statusCode).',
-                    )
-                  : 'Error del servidor (codi $statusCode).');
+          _errorMessage = error != null
+              ? 'Error de connexió. Comprova la teva connexió a internet.'
+              : 'Error del servidor (codi $statusCode).';
         });
     }
   }
@@ -303,7 +296,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       await logout();
     } catch (_) {
       if (!mounted) return;
-      AppSnackBar.show(context, 'No s\'ha pogut tancar la sessió.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No s\'ha pogut tancar la sessió.')),
+      );
       setState(() => _isLoggingOut = false);
       return;
     }
@@ -381,16 +376,24 @@ class _ProfileScreenState extends State<ProfileScreen>
         if (myId != null) {
           _profileQuery.invalidateFriendRequestsList(myId);
         }
-        AppSnackBar.show(context, successMessage, isError: false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
       case FriendActionUnauthorized():
         setState(() => _isFriendshipActionInProgress = false);
-        AppSnackBar.show(context, unauthorizedMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(unauthorizedMessage)));
       case FriendActionUserNotFound():
         setState(() => _isFriendshipActionInProgress = false);
-        AppSnackBar.show(context, notFoundMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notFoundMessage)));
       case FriendActionConflict(:final message):
         setState(() => _isFriendshipActionInProgress = false);
-        AppSnackBar.show(context, message ?? invalidActionMessage);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message ?? invalidActionMessage)),
+        );
         // El backend ens diu que la nostra premissa local sobre l'estat
         // d'amistat és incorrecta (p. ex. provem de cancel·lar una
         // sol·licitud que ja s'ha acceptat, o d'enviar-ne una a algú que ja
@@ -402,11 +405,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         setState(() => _isFriendshipActionInProgress = false);
         final text =
             message ??
-            userMessageFromError(
-              error ?? Exception('Friend action failed'),
-              fallback: genericErrorMessage,
-            );
-        AppSnackBar.show(context, text);
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : genericErrorMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
+        // Codis 400/410 en una mutació d'amistat solen voler dir el mateix
         // que el 409: estat incoherent. Ho tractem igual i resincronitzem.
         if (statusCode == 400 || statusCode == 410) {
           _resyncProfileWithBackend();
@@ -554,9 +559,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (profile == null) return;
     final userId = _isOwnProfile ? _currentUserId : profile.id;
     if (userId == null) {
-      AppSnackBar.show(
-        context,
-        'No s\'ha pogut obrir l\'editor d\'interessos. Torna a iniciar sessió.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No s\'ha pogut obrir l\'editor d\'interessos. Torna a iniciar sessió.',
+          ),
+        ),
       );
       return;
     }
@@ -571,19 +579,21 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     if (updatedInterests != null && mounted) {
       setState(() => _interests = updatedInterests);
-      AppSnackBar.show(
-        context,
-        'Preferències actualitzades correctament',
-        isError: false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Preferències actualitzades correctament'),
+          backgroundColor: Colors.green.shade700,
+        ),
       );
     }
   }
 
   Future<void> _navigateToNotificationPreferences() async {
     if (currentLoggedInUser == null || currentAuthToken == null) {
-      AppSnackBar.show(
-        context,
-        'Cal iniciar sessió per accedir a la configuració.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cal iniciar sessió per accedir a la configuració.'),
+        ),
       );
       return;
     }
@@ -717,7 +727,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     final hasUser = _currentUserId != null;
     if (hasToken && hasUser) return true;
 
-    AppSnackBar.show(context, 'Cal iniciar sessió per bloquejar usuaris.');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cal iniciar sessió per bloquejar usuaris.'),
+      ),
+    );
     return false;
   }
 
@@ -835,10 +849,16 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       case BlockActionUnauthorized():
         setState(() => _isBlockActionInProgress = false);
-        AppSnackBar.show(context, 'Cal iniciar sessió per bloquejar usuaris.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cal iniciar sessió per bloquejar usuaris.'),
+          ),
+        );
       case BlockActionUserNotFound():
         setState(() => _isBlockActionInProgress = false);
-        AppSnackBar.show(context, 'Perfil no vàlid.');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Perfil no vàlid.')));
       case BlockActionConflict(:final message):
         // El backend ja considera l'acció aplicada (ja estava bloquejat o
         // desbloquejat). Sincronitzem la UI amb l'estat real.
@@ -851,15 +871,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                   : 'Aquest usuari ja estava bloquejat.'),
           refreshChatsListOnSuccess: refreshChatsListOnSuccess,
         );
-      case BlockActionFailure(:final message, :final error):
+      case BlockActionFailure(:final statusCode, :final message, :final error):
         setState(() => _isBlockActionInProgress = false);
         final text =
             message ??
-            userMessageFromError(
-              error ?? Exception('Friend action failed'),
-              fallback: genericErrorMessage,
-            );
-        AppSnackBar.show(context, text);
+            (error != null && statusCode == -1
+                ? 'Error de connexió. Comprova la teva connexió a internet.'
+                : genericErrorMessage);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
     }
   }
 
@@ -903,7 +924,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       ChatsQuery.instance.invalidateChatsList();
     }
 
-    AppSnackBar.show(context, message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildBody() {
@@ -1078,7 +1101,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _openReviewEvent(UserReview review) {
     final eventCode = review.eventCode;
     if (eventCode == null || eventCode.isEmpty) {
-      AppSnackBar.show(context, 'Aquesta ressenya no té esdeveniment.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aquesta ressenya no té esdeveniment.')),
+      );
       return;
     }
 
@@ -1091,7 +1116,9 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   void _openSessionEvent(Session session) {
     if (session.event.isEmpty) {
-      AppSnackBar.show(context, 'Aquesta sessió no té esdeveniment.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aquesta sessió no té esdeveniment.')),
+      );
       return;
     }
 

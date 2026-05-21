@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/locations_query.dart';
@@ -27,7 +26,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
   late EventFilters _filters;
   bool _isLoading = true;
-  String? _loadError;
 
   List<String> _categories = [];
   List<String> _provincies = [];
@@ -58,17 +56,10 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
         _comarques = results[2];
         _municipis = results[3];
         _isLoading = false;
-        _loadError = null;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _loadError = userMessageFromError(
-          e,
-          fallback: 'No s\'han pogut carregar les opcions de filtre.',
-        );
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -171,13 +162,6 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             const SizedBox(height: 12),
             if (_isLoading) ...[
               const Center(child: CircularProgressIndicator()),
-              const SizedBox(height: 12),
-            ] else if (_loadError != null) ...[
-              Text(
-                _loadError!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red.shade700),
-              ),
               const SizedBox(height: 12),
             ],
 

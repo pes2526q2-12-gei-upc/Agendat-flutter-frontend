@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/widgets/filter_section.dart';
 import 'package:agendat/features/map/data/models/map_filters.dart';
@@ -25,7 +24,6 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
 
   late MapFilters _filters;
   bool _isLoading = true;
-  String? _loadError;
   List<String> _categories = const [];
 
   @override
@@ -42,17 +40,10 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
       setState(() {
         _categories = categories;
         _isLoading = false;
-        _loadError = null;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _loadError = userMessageFromError(
-          e,
-          fallback: 'No s\'han pogut carregar les categories.',
-        );
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -125,13 +116,6 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
             const SizedBox(height: 12),
             if (_isLoading) ...[
               const Center(child: CircularProgressIndicator()),
-              const SizedBox(height: 12),
-            ] else if (_loadError != null) ...[
-              Text(
-                _loadError!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red.shade700),
-              ),
               const SizedBox(height: 12),
             ],
 

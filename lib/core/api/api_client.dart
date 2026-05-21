@@ -56,7 +56,10 @@ class ApiClient {
     final response = await http.get(uri, headers: _headers()).timeout(timeout);
 
     if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body, uri);
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      throw ApiException(response.statusCode, snippet, uri);
     }
 
     return response;
@@ -147,7 +150,10 @@ class ApiClient {
         ? acceptedStatusCodes.contains(response.statusCode)
         : response.statusCode == expectedStatusCode;
     if (!ok) {
-      throw ApiException(response.statusCode, response.body, uri);
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      throw ApiException(response.statusCode, snippet, uri);
     }
   }
 
@@ -171,7 +177,10 @@ class ApiClient {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode != expectedStatusCode) {
-      throw ApiException(response.statusCode, response.body, uri);
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      throw ApiException(response.statusCode, snippet, uri);
     }
 
     return response;
@@ -197,7 +206,10 @@ class ApiClient {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode != expectedStatusCode) {
-      throw ApiException(response.statusCode, response.body, uri);
+      final snippet = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      throw ApiException(response.statusCode, snippet, uri);
     }
 
     return response;
@@ -269,8 +281,5 @@ class ApiException implements Exception {
   const ApiException(this.statusCode, this.body, this.uri);
 
   @override
-  String toString() {
-    final snippet = body.length > 200 ? '${body.substring(0, 200)}...' : body;
-    return 'ApiException(HTTP $statusCode) for $uri — $snippet';
-  }
+  String toString() => 'ApiException(HTTP $statusCode) for $uri — $body';
 }
