@@ -159,7 +159,9 @@ FriendActionResult _mapFriendActionApiException(ApiException e) {
     return FriendActionUserNotFound();
   }
   if (e.statusCode == 409) {
-    return FriendActionConflict(message: extractApiErrorMessageFromBody(e.body));
+    return FriendActionConflict(
+      message: extractApiErrorMessageFromBody(e.body),
+    );
   }
   return FriendActionFailure(
     statusCode: e.statusCode,
@@ -308,7 +310,9 @@ Future<BlockActionResult> _postBlockAction(String path) async {
       return BlockActionUserNotFound();
     }
     if (e.statusCode == 409) {
-      return BlockActionConflict(message: extractApiErrorMessageFromBody(e.body));
+      return BlockActionConflict(
+        message: extractApiErrorMessageFromBody(e.body),
+      );
     }
     return BlockActionFailure(
       statusCode: e.statusCode,
