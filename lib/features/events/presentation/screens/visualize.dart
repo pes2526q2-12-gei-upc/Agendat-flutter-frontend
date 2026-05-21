@@ -15,6 +15,7 @@ import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -214,8 +215,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: const MainAppBar(title: "Agenda't"),
+      appBar: MainAppBar(title: l10n.appName),
       backgroundColor: AppThemeTokens.screenBackground,
       body: Column(
         children: [
@@ -244,13 +246,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               ),
             ),
           ),
-          Expanded(child: _buildBody()),
+          Expanded(child: _buildBody(context)),
         ],
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_isInitialLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -263,17 +266,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                userMessageFromError(
-                  _error!,
-                  fallback: 'No s\'han pogut carregar els esdeveniments.',
-                ),
+                userMessageFromError(_error!, fallback: l10n.loadEventsFailed),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _refresh,
-                child: const Text('Reintentar'),
-              ),
+              ElevatedButton(onPressed: _refresh, child: Text(l10n.retry)),
             ],
           ),
         ),
@@ -285,9 +282,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         onRefresh: () async => _refresh(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
+          children: [
             SizedBox(height: 120),
-            Center(child: Text('No hi ha esdeveniments.')),
+            Center(child: Text(l10n.noEvents)),
           ],
         ),
       );

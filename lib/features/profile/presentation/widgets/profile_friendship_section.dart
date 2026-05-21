@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class ProfileFriendshipSection extends StatelessWidget {
   const ProfileFriendshipSection({
@@ -48,14 +49,14 @@ class ProfileFriendshipSection extends StatelessWidget {
         return _FriendshipPrimaryButton(
           onPressed: busy ? null : onSendFriendRequest,
           icon: Icons.person_add_alt_1,
-          label: 'Enviar sol·licitud d\'amistat',
+          label: AppLocalizations.of(context).sendFriendRequest,
           busy: busy,
         );
       case FriendshipStatus.requestSent:
         return _FriendshipOutlinedButton(
           onPressed: busy ? null : onCancelFriendRequest,
           icon: Icons.hourglass_top,
-          label: 'Sol·licitud enviada · Cancel·lar',
+          label: AppLocalizations.of(context).friendRequestSentCancel,
           busy: busy,
         );
       case FriendshipStatus.requestReceived:
@@ -65,7 +66,7 @@ class ProfileFriendshipSection extends StatelessWidget {
               child: _FriendshipPrimaryButton(
                 onPressed: busy ? null : onAcceptFriendRequest,
                 icon: Icons.check,
-                label: 'Acceptar',
+                label: AppLocalizations.of(context).accept,
                 busy: busy,
               ),
             ),
@@ -74,7 +75,7 @@ class ProfileFriendshipSection extends StatelessWidget {
               child: _FriendshipOutlinedButton(
                 onPressed: busy ? null : onRejectFriendRequest,
                 icon: Icons.close,
-                label: 'Rebutjar',
+                label: AppLocalizations.of(context).reject,
                 busy: false,
               ),
             ),
@@ -84,14 +85,14 @@ class ProfileFriendshipSection extends StatelessWidget {
         return _FriendshipOutlinedButton(
           onPressed: busy ? null : onUnfriend,
           icon: Icons.person_remove_outlined,
-          label: 'Eliminar amistat',
+          label: AppLocalizations.of(context).removeFriend,
           busy: busy,
         );
       case FriendshipStatus.blockedByMe:
         return _FriendshipOutlinedButton(
           onPressed: isBlockBusy ? null : onUnblock,
           icon: Icons.lock_open,
-          label: 'Desbloquejar',
+          label: AppLocalizations.of(context).unblock,
           busy: isBlockBusy,
         );
       case FriendshipStatus.blockedMe:
@@ -103,14 +104,14 @@ class ProfileFriendshipSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.shade300),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.block, size: 18, color: Colors.black54),
-              SizedBox(width: 10),
+              const Icon(Icons.block, size: 18, color: Colors.black54),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Aquest usuari t\'ha bloquejat',
-                  style: TextStyle(
+                  AppLocalizations.of(context).blockedYou,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,

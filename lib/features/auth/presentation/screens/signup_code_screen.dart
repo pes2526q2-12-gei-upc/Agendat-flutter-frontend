@@ -7,6 +7,7 @@ import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/models/signup_code_confirm_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/register_interests_screen.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/main.dart';
 
 class SignupCodeScreen extends StatefulWidget {
@@ -205,7 +206,7 @@ class _SignupCodeScreenState extends State<SignupCodeScreen> {
         backgroundColor: EventTextUtils.kPrimaryRed,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Verifica el compte'),
+        title: Text(AppLocalizations.of(context).verifyAccountTitle),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
@@ -218,7 +219,7 @@ class _SignupCodeScreenState extends State<SignupCodeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Revisa el teu correu',
+              AppLocalizations.of(context).signupCheckEmailPrompt(widget.email),
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -232,7 +233,7 @@ class _SignupCodeScreenState extends State<SignupCodeScreen> {
             ),
             const SizedBox(height: 28),
             Text(
-              'Codi de verificació',
+              AppLocalizations.of(context).verificationCodeLabel,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -262,7 +263,7 @@ class _SignupCodeScreenState extends State<SignupCodeScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Crear compte'),
+                  : Text(AppLocalizations.of(context).createAccount),
             ),
           ],
         ),

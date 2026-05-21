@@ -16,6 +16,7 @@ import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/features/map/data/models/map_filters.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
@@ -149,7 +150,10 @@ class _MapScreenState extends State<MapScreen> {
       destination: marker.point,
     );
     if (!launched && mounted) {
-      AppSnackBar.show(context, 'Could not open navigation.');
+      AppSnackBar.show(
+        context,
+        AppLocalizations.of(context).navigationOpenFailed,
+      );
     }
   }
 
@@ -210,6 +214,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final mapContentWidth = math.min(screenWidth, 900.0);
@@ -257,7 +262,7 @@ class _MapScreenState extends State<MapScreen> {
     ];
 
     return Scaffold(
-      appBar: const MainAppBar(title: 'La cultura a prop teu'),
+      appBar: MainAppBar(title: l10n.cultureNearYou),
       backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
         child: Column(

@@ -4,6 +4,7 @@ import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Resultat retornat per [SessionPickerDialog.show].
 sealed class SessionPickerResult {
@@ -74,11 +75,12 @@ class _SessionPickerDialogState extends State<SessionPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
       backgroundColor: const Color.fromARGB(255, 255, 244, 244),
       surfaceTintColor: Colors.transparent,
-      title: const Text(
-        'A quina sessió convides?',
+      title: Text(
+        l10n.inviteToSessionTitle,
         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
       ),
       content: SizedBox(
@@ -100,8 +102,7 @@ class _SessionPickerDialogState extends State<SessionPickerDialog> {
                   Text(
                     userMessageFromError(
                       snapshot.error!,
-                      fallback:
-                          'No s\'han pogut carregar les teves sessions per a aquest esdeveniment.',
+                      fallback: l10n.loadEventSessionsFailed,
                     ),
                     style: TextStyle(color: Colors.grey.shade700),
                   ),
@@ -120,8 +121,7 @@ class _SessionPickerDialogState extends State<SessionPickerDialog> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'Encara no tens cap sessió per aquest esdeveniment. '
-                      'Crea\'n una de nova per convidar als teus amics.',
+                      l10n.noEventSessions,
                       style: TextStyle(color: Colors.grey.shade700),
                     ),
                   )
@@ -151,7 +151,7 @@ class _SessionPickerDialogState extends State<SessionPickerDialog> {
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(foregroundColor: _accentRed),
-          child: const Text('Cancel·la'),
+          child: Text(l10n.cancel),
         ),
       ],
     );
@@ -172,6 +172,7 @@ class _SessionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final locale = MaterialLocalizations.of(context);
     final start = session.startTime.toLocal();
     final dateLabel = locale.formatFullDate(start);
@@ -190,7 +191,7 @@ class _SessionTile extends StatelessWidget {
         dateLabel,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
-      subtitle: Text('A les $timeLabel'),
+      subtitle: Text(l10n.sessionTimeAt(timeLabel)),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
@@ -204,6 +205,7 @@ class _CreateNewSessionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -217,7 +219,7 @@ class _CreateNewSessionTile extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Row(
+        child: Row(
           children: [
             Icon(
               Icons.add_circle_outline_rounded,
@@ -226,7 +228,7 @@ class _CreateNewSessionTile extends StatelessWidget {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Crea una sessió nova',
+                l10n.createNewSession,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Color.fromARGB(255, 175, 40, 40),

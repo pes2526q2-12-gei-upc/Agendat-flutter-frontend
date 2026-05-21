@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/session.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -33,7 +34,7 @@ class ProfileLoadErrorBody extends StatelessWidget {
                 backgroundColor: EventTextUtils.kPrimaryRed,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Reintentar'),
+              child: Text(AppLocalizations.of(context).retry),
             ),
           ],
         ),
@@ -72,9 +73,9 @@ class ProfileLogoutButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        label: const Text(
-          'Tancar sessió',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        label: Text(
+          AppLocalizations.of(context).logout,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -95,7 +96,7 @@ class ProfileAttendedTabLabel extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Assistits'),
+            Text(AppLocalizations.of(context).showAttended),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
