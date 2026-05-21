@@ -40,6 +40,47 @@ void main() {
       expect(formatNotificationSubtitle(notification), 'Hola');
     });
 
+    test('formats chat title from sender and body from text preview', () {
+      const notification = NotificationPayload(
+        title: 'Backend sender',
+        body: 'Fallback message',
+        actor: NotificationActor(displayName: 'Maria'),
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(kind: 'text', text: 'Hola'),
+      );
+
+      expect(formatNotificationTitle(notification, languageCode: 'EN'), 'Maria');
+      expect(formatNotificationSubtitle(notification), 'Hola');
+    });
+
+    test('formats chat image preview with readable fallback body', () {
+      const notification = NotificationPayload(
+        title: 'Maria',
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(
+          kind: 'image',
+          imageUrl: 'https://example.com/image.jpg',
+        ),
+      );
+
+      expect(formatNotificationTitle(notification, languageCode: 'EN'), 'Maria');
+      expect(formatNotificationSubtitle(notification), 'Sent you an image.');
+    });
+
+    test('does not repeat event reminder title as subtitle', () {
+      const notification = NotificationPayload(
+        body: 'Concert de Primavera starts soon',
+        action: NotificationAction(key: 'event.reminder'),
+        target: NotificationTarget(name: 'Concert de Primavera'),
+      );
+
+      expect(
+        formatNotificationTitle(notification, languageCode: 'EN'),
+        'Concert de Primavera starts soon',
+      );
+      expect(formatNotificationSubtitle(notification), 'Concert de Primavera');
+    });
+
     test('uses fallback title and body when action key is unknown', () {
       const notification = NotificationPayload(
         title: 'Backend title',

@@ -46,6 +46,19 @@ String formatNotificationTitle(
   String? languageCode,
 }) {
   final actionKey = notification.action?.key;
+  if (actionKey == 'chat.message') {
+    return _firstNonBlank([
+          notification.actor?.displayName,
+          notification.title,
+          notification.target?.name,
+          localizedNotificationActionLabel(
+            actionKey,
+            languageCode: languageCode,
+          ),
+        ]) ??
+        '';
+  }
+
   final localizedAction = localizedNotificationActionLabel(
     actionKey,
     languageCode: languageCode,
@@ -74,11 +87,21 @@ String formatNotificationTitle(
 }
 
 String formatNotificationSubtitle(NotificationPayload notification) {
-  return _firstNonBlank([
-        notification.preview?.text,
-        notification.target?.name,
-        notification.body,
-      ]) ??
+  final title = formatNotificationTitle(notification);
+  final candidates = notification.action?.key == 'chat.message'
+      ? [
+          notification.preview?.text,
+          notification.body,
+          _chatPreviewFallback(notification.preview?.kind),
+          notification.target?.name,
+        ]
+      : [
+          notification.preview?.text,
+          notification.body,
+          notification.target?.name,
+        ];
+
+  return _firstNonBlank(candidates, except: title) ??
       '';
 }
 
@@ -88,10 +111,24 @@ String _normalizeLanguageCode(String code) {
   return 'EN';
 }
 
-String? _firstNonBlank(Iterable<String?> values) {
+String? _chatPreviewFallback(String? kind) {
+  return switch (kind?.trim()) {
+    'image' => 'Sent you an image.',
+    'file' => 'Sent you a file.',
+    'event_invitation' => 'Sent you an event invitation.',
+    _ => null,
+  };
+}
+
+String? _firstNonBlank(Iterable<String?> values, {String? except}) {
+  final normalizedExcept = except?.trim();
   for (final value in values) {
     final trimmed = value?.trim();
-    if (trimmed != null && trimmed.isNotEmpty) return trimmed;
+    if (trimmed != null &&
+        trimmed.isNotEmpty &&
+        trimmed != normalizedExcept) {
+      return trimmed;
+    }
   }
   return null;
 }

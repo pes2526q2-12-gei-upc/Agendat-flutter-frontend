@@ -18,6 +18,8 @@ class Message extends StatelessWidget {
     required this.messageText,
     required this.sentAt,
     required this.isSentByMe,
+    this.messageType = 'text',
+    this.fileUrl,
     this.avatarUrl,
     this.avatarLabel,
     this.receiptLabel,
@@ -26,6 +28,8 @@ class Message extends StatelessWidget {
   final String messageText;
   final DateTime sentAt;
   final bool isSentByMe;
+  final String messageType;
+  final String? fileUrl;
 
   /// Imatge de perfil del remitent (relativa o URL completa).
   final String? avatarUrl;
@@ -41,6 +45,11 @@ class Message extends StatelessWidget {
     final bubbleColor = isSentByMe ? _sentBubbleColor : Colors.white;
     final onBubble = isSentByMe ? Colors.white : Colors.black87;
     final timeLabel = ChatTimestampFormat.messageDetail(context, sentAt);
+    final imageUrl = _imageUrl;
+    final hasImage = imageUrl != null;
+    final displayText = messageText.trim().isEmpty && !hasImage
+        ? '(sense text)'
+        : messageText;
 
     const avatarRadius = 18.0;
     final avatar = ProfileCircleAvatar(
@@ -77,10 +86,23 @@ class Message extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          SelectableText(
-            messageText,
-            style: theme.textTheme.bodyMedium?.copyWith(color: onBubble),
-          ),
+          if (hasImage)
+            _MessageImage(
+              imageUrl: imageUrl,
+              isSentByMe: isSentByMe,
+            )
+          else
+            SelectableText(
+              displayText,
+              style: theme.textTheme.bodyMedium?.copyWith(color: onBubble),
+            ),
+          if (hasImage && displayText.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SelectableText(
+              displayText,
+              style: theme.textTheme.bodyMedium?.copyWith(color: onBubble),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             timeLabel,
@@ -132,6 +154,72 @@ class Message extends StatelessWidget {
           ),
           if (isSentByMe) ...[const SizedBox(width: 8), avatar],
         ],
+      ),
+    );
+  }
+
+  String? get _imageUrl {
+    if (messageType.trim().toLowerCase() != 'image') return null;
+    final url = fileUrl?.trim();
+    if (url == null || url.isEmpty) return null;
+    return url;
+  }
+}
+
+class _MessageImage extends StatelessWidget {
+  const _MessageImage({
+    required this.imageUrl,
+    required this.isSentByMe,
+  });
+
+  final String imageUrl;
+  final bool isSentByMe;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallbackColor = isSentByMe
+        ? Colors.white.withValues(alpha: 0.16)
+        : Colors.grey.shade100;
+    final fallbackIconColor = isSentByMe ? Colors.white70 : Colors.black38;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: 180,
+          maxWidth: 280,
+          maxHeight: 260,
+        ),
+        child: AspectRatio(
+          aspectRatio: 3 / 2,
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: fallbackColor,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    value: loadingProgress.expectedTotalBytes == null
+                        ? null
+                        : loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: fallbackColor,
+              alignment: Alignment.center,
+              child: Icon(Icons.broken_image_outlined, color: fallbackIconColor),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -90,6 +90,34 @@ void main() {
       expect(payload.preview!.text, 'Hello');
     });
 
+    test('uses file_url as image preview for image chat pushes', () {
+      final payload = NotificationPayload.fromData({
+        'title': 'New message',
+        'body': '',
+        'type': 'image',
+        'file_url': 'https://example.com/photo.jpg',
+        'chat_id': 42,
+      });
+
+      expect(payload, isNotNull);
+      expect(payload!.preview!.kind, 'image');
+      expect(payload.preview!.imageUrl, 'https://example.com/photo.jpg');
+    });
+
+    test('accepts file_url inside structured preview', () {
+      final payload = NotificationPayload.fromData({
+        'action': jsonEncode({'key': 'chat.message'}),
+        'preview': jsonEncode({
+          'type': 'image',
+          'file_url': 'https://example.com/photo.jpg',
+        }),
+      });
+
+      expect(payload, isNotNull);
+      expect(payload!.preview!.kind, 'image');
+      expect(payload.preview!.imageUrl, 'https://example.com/photo.jpg');
+    });
+
     test('returns null when neither structured nor fallback display exists', () {
       expect(NotificationPayload.fromData({'ignored': 'value'}), isNull);
     });

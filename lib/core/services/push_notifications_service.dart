@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:agendat/core/api/api_client.dart';
@@ -12,6 +13,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 
 const String _logPrefix = '[PushNotifications]';
 const String _androidChatChannelId = 'agendat_chat_messages';
@@ -112,11 +114,16 @@ class PushNotificationsService {
     }
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: false,
+      badge: false,
+      sound: false,
+    );
     await _initializeLocalNotifications();
 
     await _foregroundMessageSubscription?.cancel();
     _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen(
-      _showAndroidStructuredNotification,
+      _handleForegroundMessage,
       onError: (Object e) {
         debugPrint('$_logPrefix foreground message listener failed: $e');
       },
@@ -130,7 +137,7 @@ class PushNotificationsService {
       },
     );
 
-    final initialMessage = await messaging.getInitialMessage();
+    final initialMessage = await _messaging!.getInitialMessage();
     if (initialMessage != null) {
       unawaited(openNotificationFromData(initialMessage.data));
     }
@@ -279,6 +286,14 @@ class PushNotificationsService {
   }
 }
 
+Future<void> _handleForegroundMessage(RemoteMessage message) async {
+  final dataKeys = _sortedDataKeys(message.data);
+  debugPrint(
+    '$_logPrefix foreground push received silently '
+    '(hasNotification=${message.notification != null}, dataKeys=$dataKeys)',
+  );
+}
+
 Future<void> _initializeLocalNotifications() async {
   if (!_supportsAndroidLocalNotifications || _localNotificationsInitialized) {
     return;
@@ -348,6 +363,11 @@ Future<void> _showAndroidStructuredNotification(RemoteMessage message) async {
       );
       return;
     }
+    final styleInformation = await _androidStyleFor(
+      payload,
+      title: notificationTitle,
+      body: notificationBody,
+    );
 
     final notificationDetails = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -361,9 +381,7 @@ Future<void> _showAndroidStructuredNotification(RemoteMessage message) async {
         color: _androidNotificationColor,
         shortcutId: _conversationShortcutId(payload),
         ticker: notificationBody.isEmpty ? notificationTitle : notificationBody,
-        styleInformation: notificationBody.isEmpty
-            ? null
-            : BigTextStyleInformation(notificationBody),
+        styleInformation: styleInformation,
       ),
     );
 
@@ -381,6 +399,43 @@ Future<void> _showAndroidStructuredNotification(RemoteMessage message) async {
     );
   } catch (e) {
     debugPrint('$_logPrefix local notification failed: $e');
+  }
+}
+
+Future<StyleInformation?> _androidStyleFor(
+  NotificationPayload payload, {
+  required String title,
+  required String body,
+}) async {
+  final imageUrl = payload.preview?.imageUrl?.trim();
+  if (imageUrl != null && imageUrl.isNotEmpty) {
+    final imageBytes = await _downloadNotificationImage(imageUrl);
+    if (imageBytes != null) {
+      return BigPictureStyleInformation(
+        ByteArrayAndroidBitmap(imageBytes),
+        contentTitle: title.isEmpty ? null : title,
+        summaryText: body.isEmpty ? null : body,
+      );
+    }
+  }
+
+  return body.isEmpty ? null : BigTextStyleInformation(body);
+}
+
+Future<Uint8List?> _downloadNotificationImage(String imageUrl) async {
+  final uri = Uri.tryParse(imageUrl);
+  if (uri == null || !uri.hasScheme) return null;
+
+  try {
+    final response = await http.get(uri).timeout(const Duration(seconds: 5));
+    if (response.statusCode < 200 || response.statusCode >= 300) return null;
+    final bytes = response.bodyBytes;
+    const maxNotificationImageBytes = 5 * 1024 * 1024;
+    if (bytes.isEmpty || bytes.length > maxNotificationImageBytes) return null;
+    return bytes;
+  } catch (e) {
+    debugPrint('$_logPrefix notification image download failed: $e');
+    return null;
   }
 }
 

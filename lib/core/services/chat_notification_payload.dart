@@ -38,7 +38,12 @@ class ChatNotificationPayload {
         'avatar',
         'avatar_url',
       ]),
-      chatImageUrl: _stringValue(data['chat_image_url']),
+      chatImageUrl: _firstStringValue(data, const [
+        'chat_image_url',
+        'file_url',
+        'image_url',
+        'attachment_url',
+      ]),
       actorName: _stringValue(data['actor_name']),
       chatId: _stringValue(data['chat_id']),
       messageId: _stringValue(data['message_id']),

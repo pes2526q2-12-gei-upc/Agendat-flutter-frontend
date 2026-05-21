@@ -755,9 +755,9 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
 
         return Message(
           key: ValueKey<int>(message.id),
-          messageText: message.content.isEmpty
-              ? '(sense text)'
-              : message.content,
+          messageText: message.content,
+          messageType: message.type,
+          fileUrl: message.fileUrl,
           sentAt: message.sentAt,
           isSentByMe: isMine,
           avatarUrl: isMine ? myProfileImage : _partner.profileImage,

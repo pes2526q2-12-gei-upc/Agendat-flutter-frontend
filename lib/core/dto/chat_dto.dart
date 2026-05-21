@@ -78,9 +78,20 @@ class ChatDto {
     final candidate = json['last_message'];
     if (candidate is String) return candidate.trim();
     if (candidate is Map<String, dynamic>) {
-      return (candidate['content'] ?? '').toString().trim();
+      final content = (candidate['content'] ?? '').toString().trim();
+      if (content.isNotEmpty) return content;
+      return _fallbackMessageLabel(candidate['type']);
     }
     return '';
+  }
+
+  static String _fallbackMessageLabel(dynamic rawType) {
+    return switch (rawType?.toString().trim().toLowerCase()) {
+      'image' => 'Photo',
+      'file' => 'File',
+      'event_invitation' => 'Event invitation',
+      _ => '',
+    };
   }
 
   static String _parseDateLike(dynamic value) {

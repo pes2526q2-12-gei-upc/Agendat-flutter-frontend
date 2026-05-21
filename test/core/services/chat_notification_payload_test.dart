@@ -73,6 +73,17 @@ void main() {
       expect(payload.chatImageUrl, isNull);
     });
 
+    test('accepts backend file_url as chat attachment image', () {
+      final payload = ChatNotificationPayload.fromData({
+        'title': 'New message',
+        'body': 'Photo incoming',
+        'file_url': 'https://example.com/photo.jpg',
+      });
+
+      expect(payload, isNotNull);
+      expect(payload!.chatImageUrl, 'https://example.com/photo.jpg');
+    });
+
     test('requires title and body', () {
       expect(
         ChatNotificationPayload.fromData({'title': 'New message'}),

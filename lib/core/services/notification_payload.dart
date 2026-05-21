@@ -205,9 +205,14 @@ class NotificationPreview {
   static NotificationPreview? fromJson(Map<String, dynamic>? json) {
     if (json == null) return null;
     final preview = NotificationPreview(
-      kind: _stringValue(json['kind']),
-      text: _stringValue(json['text']),
-      imageUrl: _stringValue(json['image_url']),
+      kind: _stringValue(json['kind']) ?? _stringValue(json['type']),
+      text: _stringValue(json['text']) ?? _stringValue(json['content']),
+      imageUrl: _firstStringValue(json, const [
+        'image_url',
+        'file_url',
+        'attachment_url',
+        'url',
+      ]),
     );
     return preview.kind == null && preview.text == null && preview.imageUrl == null
         ? null
@@ -279,11 +284,21 @@ NotificationTarget? _legacyTargetFromData(Map<String, dynamic> data) {
 }
 
 NotificationPreview? _legacyPreviewFromData(Map<String, dynamic> data) {
-  final body = _stringValue(data['body']);
-  final imageUrl = _stringValue(data['chat_image_url']);
-  if (body == null && imageUrl == null) return null;
+  final body = _stringValue(data['body']) ?? _stringValue(data['content']);
+  final imageUrl = _firstStringValue(data, const [
+    'chat_image_url',
+    'file_url',
+    'image_url',
+    'attachment_url',
+  ]);
+  final kind =
+      _stringValue(data['preview_kind']) ??
+      _stringValue(data['message_type']) ??
+      _stringValue(data['type']) ??
+      (imageUrl == null ? null : 'image');
+  if (body == null && imageUrl == null && kind == null) return null;
   return NotificationPreview(
-    kind: imageUrl == null ? null : 'image',
+    kind: kind,
     text: body,
     imageUrl: imageUrl,
   );
