@@ -37,12 +37,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   String _messageForFailure(ForgotPasswordFailure f) {
+    final l10n = AppLocalizations.of(context);
     if (f.statusCode == -1) {
-      return 'Error de connexió. Comprova la xarxa.';
+      return l10n.connectionErrorCheckYourConnection;
     }
     final body = f.body;
     if (body == null) {
-      return 'No s\'ha pogut processar la sol·licitud.';
+      return l10n.actionFailedFallback;
     }
     if (body['detail'] != null) {
       return body['detail'].toString();
@@ -51,7 +52,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final e = body['email'];
       return e is List ? e.join(' ') : e.toString();
     }
-    return 'No s\'ha pogut enviar la sol·licitud.';
+    return l10n.actionFailedFallback;
   }
 
   Future<void> _submit() async {

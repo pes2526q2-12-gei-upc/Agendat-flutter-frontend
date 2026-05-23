@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/services/user_preferences_api.dart';
@@ -23,8 +24,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const _unauthenticatedMessage =
-      LanguageSelectorTile.unauthenticatedMessageDefault;
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
+  String get _unauthenticatedMessage => l10n.loginRequired;
 
   late bool _notificationsAllowed;
   late bool _eventRemindersAllowed;
@@ -217,9 +219,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final l10n = AppLocalizations.of(context);
     return AppBar(
-      title: const Text(
-        'Configuració',
+      title: Text(
+        l10n.settingsTitle,
         style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.bold,
@@ -234,18 +237,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: AppScreenSpacing.content,
       children: [
-        _buildIntroText(),
+        _buildIntroText(l10n),
         const SizedBox(height: 24),
         LanguageSelectorTile(
           userId: widget.currentProfile.id,
-          unauthenticatedMessage: _unauthenticatedMessage,
+          unauthenticatedMessage: l10n.loginRequired,
           onShowMessage: _showMessage,
         ),
         const SizedBox(height: 12),
-        _buildBlockedUsersShortcut(),
+        _buildBlockedUsersShortcut(l10n),
         const SizedBox(height: 12),
         _buildNotificationBlock(),
         const SizedBox(height: 12),
@@ -256,7 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildBlockedUsersShortcut() {
+  Widget _buildBlockedUsersShortcut(AppLocalizations l10n) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -279,11 +283,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: const Icon(Icons.block, color: EventTextUtils.kPrimaryRed),
         ),
-        title: const Text(
-          'Usuaris bloquejats',
+        title: Text(
+          l10n.blockedUsersTitle,
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        subtitle: const Text('Revisa els perfils que has bloquejat.'),
+        subtitle: Text(l10n.blockedUsersSubtitle),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           unawaited(FeatureNavigation.openBlockedUsers(context));
@@ -292,9 +296,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildIntroText() {
+  Widget _buildIntroText(AppLocalizations l10n) {
     return Text(
-      'Decideix quines alertes vols rebre. Els canvis s\'apliquen al moment.',
+      l10n.notificationPreferencesIntro,
       style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
     );
   }
@@ -370,13 +374,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
       child: SwitchListTile.adaptive(
-        title: const Text(
-          'Sincronitzar amb Google Calendar',
+        title: Text(
+          l10n.calendarSyncTitle,
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        subtitle: const Text(
-          'Afegeix automàticament les sessions que afegeixes a Google Calendar.',
-        ),
+        subtitle: Text(l10n.calendarSyncSubtitle),
         value: _calendarSyncAllowed,
         onChanged: !_isSaving ? _updateCalendarSyncAllowed : null,
         activeThumbColor: EventTextUtils.kPrimaryRed,

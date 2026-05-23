@@ -6,6 +6,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class NotificationPreferencesScreen extends StatefulWidget {
   const NotificationPreferencesScreen({
@@ -22,9 +23,6 @@ class NotificationPreferencesScreen extends StatefulWidget {
 
 class _NotificationPreferencesScreenState
     extends State<NotificationPreferencesScreen> {
-  static const _unauthenticatedMessage =
-      'Cal iniciar sessió per configurar alertes.';
-
   late bool _notificationsAllowed;
   late bool _eventRemindersAllowed;
   late bool _eventUpdatesAllowed;
@@ -41,8 +39,9 @@ class _NotificationPreferencesScreenState
   }
 
   Future<void> _persistPreferences() async {
+    final l10n = AppLocalizations.of(context);
     if (currentLoggedInUser == null || currentAuthToken == null) {
-      _showMessage(_unauthenticatedMessage);
+      _showMessage(l10n.loginRequired);
       return;
     }
 
@@ -83,11 +82,11 @@ class _NotificationPreferencesScreenState
           _isSaving = false;
         });
         if (statusCode == 401 || statusCode == 403) {
-          _showMessage(_unauthenticatedMessage);
+          _showMessage(l10n.loginRequired);
         } else if (statusCode == -1) {
-          _showMessage('Error de connexió. Comprova la teva connexió.');
+          _showMessage(l10n.profileConnectionError);
         } else {
-          _showMessage('No s\'han pogut desar les preferències d\'alertes.');
+          _showMessage(l10n.notificationPreferencesIntro);
         }
       case UpdateProfileValidationError():
         setState(() {
@@ -97,13 +96,14 @@ class _NotificationPreferencesScreenState
           _socialAlertsAllowed = previousSocialAlerts;
           _isSaving = false;
         });
-        _showMessage('No s\'han pogut desar les preferències d\'alertes.');
+        _showMessage(l10n.notificationPreferencesIntro);
     }
   }
 
   Future<void> _updateNotificationsAllowed(bool enabled) async {
+    final l10n = AppLocalizations.of(context);
     if (currentLoggedInUser == null || currentAuthToken == null) {
-      _showMessage(_unauthenticatedMessage);
+      _showMessage(l10n.loginRequired);
       return;
     }
 
@@ -122,8 +122,9 @@ class _NotificationPreferencesScreenState
     required bool value,
     required void Function(bool value) assignLocalValue,
   }) async {
+    final l10n = AppLocalizations.of(context);
     if (currentLoggedInUser == null || currentAuthToken == null) {
-      _showMessage(_unauthenticatedMessage);
+      _showMessage(l10n.loginRequired);
       return;
     }
 
@@ -145,10 +146,11 @@ class _NotificationPreferencesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Preferències d\'alertes'),
+        title: Text(l10n.notificationPreferencesTitle),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -157,7 +159,7 @@ class _NotificationPreferencesScreenState
         padding: AppScreenSpacing.content,
         children: [
           Text(
-            'Decideix quines alertes vols rebre. Els canvis s\'apliquen al moment.',
+            l10n.notificationPreferencesIntro,
             style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
           ),
           const SizedBox(height: 24),
@@ -174,9 +176,8 @@ class _NotificationPreferencesScreenState
               secondChild: Column(
                 children: [
                   SubalertSwitchTile(
-                    title: 'Recordatoris d\'esdeveniments',
-                    subtitle:
-                        'Avisos previs per no perdre sessions o activitats.',
+                    title: l10n.eventRemindersTitle,
+                    subtitle: l10n.eventRemindersSubtitle,
                     value: _eventRemindersAllowed,
                     enabled: !_isSaving,
                     onChanged: (value) => _updateSubalert(
@@ -187,9 +188,8 @@ class _NotificationPreferencesScreenState
                     ),
                   ),
                   SubalertSwitchTile(
-                    title: 'Canvis en esdeveniments',
-                    subtitle:
-                        'Actualitzacions d\'horari, ubicació o cancel·lacions.',
+                    title: l10n.eventChangesTitle,
+                    subtitle: l10n.eventChangesSubtitle,
                     value: _eventUpdatesAllowed,
                     enabled: !_isSaving,
                     onChanged: (value) => _updateSubalert(
@@ -200,9 +200,8 @@ class _NotificationPreferencesScreenState
                     ),
                   ),
                   SubalertSwitchTile(
-                    title: 'Alertes socials',
-                    subtitle:
-                        'Notificacions relacionades amb amistats i activitat social.',
+                    title: l10n.socialAlertsTitle,
+                    subtitle: l10n.eventChangesSubtitle,
                     value: _socialAlertsAllowed,
                     enabled: !_isSaving,
                     onChanged: (value) => _updateSubalert(

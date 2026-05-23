@@ -50,11 +50,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   String _messageForFailure(ResetPasswordFailure f) {
     if (f.statusCode == -1) {
-      return 'Error de connexió. Comprova la xarxa.';
+      return AppLocalizations.of(context).connectionErrorCheckYourConnection;
     }
     final body = f.body;
     if (body == null) {
-      return 'No s\'ha pogut restablir la contrasenya.';
+      return AppLocalizations.of(context).actionFailedFallback;
     }
     if (body['detail'] != null) {
       return body['detail'].toString();
@@ -67,7 +67,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       final c = body['code'];
       return c is List ? c.join(' ') : c.toString();
     }
-    return 'No s\'ha pogut restablir la contrasenya.';
+    return AppLocalizations.of(context).actionFailedFallback;
   }
 
   Future<void> _submit() async {
@@ -76,20 +76,22 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final confirm = _confirmController.text;
 
     if (code.isEmpty) {
-      _showSnackBar('Introdueix el codi de 6 dígits.');
+      _showSnackBar(AppLocalizations.of(context).enterCode6Digits);
       return;
     }
     if (code.length != 6) {
-      _showSnackBar('El codi ha de tenir 6 dígits.');
+      _showSnackBar(AppLocalizations.of(context).codeMustBe6Digits);
       return;
     }
     final passwordError = PasswordValidator.validate(password);
     if (passwordError != null) {
-      _showSnackBar(passwordError);
+      _showSnackBar(
+        _passwordValidationMessage(AppLocalizations.of(context), passwordError),
+      );
       return;
     }
     if (password != confirm) {
-      _showSnackBar('Les contrasenyes no coincideixen.');
+      _showSnackBar(AppLocalizations.of(context).passwordsDoNotMatch);
       return;
     }
 
@@ -119,6 +121,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   void _submitWithKeyboard() {
     FocusScope.of(context).unfocus();
     _submit();
+  }
+
+  String _passwordValidationMessage(
+    AppLocalizations l10n,
+    PasswordValidationIssue issue,
+  ) {
+    switch (issue) {
+      case PasswordValidationIssue.tooShort:
+        return l10n.passwordTooShort;
+      case PasswordValidationIssue.needsUppercase:
+        return l10n.passwordNeedsUppercase;
+      case PasswordValidationIssue.needsLowercase:
+        return l10n.passwordNeedsLowercase;
+      case PasswordValidationIssue.needsNumber:
+        return l10n.passwordNeedsNumber;
+      case PasswordValidationIssue.needsSpecialChar:
+        return l10n.passwordNeedsSpecialChar;
+    }
   }
 
   @override
@@ -174,7 +194,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 FocusScope.of(context).requestFocus(_passwordFocusNode);
               },
               decoration: InputDecoration(
-                hintText: '6 dígits',
+                hintText: AppLocalizations.of(context).enterCode6Digits,
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 filled: true,
                 fillColor: Colors.white,
@@ -218,7 +238,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 FocusScope.of(context).requestFocus(_confirmFocusNode);
               },
               decoration: InputDecoration(
-                hintText: PasswordValidator.requirementsHint,
+                hintText: AppLocalizations.of(context).passwordRequirementsHint,
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 filled: true,
                 fillColor: Colors.white,

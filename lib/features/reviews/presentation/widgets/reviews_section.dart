@@ -10,6 +10,7 @@ import 'package:agendat/core/query/reviews_query.dart';
 import 'package:agendat/features/reviews/presentation/widgets/add_review_form.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_list.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Secció "VALORACIONS" de la vista de detall d'un esdeveniment.
 ///
@@ -97,7 +98,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       setState(() {
         _error = userMessageFromError(
           e,
-          fallback: 'No s\'han pogut carregar les valoracions.',
+          fallback: AppLocalizations.of(context).loadReviewsFailed,
         );
         _isLoading = false;
       });
@@ -295,15 +296,13 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('No pots valorar aquest esdeveniment'),
-        content: const Text(
-          'Només pots valorar esdeveniments als quals has assistit.',
-        ),
+        title: Text(AppLocalizations.of(context).cannotRateEventTitle),
+        content: Text(AppLocalizations.of(context).cannotRateEventBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             style: TextButton.styleFrom(foregroundColor: _brandRed),
-            child: const Text('Entesos'),
+            child: Text(AppLocalizations.of(context).understood),
           ),
         ],
       ),
@@ -316,16 +315,13 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Ja has valorat aquest esdeveniment'),
-        content: const Text(
-          'Ja tens una valoració per aquest esdeveniment. Si la vols '
-          'canviar, fes servir el llapis de la teva valoració.',
-        ),
+        title: Text(AppLocalizations.of(context).alreadyRatedTitle),
+        content: Text(AppLocalizations.of(context).alreadyRatedBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             style: TextButton.styleFrom(foregroundColor: _brandRed),
-            child: const Text('Entesos'),
+            child: Text(AppLocalizations.of(context).understood),
           ),
         ],
       ),
@@ -416,10 +412,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       });
       _showSnack(
         commentNeedsModeration
-            ? 'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.'
+            ? AppLocalizations.of(context).reviewModerationThanks
             : (existing != null
-                  ? 'Valoració actualitzada correctament.'
-                  : 'Valoració publicada correctament.'),
+                  ? AppLocalizations.of(context).reviewUpdatedSuccess
+                  : AppLocalizations.of(context).reviewPublishedSuccess),
       );
       final currentUserId = currentLoggedInUser?['id'];
       if (currentUserId is int) {
@@ -463,20 +459,17 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar valoració'),
-        content: const Text(
-          'Segur que vols eliminar la teva valoració? Aquesta acció no es '
-          'pot desfer.',
-        ),
+        title: Text(AppLocalizations.of(context).deleteReviewTitle),
+        content: Text(AppLocalizations.of(context).deleteReviewBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel·lar'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: _brandRed),
-            child: const Text('Eliminar'),
+            child: Text(AppLocalizations.of(context).delete),
           ),
         ],
       ),
@@ -490,7 +483,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _reviews.removeWhere((r) => r.id == reviewId);
         if (_editingIndex != null) _closeForm();
       });
-      _showSnack('Valoració eliminada.');
+      _showSnack(AppLocalizations.of(context).reviewDeletedSuccess);
     } catch (e) {
       if (!mounted) return;
       _showSnack(
@@ -507,7 +500,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final reviewId = review.id;
     if (reviewId == null) return;
     if (!_isLoggedIn) {
-      _showSnack('Cal iniciar sessió per fer like.');
+      _showSnack(AppLocalizations.of(context).loginRequiredToLike);
       return;
     }
     if (_busyLikeIds.contains(reviewId)) return;
@@ -560,7 +553,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     if (_translatingReviewIds.contains(reviewId)) return;
     final currentComment = (review.comment ?? '').trim();
     if (currentComment.isEmpty) {
-      _showSnack('Aquesta valoració no té comentari per traduir.');
+      _showSnack(AppLocalizations.of(context).reviewNoCommentToTranslate);
       return;
     }
     final selectedLanguage = language.trim().toUpperCase();
@@ -569,7 +562,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         .toUpperCase();
     if (knownCurrentLanguage != null &&
         knownCurrentLanguage == selectedLanguage) {
-      _showSnack('La valoració ja està en aquest idioma.');
+      _showSnack(AppLocalizations.of(context).reviewAlreadyInLanguage);
       return;
     }
 
@@ -606,7 +599,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _translatingReviewIds.remove(reviewId);
       });
       if (backendFallbackDetected) {
-        _showSnack('Traducció no disponible temporalment.');
+        _showSnack(AppLocalizations.of(context).reviewTranslateUnavailable);
       }
     } catch (e) {
       if (!mounted) return;
@@ -614,7 +607,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       _showSnack(
         userMessageFromError(
           e,
-          fallback: 'No s\'ha pogut traduir la valoració.',
+          fallback: AppLocalizations.of(context).reviewTranslateFailed,
         ),
       );
     }
@@ -690,8 +683,8 @@ class _ReviewsSectionState extends State<ReviewsSection> {
               minimumSize: const Size(0, 32),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text(
-              'Tornar a intentar',
+            child: Text(
+              AppLocalizations.of(context).retry,
               style: TextStyle(color: _brandRed, fontSize: 13),
             ),
           ),
@@ -728,7 +721,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
               children: [
                 Expanded(
                   child: Text(
-                    'VALORACIONS (${_reviews.length})',
+                    '${AppLocalizations.of(context).reviewsTitle} (${_reviews.length})',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -757,15 +750,15 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   /// Text "Valoració mitjana: ★★★★" o bé un missatge si encara no n'hi ha.
   Widget _buildAverageSummary() {
     if (_isLoading && _reviews.isEmpty) {
-      return const Text(
-        'Carregant valoracions...',
-        style: TextStyle(fontSize: 14, color: Colors.black54),
+      return Text(
+        AppLocalizations.of(context).loadingReviews,
+        style: const TextStyle(fontSize: 14, color: Colors.black54),
       );
     }
     if (_reviews.isEmpty) {
-      return const Text(
-        'Encara no hi ha valoracions.',
-        style: TextStyle(fontSize: 14, color: Colors.black54),
+      return Text(
+        AppLocalizations.of(context).noReviewsYet,
+        style: const TextStyle(fontSize: 14, color: Colors.black54),
       );
     }
     const labelStyle = TextStyle(
@@ -781,7 +774,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ReviewRatingRow(
-          label: 'General (${_formatAverageLabel(generalAvg)})',
+          label: AppLocalizations.of(
+            context,
+          ).generalAllRatingLabel(_formatAverageLabel(generalAvg)),
           rating: generalAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
@@ -789,7 +784,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Preu (${_formatAverageLabel(preuAvg)})',
+          label: AppLocalizations.of(
+            context,
+          ).priceAllRatingLabel(_formatAverageLabel(preuAvg)),
           rating: preuAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
@@ -797,7 +794,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Ambient (${_formatAverageLabel(ambientAvg)})',
+          label: AppLocalizations.of(
+            context,
+          ).ambientAllRatingLabel(_formatAverageLabel(ambientAvg)),
           rating: ambientAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
@@ -805,7 +804,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           bottomSpacing: 6,
         ),
         ReviewRatingRow(
-          label: 'Accessibilitat (${_formatAverageLabel(accessAvg)})',
+          label: AppLocalizations.of(
+            context,
+          ).accessibilityAllRatingLabel(_formatAverageLabel(accessAvg)),
           rating: accessAvg,
           labelWidth: 130,
           labelStyle: labelStyle,
@@ -825,8 +826,8 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         child: OutlinedButton.icon(
           onPressed: !_isLoggedIn ? null : _openAddForm,
           icon: const Icon(Icons.add_rounded, size: 20, color: _brandRed),
-          label: const Text(
-            'Afegir valoració',
+          label: Text(
+            AppLocalizations.of(context).addReview,
             style: TextStyle(color: _brandRed, fontWeight: FontWeight.w600),
           ),
           style: OutlinedButton.styleFrom(

@@ -69,8 +69,7 @@ abstract class AppLocalizations {
   final String localeName;
 
   static AppLocalizations of(BuildContext context) {
-    return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
-        AppLocalizationsCa();
+    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
   static const LocalizationsDelegate<AppLocalizations> delegate =
@@ -473,6 +472,12 @@ abstract class AppLocalizations {
   /// **'Reintentar'**
   String get searchRetry;
 
+  /// No description provided for @noRecommendationsAvailable.
+  ///
+  /// In ca, this message translates to:
+  /// **'No hi ha recomanacions disponibles.'**
+  String get noRecommendationsAvailable;
+
   /// No description provided for @noChatsYet.
   ///
   /// In ca, this message translates to:
@@ -497,6 +502,78 @@ abstract class AppLocalizations {
   /// **'Esborra cerca'**
   String get clearSearch;
 
+  /// No description provided for @searchChatHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cerca un xat'**
+  String get searchChatHint;
+
+  /// No description provided for @filterFriendsHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Filtra els teus amics'**
+  String get filterFriendsHint;
+
+  /// No description provided for @noChatsMatchSearchSubtitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Prova un altre nom o esborra el text per veure tots els xats.'**
+  String get noChatsMatchSearchSubtitle;
+
+  /// No description provided for @loadChatsFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut carregar els xats.'**
+  String get loadChatsFailed;
+
+  /// No description provided for @addFriend.
+  ///
+  /// In ca, this message translates to:
+  /// **'Afegir'**
+  String get addFriend;
+
+  /// No description provided for @sharedFriendsOne.
+  ///
+  /// In ca, this message translates to:
+  /// **'1 amic en comú'**
+  String get sharedFriendsOne;
+
+  /// No description provided for @sharedFriendsMany.
+  ///
+  /// In ca, this message translates to:
+  /// **'{count} amics en comú'**
+  String sharedFriendsMany(Object count);
+
+  /// No description provided for @unknownUser.
+  ///
+  /// In ca, this message translates to:
+  /// **'Usuari desconegut'**
+  String get unknownUser;
+
+  /// No description provided for @friendRequestAccepted.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sol·licitud acceptada. Ara sou amics!'**
+  String get friendRequestAccepted;
+
+  /// No description provided for @friendRequestRejected.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sol·licitud rebutjada.'**
+  String get friendRequestRejected;
+
+  /// No description provided for @friendRequestAcceptFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut acceptar la sol·licitud.'**
+  String get friendRequestAcceptFailed;
+
+  /// No description provided for @friendRequestRejectFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut rebutjar la sol·licitud.'**
+  String get friendRequestRejectFailed;
+
   /// No description provided for @removeImage.
   ///
   /// In ca, this message translates to:
@@ -508,78 +585,6 @@ abstract class AppLocalizations {
   /// In ca, this message translates to:
   /// **'Afegir imatge'**
   String get addImage;
-
-  /// No description provided for @writeMessageHint.
-  ///
-  /// In ca, this message translates to:
-  /// **'Escriu un missatge...'**
-  String get writeMessageHint;
-
-  /// No description provided for @invitationAcceptedRegistered.
-  ///
-  /// In ca, this message translates to:
-  /// **'Invitació acceptada. Assistència registrada.'**
-  String get invitationAcceptedRegistered;
-
-  /// No description provided for @invitationRejected.
-  ///
-  /// In ca, this message translates to:
-  /// **'Invitació rebutjada.'**
-  String get invitationRejected;
-
-  /// No description provided for @loginRequiredToManageInvitations.
-  ///
-  /// In ca, this message translates to:
-  /// **'Cal iniciar sessió per gestionar invitacions.'**
-  String get loginRequiredToManageInvitations;
-
-  /// No description provided for @invitationNoLongerValid.
-  ///
-  /// In ca, this message translates to:
-  /// **'Aquesta invitació ja no és vàlida.'**
-  String get invitationNoLongerValid;
-
-  /// No description provided for @actionFailedFallback.
-  ///
-  /// In ca, this message translates to:
-  /// **'No s\'ha pogut completar l\'acció.'**
-  String get actionFailedFallback;
-
-  /// No description provided for @invitationSentByYou.
-  ///
-  /// In ca, this message translates to:
-  /// **'Has enviat una invitació'**
-  String get invitationSentByYou;
-
-  /// No description provided for @invitationReceived.
-  ///
-  /// In ca, this message translates to:
-  /// **'T\'han convidat a un esdeveniment'**
-  String get invitationReceived;
-
-  /// No description provided for @eventLabel.
-  ///
-  /// In ca, this message translates to:
-  /// **'Esdeveniment'**
-  String get eventLabel;
-
-  /// No description provided for @invitationStatusPending.
-  ///
-  /// In ca, this message translates to:
-  /// **'Pendent'**
-  String get invitationStatusPending;
-
-  /// No description provided for @invitationStatusAccepted.
-  ///
-  /// In ca, this message translates to:
-  /// **'Acceptada'**
-  String get invitationStatusAccepted;
-
-  /// No description provided for @invitationStatusDenied.
-  ///
-  /// In ca, this message translates to:
-  /// **'Denegada'**
-  String get invitationStatusDenied;
 
   /// No description provided for @deny.
   ///
@@ -778,12 +783,6 @@ abstract class AppLocalizations {
   /// In ca, this message translates to:
   /// **'Aquest usuari t\'ha bloquejat'**
   String get blockedYou;
-
-  /// No description provided for @translate.
-  ///
-  /// In ca, this message translates to:
-  /// **'Traduir'**
-  String get translate;
 
   /// No description provided for @reviewsTitle.
   ///
@@ -1180,6 +1179,1038 @@ abstract class AppLocalizations {
   /// In ca, this message translates to:
   /// **'Accessibilitat ({value})'**
   String accessibilityAllRatingLabel(Object value);
+
+  /// No description provided for @writeMessageHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Escriu un missatge...'**
+  String get writeMessageHint;
+
+  /// No description provided for @invitationAcceptedRegistered.
+  ///
+  /// In ca, this message translates to:
+  /// **'Invitació acceptada. Assistència registrada.'**
+  String get invitationAcceptedRegistered;
+
+  /// No description provided for @invitationRejected.
+  ///
+  /// In ca, this message translates to:
+  /// **'Invitació rebutjada.'**
+  String get invitationRejected;
+
+  /// No description provided for @loginRequiredToManageInvitations.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cal iniciar sessió per gestionar invitacions.'**
+  String get loginRequiredToManageInvitations;
+
+  /// No description provided for @invitationNoLongerValid.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquesta invitació ja no és vàlida.'**
+  String get invitationNoLongerValid;
+
+  /// No description provided for @actionFailedFallback.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut completar l\'acció.'**
+  String get actionFailedFallback;
+
+  /// No description provided for @invitationSentByYou.
+  ///
+  /// In ca, this message translates to:
+  /// **'Has enviat una invitació'**
+  String get invitationSentByYou;
+
+  /// No description provided for @invitationReceived.
+  ///
+  /// In ca, this message translates to:
+  /// **'T\'han convidat a un esdeveniment'**
+  String get invitationReceived;
+
+  /// No description provided for @eventLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Esdeveniment'**
+  String get eventLabel;
+
+  /// No description provided for @invitationStatusPending.
+  ///
+  /// In ca, this message translates to:
+  /// **'Pendent'**
+  String get invitationStatusPending;
+
+  /// No description provided for @invitationStatusAccepted.
+  ///
+  /// In ca, this message translates to:
+  /// **'Acceptada'**
+  String get invitationStatusAccepted;
+
+  /// No description provided for @invitationStatusDenied.
+  ///
+  /// In ca, this message translates to:
+  /// **'Denegada'**
+  String get invitationStatusDenied;
+
+  /// No description provided for @inactiveUnfriendBanner.
+  ///
+  /// In ca, this message translates to:
+  /// **'Ja no sou amics amb aquest usuari. El xat es manté al llistat però només pots llegir els missatges anteriors.'**
+  String get inactiveUnfriendBanner;
+
+  /// No description provided for @inactiveBlockedByPartnerBanner.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquest usuari t\'ha bloquejat. El xat es manté al llistat però només pots llegir els missatges anteriors.'**
+  String get inactiveBlockedByPartnerBanner;
+
+  /// No description provided for @inactiveBlockedByMeBanner.
+  ///
+  /// In ca, this message translates to:
+  /// **'Has bloquejat aquest usuari. El xat ja no apareix al llistat de converses.'**
+  String get inactiveBlockedByMeBanner;
+
+  /// No description provided for @chatReadOnlyNotice.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquest xat està inactiu. Només podeu llegir la conversa.'**
+  String get chatReadOnlyNotice;
+
+  /// No description provided for @loadMessagesFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'han pogut carregar els missatges.'**
+  String get loadMessagesFailed;
+
+  /// No description provided for @sendMessageFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut enviar el missatge.'**
+  String get sendMessageFailed;
+
+  /// No description provided for @sendImageTooLarge.
+  ///
+  /// In ca, this message translates to:
+  /// **'La imatge és massa gran. Prova amb una imatge més petita.'**
+  String get sendImageTooLarge;
+
+  /// No description provided for @sendImageServerFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'El servidor no ha pogut pujar la imatge. Torna-ho a provar.'**
+  String get sendImageServerFailed;
+
+  /// No description provided for @sendImageFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut enviar la imatge.'**
+  String get sendImageFailed;
+
+  /// No description provided for @startChatWithFriendsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Inicia xat amb amics'**
+  String get startChatWithFriendsTitle;
+
+  /// No description provided for @noFriendsAvailableToStartChat.
+  ///
+  /// In ca, this message translates to:
+  /// **'No tens amics disponibles per iniciar un xat.'**
+  String get noFriendsAvailableToStartChat;
+
+  /// No description provided for @noMessagesYetCanSend.
+  ///
+  /// In ca, this message translates to:
+  /// **'Encara no hi ha missatges. Envia el primer.'**
+  String get noMessagesYetCanSend;
+
+  /// No description provided for @noMessagesYetReadOnly.
+  ///
+  /// In ca, this message translates to:
+  /// **'Encara no hi ha missatges en aquest xat.'**
+  String get noMessagesYetReadOnly;
+
+  /// No description provided for @sent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Enviat'**
+  String get sent;
+
+  /// No description provided for @read.
+  ///
+  /// In ca, this message translates to:
+  /// **'Llegit'**
+  String get read;
+
+  /// No description provided for @back.
+  ///
+  /// In ca, this message translates to:
+  /// **'Enrere'**
+  String get back;
+
+  /// No description provided for @createYourAccountTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Crea el teu compte'**
+  String get createYourAccountTitle;
+
+  /// No description provided for @joinAgendaSubtitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Uneix-te a Agenda\'t'**
+  String get joinAgendaSubtitle;
+
+  /// No description provided for @usernameUniqueHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nom d\'usuari únic'**
+  String get usernameUniqueHint;
+
+  /// No description provided for @nameHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'El teu nom'**
+  String get nameHint;
+
+  /// No description provided for @repeatPasswordHintAuth.
+  ///
+  /// In ca, this message translates to:
+  /// **'Repeteix la contrasenya'**
+  String get repeatPasswordHintAuth;
+
+  /// No description provided for @createAccountLoading.
+  ///
+  /// In ca, this message translates to:
+  /// **'Creant compte...'**
+  String get createAccountLoading;
+
+  /// No description provided for @haveAccountPrompt.
+  ///
+  /// In ca, this message translates to:
+  /// **'Ja tens compte?'**
+  String get haveAccountPrompt;
+
+  /// No description provided for @signIn.
+  ///
+  /// In ca, this message translates to:
+  /// **'Inicia sessió'**
+  String get signIn;
+
+  /// No description provided for @passwordLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Contrasenya'**
+  String get passwordLabel;
+
+  /// No description provided for @signupCodeSendFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut enviar el codi de verificació.'**
+  String get signupCodeSendFailed;
+
+  /// No description provided for @passwordRequirementsHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial'**
+  String get passwordRequirementsHint;
+
+  /// No description provided for @passwordTooShort.
+  ///
+  /// In ca, this message translates to:
+  /// **'La contrasenya ha de tenir almenys 8 caràcters.'**
+  String get passwordTooShort;
+
+  /// No description provided for @passwordNeedsUppercase.
+  ///
+  /// In ca, this message translates to:
+  /// **'La contrasenya ha de contenir almenys una majúscula.'**
+  String get passwordNeedsUppercase;
+
+  /// No description provided for @passwordNeedsLowercase.
+  ///
+  /// In ca, this message translates to:
+  /// **'La contrasenya ha de contenir almenys una minúscula.'**
+  String get passwordNeedsLowercase;
+
+  /// No description provided for @passwordNeedsNumber.
+  ///
+  /// In ca, this message translates to:
+  /// **'La contrasenya ha de contenir almenys un número.'**
+  String get passwordNeedsNumber;
+
+  /// No description provided for @passwordNeedsSpecialChar.
+  ///
+  /// In ca, this message translates to:
+  /// **'La contrasenya ha de contenir almenys un caràcter especial.'**
+  String get passwordNeedsSpecialChar;
+
+  /// No description provided for @signupTermsText.
+  ///
+  /// In ca, this message translates to:
+  /// **'En registrar-te acceptes els Termes d\'ús i la Política de privacitat.'**
+  String get signupTermsText;
+
+  /// No description provided for @loadEventFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut carregar l\'esdeveniment.'**
+  String get loadEventFailed;
+
+  /// No description provided for @cannotInviteToEvent.
+  ///
+  /// In ca, this message translates to:
+  /// **'No es pot convidar a aquest esdeveniment.'**
+  String get cannotInviteToEvent;
+
+  /// No description provided for @sessionBeforeEventStart.
+  ///
+  /// In ca, this message translates to:
+  /// **'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.'**
+  String get sessionBeforeEventStart;
+
+  /// No description provided for @sessionAfterEventEnd.
+  ///
+  /// In ca, this message translates to:
+  /// **'La sessió seleccionada és posterior al final de l\'esdeveniment.'**
+  String get sessionAfterEventEnd;
+
+  /// No description provided for @createInvitationSessionFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut crear la sessió per convidar.'**
+  String get createInvitationSessionFailed;
+
+  /// No description provided for @invitationSentSuccessfully.
+  ///
+  /// In ca, this message translates to:
+  /// **'Invitació enviada correctament.'**
+  String get invitationSentSuccessfully;
+
+  /// No description provided for @invitationSummaryCounts.
+  ///
+  /// In ca, this message translates to:
+  /// **'{successes} invitacions enviades · {errors} amb error'**
+  String invitationSummaryCounts(Object errors, Object successes);
+
+  /// No description provided for @inviteSummaryTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Resum de l\'enviament'**
+  String get inviteSummaryTitle;
+
+  /// No description provided for @inviteSummaryClose.
+  ///
+  /// In ca, this message translates to:
+  /// **'Tanca'**
+  String get inviteSummaryClose;
+
+  /// No description provided for @inviteSummaryOk.
+  ///
+  /// In ca, this message translates to:
+  /// **'OK'**
+  String get inviteSummaryOk;
+
+  /// No description provided for @inviteInvalidRecipient.
+  ///
+  /// In ca, this message translates to:
+  /// **'Usuari destinatari no vàlid.'**
+  String get inviteInvalidRecipient;
+
+  /// No description provided for @inviteAlreadySent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Ja has enviat una invitació per aquest esdeveniment.'**
+  String get inviteAlreadySent;
+
+  /// No description provided for @inviteSendFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut enviar la invitació.'**
+  String get inviteSendFailed;
+
+  /// No description provided for @selectAtLeastOneFriend.
+  ///
+  /// In ca, this message translates to:
+  /// **'Selecciona almenys un amic'**
+  String get selectAtLeastOneFriend;
+
+  /// No description provided for @sendOneInvitation.
+  ///
+  /// In ca, this message translates to:
+  /// **'Enviar 1 invitació'**
+  String get sendOneInvitation;
+
+  /// No description provided for @sendInvitationsCount.
+  ///
+  /// In ca, this message translates to:
+  /// **'Enviar {count} invitacions'**
+  String sendInvitationsCount(Object count);
+
+  /// No description provided for @invitationPending.
+  ///
+  /// In ca, this message translates to:
+  /// **'Pendent'**
+  String get invitationPending;
+
+  /// No description provided for @invitationAccepted.
+  ///
+  /// In ca, this message translates to:
+  /// **'Acceptada'**
+  String get invitationAccepted;
+
+  /// No description provided for @invitationDenied.
+  ///
+  /// In ca, this message translates to:
+  /// **'Denegada'**
+  String get invitationDenied;
+
+  /// No description provided for @openLinkFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut obrir l\'enllaç.'**
+  String get openLinkFailed;
+
+  /// No description provided for @free.
+  ///
+  /// In ca, this message translates to:
+  /// **'Gratuït'**
+  String get free;
+
+  /// No description provided for @paid.
+  ///
+  /// In ca, this message translates to:
+  /// **'De pagament'**
+  String get paid;
+
+  /// No description provided for @chatNotAvailableYet.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquest xat encara no està disponible. Torna-ho a provar en uns segons.'**
+  String get chatNotAvailableYet;
+
+  /// No description provided for @noFriendsYet.
+  ///
+  /// In ca, this message translates to:
+  /// **'Encara no tens cap amic.'**
+  String get noFriendsYet;
+
+  /// No description provided for @noFriendsYetSubtitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cerca usuaris i envia\'ls una sol·licitud d\'amistat.'**
+  String get noFriendsYetSubtitle;
+
+  /// No description provided for @noFriendsMatchSearch.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cap amic coincideix amb la cerca.'**
+  String get noFriendsMatchSearch;
+
+  /// No description provided for @translate.
+  ///
+  /// In ca, this message translates to:
+  /// **'Traduir'**
+  String get translate;
+
+  /// No description provided for @loginRequired.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cal iniciar sessió per continuar.'**
+  String get loginRequired;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Configuració'**
+  String get settingsTitle;
+
+  /// No description provided for @profileTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Perfil'**
+  String get profileTitle;
+
+  /// No description provided for @myProfileTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'El meu perfil'**
+  String get myProfileTitle;
+
+  /// No description provided for @moreOptionsTooltip.
+  ///
+  /// In ca, this message translates to:
+  /// **'Més opcions'**
+  String get moreOptionsTooltip;
+
+  /// No description provided for @blockedUsersTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Usuaris bloquejats'**
+  String get blockedUsersTitle;
+
+  /// No description provided for @editProfileTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Editar perfil'**
+  String get editProfileTitle;
+
+  /// No description provided for @profilePhotoLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Foto de perfil'**
+  String get profilePhotoLabel;
+
+  /// No description provided for @usernameLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nom d\'usuari'**
+  String get usernameLabel;
+
+  /// No description provided for @fullNameLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nom complet'**
+  String get fullNameLabel;
+
+  /// No description provided for @emailLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Correu electrònic'**
+  String get emailLabel;
+
+  /// No description provided for @descriptionLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Descripció'**
+  String get descriptionLabel;
+
+  /// No description provided for @usernameHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'El teu nom d\'usuari'**
+  String get usernameHint;
+
+  /// No description provided for @fullNameHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'El teu nom'**
+  String get fullNameHint;
+
+  /// No description provided for @emailHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'exemple@correu.com'**
+  String get emailHint;
+
+  /// No description provided for @descriptionHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Escriu una descripció sobre tu...'**
+  String get descriptionHint;
+
+  /// No description provided for @changePasswordLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Canviar contrasenya'**
+  String get changePasswordLabel;
+
+  /// No description provided for @saveLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Desar canvis'**
+  String get saveLabel;
+
+  /// No description provided for @changePasswordComingSoon.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquesta funció encara no està disponible.'**
+  String get changePasswordComingSoon;
+
+  /// No description provided for @profileImageSelectFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut seleccionar la imatge.'**
+  String get profileImageSelectFailed;
+
+  /// No description provided for @profileUpdatedSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Perfil actualitzat correctament'**
+  String get profileUpdatedSuccess;
+
+  /// No description provided for @profileUsernameRequired.
+  ///
+  /// In ca, this message translates to:
+  /// **'Introdueix un nom d\'usuari.'**
+  String get profileUsernameRequired;
+
+  /// No description provided for @profileEmailRequired.
+  ///
+  /// In ca, this message translates to:
+  /// **'Introdueix el correu electrònic.'**
+  String get profileEmailRequired;
+
+  /// No description provided for @profileInvalidEmail.
+  ///
+  /// In ca, this message translates to:
+  /// **'Format de correu electrònic no vàlid'**
+  String get profileInvalidEmail;
+
+  /// No description provided for @profileEmailAlreadyRegistered.
+  ///
+  /// In ca, this message translates to:
+  /// **'El correu introduït ja està registrat al sistema'**
+  String get profileEmailAlreadyRegistered;
+
+  /// No description provided for @profileUsernameInvalid.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nom d\'usuari no vàlid'**
+  String get profileUsernameInvalid;
+
+  /// No description provided for @profileConnectionError.
+  ///
+  /// In ca, this message translates to:
+  /// **'Error de connexió. Comprova la teva connexió.'**
+  String get profileConnectionError;
+
+  /// No description provided for @profileServerError.
+  ///
+  /// In ca, this message translates to:
+  /// **'Error del servidor (codi {statusCode}).'**
+  String profileServerError(Object statusCode);
+
+  /// No description provided for @openInterestsEditorFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut obrir l\'editor d\'interessos. Torna a iniciar sessió.'**
+  String get openInterestsEditorFailed;
+
+  /// No description provided for @interestsUpdatedSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Preferències actualitzades correctament'**
+  String get interestsUpdatedSuccess;
+
+  /// No description provided for @notificationPreferencesIntro.
+  ///
+  /// In ca, this message translates to:
+  /// **'Decideix quines alertes vols rebre. Els canvis s\'apliquen al moment.'**
+  String get notificationPreferencesIntro;
+
+  /// No description provided for @deleteAccountDescription.
+  ///
+  /// In ca, this message translates to:
+  /// **'Si elimines el teu compte, s\'esborraran les teves dades personals i es tancarà la sessió.'**
+  String get deleteAccountDescription;
+
+  /// No description provided for @deleteAccountConfirmBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'Estàs segur/a que vols eliminar el teu compte? Aquesta acció no es pot desfer.'**
+  String get deleteAccountConfirmBody;
+
+  /// No description provided for @deleteAccountSessionExpiredBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'La teva sessió ha caducat. Tanca la sessió i torna a iniciar-la per eliminar el compte.'**
+  String get deleteAccountSessionExpiredBody;
+
+  /// No description provided for @deleteAccountFailureBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'S\'ha produït un error. Si us plau, torna-ho a intentar més tard.'**
+  String get deleteAccountFailureBody;
+
+  /// No description provided for @unfriendTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Eliminar amistat'**
+  String get unfriendTitle;
+
+  /// No description provided for @unfriendConfirmBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'Vols eliminar @{username} de la teva xarxa d\'amics? Deixareu de tenir un vincle directe i, si voleu, podreu tornar-vos a enviar una sol·licitud d\'amistat en el futur.'**
+  String unfriendConfirmBody(Object username);
+
+  /// No description provided for @unfriendSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Amistat eliminada.'**
+  String get unfriendSuccess;
+
+  /// No description provided for @unfriendError.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut eliminar l\'amistat.'**
+  String get unfriendError;
+
+  /// No description provided for @unfriendUnauthorized.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cal iniciar sessió per eliminar amistats.'**
+  String get unfriendUnauthorized;
+
+  /// No description provided for @unfriendNotFound.
+  ///
+  /// In ca, this message translates to:
+  /// **'Perfil no vàlid.'**
+  String get unfriendNotFound;
+
+  /// No description provided for @unfriendInvalidAction.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquesta acció no és vàlida perquè actualment no sou amics.'**
+  String get unfriendInvalidAction;
+
+  /// No description provided for @blockUserConfirmBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'Estàs segur/a que vols bloquejar @{username}? Si ja sou amics, perdreu l\'amistat. No podrà enviar-te missatges, sol·licituds ni interactuar amb el teu contingut.'**
+  String blockUserConfirmBody(Object username);
+
+  /// No description provided for @blockUserSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Has bloquejat aquest usuari.'**
+  String get blockUserSuccess;
+
+  /// No description provided for @blockUserError.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut bloquejar l\'usuari.'**
+  String get blockUserError;
+
+  /// No description provided for @blockUserUnauthorized.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cal iniciar sessió per bloquejar usuaris.'**
+  String get blockUserUnauthorized;
+
+  /// No description provided for @blockUserNotFound.
+  ///
+  /// In ca, this message translates to:
+  /// **'Perfil no vàlid.'**
+  String get blockUserNotFound;
+
+  /// No description provided for @blockUserAlreadyBlocked.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquest usuari ja estava bloquejat.'**
+  String get blockUserAlreadyBlocked;
+
+  /// No description provided for @unblockUserConfirmBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'Vols desbloquejar @{username}? Podrà veure el teu perfil i tornar a enviar-te missatges i sol·licituds d\'amistat. L\'amistat anterior no es restableix automàticament.'**
+  String unblockUserConfirmBody(Object username);
+
+  /// No description provided for @unblockUserSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Has desbloquejat aquest usuari.'**
+  String get unblockUserSuccess;
+
+  /// No description provided for @unblockUserError.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut desbloquejar l\'usuari.'**
+  String get unblockUserError;
+
+  /// No description provided for @unblockUserUnauthorized.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cal iniciar sessió per bloquejar usuaris.'**
+  String get unblockUserUnauthorized;
+
+  /// No description provided for @unblockUserNotFound.
+  ///
+  /// In ca, this message translates to:
+  /// **'Perfil no vàlid.'**
+  String get unblockUserNotFound;
+
+  /// No description provided for @unblockUserAlreadyUnblocked.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquest usuari ja no estava bloquejat.'**
+  String get unblockUserAlreadyUnblocked;
+
+  /// No description provided for @myInterestsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Els meus interessos'**
+  String get myInterestsTitle;
+
+  /// No description provided for @interestsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Interessos'**
+  String get interestsTitle;
+
+  /// No description provided for @noInterestsAdded.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cap interès afegit'**
+  String get noInterestsAdded;
+
+  /// No description provided for @cannotRateEventBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'Només pots valorar esdeveniments als quals has assistit.'**
+  String get cannotRateEventBody;
+
+  /// No description provided for @alreadyRatedBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'Ja tens una valoració per aquest esdeveniment. Si la vols canviar, fes servir el llapis de la teva valoració.'**
+  String get alreadyRatedBody;
+
+  /// No description provided for @loadReviewsFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut carregar les valoracions.'**
+  String get loadReviewsFailed;
+
+  /// No description provided for @loadingReviews.
+  ///
+  /// In ca, this message translates to:
+  /// **'Carregant valoracions...'**
+  String get loadingReviews;
+
+  /// No description provided for @noReviewsYet.
+  ///
+  /// In ca, this message translates to:
+  /// **'Encara no hi ha valoracions.'**
+  String get noReviewsYet;
+
+  /// No description provided for @addReview.
+  ///
+  /// In ca, this message translates to:
+  /// **'Afegir valoració'**
+  String get addReview;
+
+  /// No description provided for @reviewPublishedSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Valoració publicada correctament.'**
+  String get reviewPublishedSuccess;
+
+  /// No description provided for @reviewUpdatedSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Valoració actualitzada correctament.'**
+  String get reviewUpdatedSuccess;
+
+  /// No description provided for @reviewDeletedSuccess.
+  ///
+  /// In ca, this message translates to:
+  /// **'Valoració eliminada.'**
+  String get reviewDeletedSuccess;
+
+  /// No description provided for @reviewDeleteFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut eliminar la valoració.'**
+  String get reviewDeleteFailed;
+
+  /// No description provided for @reviewModerationThanks.
+  ///
+  /// In ca, this message translates to:
+  /// **'Moltes gràcies per la teva valoració, quan l\'hem validat la publicarem.'**
+  String get reviewModerationThanks;
+
+  /// No description provided for @loginRequiredToLike.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cal iniciar sessió per fer like.'**
+  String get loginRequiredToLike;
+
+  /// No description provided for @reviewNoCommentToTranslate.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquesta valoració no té comentari per traduir.'**
+  String get reviewNoCommentToTranslate;
+
+  /// No description provided for @reviewAlreadyInLanguage.
+  ///
+  /// In ca, this message translates to:
+  /// **'La valoració ja està en aquest idioma.'**
+  String get reviewAlreadyInLanguage;
+
+  /// No description provided for @reviewTranslateUnavailable.
+  ///
+  /// In ca, this message translates to:
+  /// **'Traducció no disponible temporalment.'**
+  String get reviewTranslateUnavailable;
+
+  /// No description provided for @reviewTranslateFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut traduir la valoració.'**
+  String get reviewTranslateFailed;
+
+  /// No description provided for @deleteReviewBody.
+  ///
+  /// In ca, this message translates to:
+  /// **'Segur que vols eliminar la teva valoració? Aquesta acció no es pot desfer.'**
+  String get deleteReviewBody;
+
+  /// No description provided for @profileNotFound.
+  ///
+  /// In ca, this message translates to:
+  /// **'Perfil no trobat.'**
+  String get profileNotFound;
+
+  /// No description provided for @profileUnavailable.
+  ///
+  /// In ca, this message translates to:
+  /// **'Perfil no disponible.'**
+  String get profileUnavailable;
+
+  /// No description provided for @logoutFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut tancar la sessió.'**
+  String get logoutFailed;
+
+  /// No description provided for @reviewNoEvent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquesta ressenya no té esdeveniment.'**
+  String get reviewNoEvent;
+
+  /// No description provided for @sessionNoEvent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Aquesta sessió no té esdeveniment.'**
+  String get sessionNoEvent;
+
+  /// No description provided for @loadFriendsFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut carregar la llista d\'amics.'**
+  String get loadFriendsFailed;
+
+  /// No description provided for @friendRequestNoLongerValid.
+  ///
+  /// In ca, this message translates to:
+  /// **'La sol·licitud ja no és vàlida.'**
+  String get friendRequestNoLongerValid;
+
+  /// No description provided for @friendRequestSent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sol·licitud enviada.'**
+  String get friendRequestSent;
+
+  /// No description provided for @friendRecommendationNoLongerValid.
+  ///
+  /// In ca, this message translates to:
+  /// **'La recomanació ja no és vàlida.'**
+  String get friendRecommendationNoLongerValid;
+
+  /// No description provided for @calendarSyncTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sincronitza amb el calendari'**
+  String get calendarSyncTitle;
+
+  /// No description provided for @calendarSyncSubtitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Importa les sessions al teu calendari'**
+  String get calendarSyncSubtitle;
+
+  /// No description provided for @inviteButton.
+  ///
+  /// In ca, this message translates to:
+  /// **'Convidar'**
+  String get inviteButton;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cerca...'**
+  String get searchHint;
+
+  /// No description provided for @searchEventsHint.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cerca esdeveniments...'**
+  String get searchEventsHint;
+
+  /// No description provided for @noResults.
+  ///
+  /// In ca, this message translates to:
+  /// **'Cap resultat'**
+  String get noResults;
+
+  /// No description provided for @agendaDetailNoSessions.
+  ///
+  /// In ca, this message translates to:
+  /// **'No tens cap esdeveniment programat per aquest dia.'**
+  String get agendaDetailNoSessions;
+
+  /// No description provided for @dateTimeToBeDetermined.
+  ///
+  /// In ca, this message translates to:
+  /// **'Data i hora per determinar'**
+  String get dateTimeToBeDetermined;
+
+  /// No description provided for @friendRecommendationsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Recomanacions d\'amic'**
+  String get friendRecommendationsTitle;
+
+  /// No description provided for @peopleYouMightKnowTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Persones que podries conèixer'**
+  String get peopleYouMightKnowTitle;
+
+  /// No description provided for @friendRequestsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sol·licituds d\'amistat'**
+  String get friendRequestsTitle;
+
+  /// No description provided for @pendingRequestsToReview.
+  ///
+  /// In ca, this message translates to:
+  /// **'{count} pendents per revisar'**
+  String pendingRequestsToReview(Object count);
+
+  /// No description provided for @noActiveChatsYet.
+  ///
+  /// In ca, this message translates to:
+  /// **'Encara no tens cap conversa activa.'**
+  String get noActiveChatsYet;
+
+  /// No description provided for @noUsersFoundWithThisName.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha trobat cap usuari amb aquest nom.'**
+  String get noUsersFoundWithThisName;
+
+  /// No description provided for @loadRecommendationsFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'han pogut carregar les recomanacions.'**
+  String get loadRecommendationsFailed;
+
+  /// No description provided for @friendRecommendationsOne.
+  ///
+  /// In ca, this message translates to:
+  /// **'1 recomanació'**
+  String get friendRecommendationsOne;
+
+  /// No description provided for @friendRecommendationsMany.
+  ///
+  /// In ca, this message translates to:
+  /// **'{count} recomanacions'**
+  String friendRecommendationsMany(Object count);
 }
 
 class _AppLocalizationsDelegate

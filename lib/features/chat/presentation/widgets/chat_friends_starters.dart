@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Llista d'amics per iniciar un xat quan encara no hi ha converses.
 class ChatFriendsStarters extends StatelessWidget {
@@ -25,11 +26,11 @@ class ChatFriendsStarters extends StatelessWidget {
       );
     }
     if (friends.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 4),
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
         child: Center(
           child: Text(
-            'No tens amics disponibles per iniciar un xat.',
+            AppLocalizations.of(context).noFriendsAvailableToStartChat,
             textAlign: TextAlign.center,
           ),
         ),
@@ -46,7 +47,7 @@ class ChatFriendsStarters extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Inicia xat amb amics',
+          AppLocalizations.of(context).startChatWithFriendsTitle,
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,

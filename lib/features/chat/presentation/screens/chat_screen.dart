@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +17,7 @@ import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/models/user_summary.dart';
 import 'package:agendat/features/chat/presentation/widgets/chat_row.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/features/chat/presentation/widgets/chat_empty_pane.dart';
 import 'package:agendat/features/chat/presentation/widgets/chat_friends_starters.dart';
 
@@ -65,7 +66,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _guardAuth() => guardAuthenticated(
     context,
-    message: 'Cal iniciar sessió per veure els teus xats.',
+    message: AppLocalizations.of(context).loginContinuePrompt,
     requireUserId: true,
   );
 
@@ -117,7 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'No s\'ha pogut carregar els xats. Comprova la connexi├│.';
+        _error = AppLocalizations.of(context).loadChatsFailed;
       });
     }
   }
@@ -167,10 +168,8 @@ class _ChatScreenState extends State<ChatScreen> {
       if (chat == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Aquest xat encara no est├á disponible. Torna-ho a provar en uns segons.',
-            ),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).chatNotAvailableYet),
           ),
         );
         return;
@@ -182,9 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (kDebugMode) debugPrint('[chat_screen] start chat failed: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No s\'ha pogut obrir el xat amb aquest amic.'),
-        ),
+        SnackBar(content: Text(AppLocalizations.of(context).chatOpenFailed)),
       );
     }
   }
@@ -199,7 +196,10 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: AppThemeTokens.appBarBackground,
         elevation: AppThemeTokens.appBarElevation,
         foregroundColor: Colors.black87,
-        title: Text('Xats', style: AppThemeTokens.appBarTitle),
+        title: Text(
+          AppLocalizations.of(context).chatsTitle,
+          style: AppThemeTokens.appBarTitle,
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -216,12 +216,12 @@ class _ChatScreenState extends State<ChatScreen> {
               focusNode: _searchFocus,
               onChanged: (_) => setState(() {}),
               textInputAction: TextInputAction.search,
-              hintText: 'Cerca un xat',
+              hintText: AppLocalizations.of(context).searchChatHint,
               margin: EdgeInsets.zero,
               suffixIcon: _searchController.text.trim().isEmpty
                   ? null
                   : IconButton(
-                      tooltip: 'Esborra',
+                      tooltip: AppLocalizations.of(context).deleteTooltip,
                       icon: const Icon(Icons.close, color: Colors.black54),
                       onPressed: _clearSearch,
                     ),
@@ -259,7 +259,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ChatEmptyPane(
             icon: Icons.error_outline,
             title: _error!,
-            actionLabel: 'Reintentar',
+            actionLabel: AppLocalizations.of(context).retry,
             onAction: () => _reload(forceRefresh: true),
             accentColor: _accentRed,
           ),
@@ -274,8 +274,8 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           ChatEmptyPane(
             icon: Icons.chat_bubble_outline,
-            title: 'Encara no tens cap xat.',
-            subtitle: 'Pots iniciar una conversa amb qualsevol amic.',
+            title: AppLocalizations.of(context).noChatsYet,
+            subtitle: AppLocalizations.of(context).noChatsYetSubtitle,
             accentColor: _accentRed,
           ),
           const SizedBox(height: 12),
@@ -295,10 +295,9 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           ChatEmptyPane(
             icon: Icons.search_off,
-            title: 'Cap xat coincideix amb la cerca.',
-            subtitle:
-                'Prova un altre nom o esborra el text per veure tots els xats.',
-            actionLabel: 'Esborra cerca',
+            title: AppLocalizations.of(context).noChatsMatchSearch,
+            subtitle: AppLocalizations.of(context).noChatsMatchSearchSubtitle,
+            actionLabel: AppLocalizations.of(context).clearSearch,
             onAction: _clearSearch,
             accentColor: _accentRed,
           ),

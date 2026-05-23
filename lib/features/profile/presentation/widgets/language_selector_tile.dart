@@ -5,6 +5,7 @@ import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class LanguageSelectorTile extends StatefulWidget {
   const LanguageSelectorTile({
@@ -14,8 +15,7 @@ class LanguageSelectorTile extends StatefulWidget {
     required this.onShowMessage,
   });
 
-  static const String unauthenticatedMessageDefault =
-      'Cal iniciar sessió per accedir a la configuració.';
+  static const String unauthenticatedMessageDefault = '';
 
   final int userId;
   final String unauthenticatedMessage;
@@ -81,6 +81,7 @@ class _LanguageSelectorTileState extends State<LanguageSelectorTile> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ValueListenableBuilder<String>(
       valueListenable: AppLanguage.listenable,
       builder: (context, selectedCode, _) {
@@ -109,11 +110,11 @@ class _LanguageSelectorTileState extends State<LanguageSelectorTile> {
                 color: EventTextUtils.kPrimaryRed,
               ),
             ),
-            title: const Text(
-              'Idioma',
+            title: Text(
+              l10n.language,
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
-            subtitle: const Text('Tria l\'idioma de l\'aplicació.'),
+            subtitle: Text(l10n.chooseAppLanguage),
             trailing: DropdownButton<String>(
               value: selectedCode,
               underline: const SizedBox.shrink(),

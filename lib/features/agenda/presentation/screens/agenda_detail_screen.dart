@@ -7,7 +7,9 @@ import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class AgendaDetailScreen extends StatefulWidget {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
@@ -27,6 +29,8 @@ class AgendaDetailScreen extends StatefulWidget {
 }
 
 class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   static const Color _kAccentRed = AgendaDetailScreen._kAccentRed;
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
   late List<Session> _sessions;
@@ -77,10 +81,10 @@ class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
                         color: _kAccentRed,
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'No tens cap esdeveniment programat per aquest dia.',
+                      Text(
+                        l10n.agendaDetailNoSessions,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -101,7 +105,7 @@ class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Sessions',
+                            l10n.sessionsTitle,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -222,7 +226,7 @@ class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
 
   Widget _buildDeleteSessionButton(Session session) {
     return IconButton(
-      tooltip: 'Eliminar sessió',
+      tooltip: l10n.deleteSessionTooltip,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -236,17 +240,17 @@ class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Eliminar sessió'),
-          content: const Text('Vols eliminar aquesta sessió de l’agenda?'),
+          title: Text(l10n.deleteSessionTitle),
+          content: Text(l10n.deleteSessionBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel·lar'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(foregroundColor: _kAccentRed),
-              child: const Text('Eliminar'),
+              child: Text(l10n.delete),
             ),
           ],
         );
@@ -289,39 +293,19 @@ class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
   }
 
   String _formatSelectedDate(DateTime date) {
-    const weekdayNames = <String>['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
-    const monthNames = <String>[
-      'gener',
-      'febrer',
-      'març',
-      'abril',
-      'maig',
-      'juny',
-      'juliol',
-      'agost',
-      'setembre',
-      'octubre',
-      'novembre',
-      'desembre',
-    ];
-
-    final weekday = weekdayNames[date.weekday - 1];
-    final month = EventTextUtils.capitalizeFirst(monthNames[date.month - 1]);
-    return '$weekday, ${date.day} $month ${date.year}';
+    final formatted = DateFormat('EEE, d MMMM y', l10n.localeName).format(date);
+    return EventTextUtils.capitalizeFirst(formatted);
   }
 
   String _formatDateTimeLabel(DateTime? dateTime) {
     if (dateTime == null) {
-      return 'Data i hora per determinar';
+      return l10n.dateTimeToBeDetermined;
     }
 
     final localDateTime = dateTime.toLocal();
-
-    final day = localDateTime.day.toString().padLeft(2, '0');
-    final month = localDateTime.month.toString().padLeft(2, '0');
-    final year = localDateTime.year.toString();
-    final hour = localDateTime.hour.toString().padLeft(2, '0');
-    final minute = localDateTime.minute.toString().padLeft(2, '0');
-    return '$day/$month/$year · $hour:$minute';
+    return DateFormat(
+      'dd/MM/yyyy · HH:mm',
+      l10n.localeName,
+    ).format(localDateTime);
   }
 }

@@ -188,7 +188,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         context,
         userMessageFromError(
           e,
-          fallback: 'No s\'han pogut carregar més esdeveniments.',
+          fallback: AppLocalizations.of(context).loadEventsFailed,
         ),
       );
     }
@@ -399,8 +399,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Text eventPayment(Event event) {
+    final l10n = AppLocalizations.of(context);
     return Text(
-      event.free ? 'Gratuït' : 'De pagament',
+      event.free ? l10n.free : l10n.paid,
       textAlign: TextAlign.end,
       style: const TextStyle(
         fontSize: 16,

@@ -201,6 +201,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchRetry => 'Retry';
 
   @override
+  String get noRecommendationsAvailable => 'No recommendations available.';
+
+  @override
   String get noChatsYet => 'You don\'t have any chats yet.';
 
   @override
@@ -214,48 +217,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearSearch => 'Clear search';
 
   @override
+  String get searchChatHint => 'Search a chat';
+
+  @override
+  String get filterFriendsHint => 'Filter your friends';
+
+  @override
+  String get noChatsMatchSearchSubtitle =>
+      'Try another name or clear the text to see all chats.';
+
+  @override
+  String get loadChatsFailed => 'Could not load chats.';
+
+  @override
+  String get addFriend => 'Add';
+
+  @override
+  String get sharedFriendsOne => '1 shared friend';
+
+  @override
+  String sharedFriendsMany(Object count) {
+    return '$count shared friends';
+  }
+
+  @override
+  String get unknownUser => 'Unknown user';
+
+  @override
+  String get friendRequestAccepted => 'Request accepted. You are now friends!';
+
+  @override
+  String get friendRequestRejected => 'Request rejected.';
+
+  @override
+  String get friendRequestAcceptFailed => 'Could not accept the request.';
+
+  @override
+  String get friendRequestRejectFailed => 'Could not reject the request.';
+
+  @override
   String get removeImage => 'Remove image';
 
   @override
   String get addImage => 'Add image';
-
-  @override
-  String get writeMessageHint => 'Write a message...';
-
-  @override
-  String get invitationAcceptedRegistered =>
-      'Invitation accepted. Attendance registered.';
-
-  @override
-  String get invitationRejected => 'Invitation rejected.';
-
-  @override
-  String get loginRequiredToManageInvitations =>
-      'You must sign in to manage invitations.';
-
-  @override
-  String get invitationNoLongerValid => 'This invitation is no longer valid.';
-
-  @override
-  String get actionFailedFallback => 'The action could not be completed.';
-
-  @override
-  String get invitationSentByYou => 'You sent an invitation';
-
-  @override
-  String get invitationReceived => 'You have been invited to an event';
-
-  @override
-  String get eventLabel => 'Event';
-
-  @override
-  String get invitationStatusPending => 'Pending';
-
-  @override
-  String get invitationStatusAccepted => 'Accepted';
-
-  @override
-  String get invitationStatusDenied => 'Denied';
 
   @override
   String get deny => 'Decline';
@@ -357,9 +361,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get blockedYou => 'This user has blocked you';
-
-  @override
-  String get translate => 'Translate';
 
   @override
   String get reviewsTitle => 'Reviews';
@@ -577,5 +578,578 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String accessibilityAllRatingLabel(Object value) {
     return 'Accessibility ($value)';
+  }
+
+  @override
+  String get writeMessageHint => 'Write a message...';
+
+  @override
+  String get invitationAcceptedRegistered =>
+      'Invitation accepted. Attendance registered.';
+
+  @override
+  String get invitationRejected => 'Invitation rejected.';
+
+  @override
+  String get loginRequiredToManageInvitations =>
+      'You must sign in to manage invitations.';
+
+  @override
+  String get invitationNoLongerValid => 'This invitation is no longer valid.';
+
+  @override
+  String get actionFailedFallback => 'The action could not be completed.';
+
+  @override
+  String get invitationSentByYou => 'You sent an invitation';
+
+  @override
+  String get invitationReceived => 'You have been invited to an event';
+
+  @override
+  String get eventLabel => 'Event';
+
+  @override
+  String get invitationStatusPending => 'Pending';
+
+  @override
+  String get invitationStatusAccepted => 'Accepted';
+
+  @override
+  String get invitationStatusDenied => 'Denied';
+
+  @override
+  String get inactiveUnfriendBanner =>
+      'You are no longer friends with this user. The chat remains in the list but you can only read previous messages.';
+
+  @override
+  String get inactiveBlockedByPartnerBanner =>
+      'This user has blocked you. The chat remains in the list but you can only read previous messages.';
+
+  @override
+  String get inactiveBlockedByMeBanner =>
+      'You have blocked this user. The chat no longer appears in the conversations list.';
+
+  @override
+  String get chatReadOnlyNotice =>
+      'This chat is inactive. You can only read the conversation.';
+
+  @override
+  String get loadMessagesFailed => 'Could not load messages.';
+
+  @override
+  String get sendMessageFailed => 'Could not send the message.';
+
+  @override
+  String get sendImageTooLarge =>
+      'The image is too large. Try a smaller image.';
+
+  @override
+  String get sendImageServerFailed =>
+      'The server could not upload the image. Try again.';
+
+  @override
+  String get sendImageFailed => 'Could not send the image.';
+
+  @override
+  String get startChatWithFriendsTitle => 'Start a chat with friends';
+
+  @override
+  String get noFriendsAvailableToStartChat =>
+      'You have no friends available to start a chat.';
+
+  @override
+  String get noMessagesYetCanSend =>
+      'There are no messages yet. Send the first one.';
+
+  @override
+  String get noMessagesYetReadOnly => 'There are no messages in this chat yet.';
+
+  @override
+  String get sent => 'Sent';
+
+  @override
+  String get read => 'Read';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get createYourAccountTitle => 'Create your account';
+
+  @override
+  String get joinAgendaSubtitle => 'Join Agenda\'t';
+
+  @override
+  String get usernameUniqueHint => 'Unique username';
+
+  @override
+  String get nameHint => 'Your name';
+
+  @override
+  String get repeatPasswordHintAuth => 'Repeat the password';
+
+  @override
+  String get createAccountLoading => 'Creating account...';
+
+  @override
+  String get haveAccountPrompt => 'Already have an account?';
+
+  @override
+  String get signIn => 'Sign in';
+
+  @override
+  String get passwordLabel => 'Password';
+
+  @override
+  String get signupCodeSendFailed => 'Could not send the verification code.';
+
+  @override
+  String get passwordRequirementsHint =>
+      'Min. 8 characters, uppercase, lowercase, number, and special character';
+
+  @override
+  String get passwordTooShort =>
+      'The password must contain at least 8 characters.';
+
+  @override
+  String get passwordNeedsUppercase =>
+      'The password must contain at least one uppercase letter.';
+
+  @override
+  String get passwordNeedsLowercase =>
+      'The password must contain at least one lowercase letter.';
+
+  @override
+  String get passwordNeedsNumber =>
+      'The password must contain at least one number.';
+
+  @override
+  String get passwordNeedsSpecialChar =>
+      'The password must contain at least one special character.';
+
+  @override
+  String get signupTermsText =>
+      'By signing up, you accept the Terms of Use and Privacy Policy.';
+
+  @override
+  String get loadEventFailed => 'Could not load the event.';
+
+  @override
+  String get cannotInviteToEvent => 'You cannot invite to this event.';
+
+  @override
+  String get sessionBeforeEventStart =>
+      'The selected session is before the start of the event.';
+
+  @override
+  String get sessionAfterEventEnd =>
+      'The selected session is after the end of the event.';
+
+  @override
+  String get createInvitationSessionFailed =>
+      'Could not create the session for inviting.';
+
+  @override
+  String get invitationSentSuccessfully => 'Invitation sent successfully.';
+
+  @override
+  String invitationSummaryCounts(Object errors, Object successes) {
+    return '$successes invitations sent · $errors with error';
+  }
+
+  @override
+  String get inviteSummaryTitle => 'Sending summary';
+
+  @override
+  String get inviteSummaryClose => 'Close';
+
+  @override
+  String get inviteSummaryOk => 'OK';
+
+  @override
+  String get inviteInvalidRecipient => 'Invalid recipient user.';
+
+  @override
+  String get inviteAlreadySent =>
+      'You have already sent an invitation for this event.';
+
+  @override
+  String get inviteSendFailed => 'Could not send the invitation.';
+
+  @override
+  String get selectAtLeastOneFriend => 'Select at least one friend';
+
+  @override
+  String get sendOneInvitation => 'Send 1 invitation';
+
+  @override
+  String sendInvitationsCount(Object count) {
+    return 'Send $count invitations';
+  }
+
+  @override
+  String get invitationPending => 'Pending';
+
+  @override
+  String get invitationAccepted => 'Accepted';
+
+  @override
+  String get invitationDenied => 'Denied';
+
+  @override
+  String get openLinkFailed => 'Could not open the link.';
+
+  @override
+  String get free => 'Free';
+
+  @override
+  String get paid => 'Paid';
+
+  @override
+  String get chatNotAvailableYet =>
+      'This chat is not available yet. Try again in a few seconds.';
+
+  @override
+  String get noFriendsYet => 'You do not have any friends yet.';
+
+  @override
+  String get noFriendsYetSubtitle =>
+      'Search for users and send them a friend request.';
+
+  @override
+  String get noFriendsMatchSearch => 'No friends match the search.';
+
+  @override
+  String get translate => 'Translate';
+
+  @override
+  String get loginRequired => 'You must sign in to continue.';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get profileTitle => 'Profile';
+
+  @override
+  String get myProfileTitle => 'My profile';
+
+  @override
+  String get moreOptionsTooltip => 'More options';
+
+  @override
+  String get blockedUsersTitle => 'Blocked users';
+
+  @override
+  String get editProfileTitle => 'Edit profile';
+
+  @override
+  String get profilePhotoLabel => 'Profile photo';
+
+  @override
+  String get usernameLabel => 'Username';
+
+  @override
+  String get fullNameLabel => 'Full name';
+
+  @override
+  String get emailLabel => 'Email address';
+
+  @override
+  String get descriptionLabel => 'Description';
+
+  @override
+  String get usernameHint => 'Your username';
+
+  @override
+  String get fullNameHint => 'Your name';
+
+  @override
+  String get emailHint => 'example@email.com';
+
+  @override
+  String get descriptionHint => 'Write a description about yourself...';
+
+  @override
+  String get changePasswordLabel => 'Change password';
+
+  @override
+  String get saveLabel => 'Save changes';
+
+  @override
+  String get changePasswordComingSoon => 'This feature is not available yet.';
+
+  @override
+  String get profileImageSelectFailed => 'Could not select the image.';
+
+  @override
+  String get profileUpdatedSuccess => 'Profile updated successfully';
+
+  @override
+  String get profileUsernameRequired => 'Enter a username.';
+
+  @override
+  String get profileEmailRequired => 'Enter the email address.';
+
+  @override
+  String get profileInvalidEmail => 'Invalid email format';
+
+  @override
+  String get profileEmailAlreadyRegistered =>
+      'The entered email is already registered in the system';
+
+  @override
+  String get profileUsernameInvalid => 'Invalid username';
+
+  @override
+  String get profileConnectionError =>
+      'Connection error. Check your connection.';
+
+  @override
+  String profileServerError(Object statusCode) {
+    return 'Server error (code $statusCode).';
+  }
+
+  @override
+  String get openInterestsEditorFailed =>
+      'Could not open the interests editor. Please sign in again.';
+
+  @override
+  String get interestsUpdatedSuccess => 'Preferences updated successfully';
+
+  @override
+  String get notificationPreferencesIntro =>
+      'Choose which alerts you want to receive. Changes apply immediately.';
+
+  @override
+  String get deleteAccountDescription =>
+      'If you delete your account, your personal data will be erased and the session will be closed.';
+
+  @override
+  String get deleteAccountConfirmBody =>
+      'Are you sure you want to delete your account? This action cannot be undone.';
+
+  @override
+  String get deleteAccountSessionExpiredBody =>
+      'Your session has expired. Sign out and sign in again to delete the account.';
+
+  @override
+  String get deleteAccountFailureBody =>
+      'An error occurred. Please try again later.';
+
+  @override
+  String get unfriendTitle => 'Remove friend';
+
+  @override
+  String unfriendConfirmBody(Object username) {
+    return 'Do you want to remove @$username from your friends network? You will no longer have a direct connection and, if you want, you will be able to send each other a friend request again in the future.';
+  }
+
+  @override
+  String get unfriendSuccess => 'Friendship removed.';
+
+  @override
+  String get unfriendError => 'Could not remove the friendship.';
+
+  @override
+  String get unfriendUnauthorized => 'You must sign in to remove friends.';
+
+  @override
+  String get unfriendNotFound => 'Invalid profile.';
+
+  @override
+  String get unfriendInvalidAction =>
+      'This action is not valid because you are not currently friends.';
+
+  @override
+  String blockUserConfirmBody(Object username) {
+    return 'Are you sure you want to block @$username? If you are already friends, the friendship will be lost. They will not be able to send you messages, requests, or interact with your content.';
+  }
+
+  @override
+  String get blockUserSuccess => 'You have blocked this user.';
+
+  @override
+  String get blockUserError => 'Could not block the user.';
+
+  @override
+  String get blockUserUnauthorized => 'You must sign in to block users.';
+
+  @override
+  String get blockUserNotFound => 'Invalid profile.';
+
+  @override
+  String get blockUserAlreadyBlocked => 'This user was already blocked.';
+
+  @override
+  String unblockUserConfirmBody(Object username) {
+    return 'Do you want to unblock @$username? They will be able to see your profile and send you messages and friend requests again. The previous friendship is not restored automatically.';
+  }
+
+  @override
+  String get unblockUserSuccess => 'You have unblocked this user.';
+
+  @override
+  String get unblockUserError => 'Could not unblock the user.';
+
+  @override
+  String get unblockUserUnauthorized => 'You must sign in to block users.';
+
+  @override
+  String get unblockUserNotFound => 'Invalid profile.';
+
+  @override
+  String get unblockUserAlreadyUnblocked => 'This user was no longer blocked.';
+
+  @override
+  String get myInterestsTitle => 'My interests';
+
+  @override
+  String get interestsTitle => 'Interests';
+
+  @override
+  String get noInterestsAdded => 'No interests added yet';
+
+  @override
+  String get cannotRateEventBody =>
+      'You can only rate events you have attended.';
+
+  @override
+  String get alreadyRatedBody =>
+      'You already have a review for this event. To change it, use the edit icon on your review.';
+
+  @override
+  String get loadReviewsFailed => 'Could not load reviews.';
+
+  @override
+  String get loadingReviews => 'Loading reviews...';
+
+  @override
+  String get noReviewsYet => 'There are no reviews yet.';
+
+  @override
+  String get addReview => 'Add review';
+
+  @override
+  String get reviewPublishedSuccess => 'Review published successfully.';
+
+  @override
+  String get reviewUpdatedSuccess => 'Review updated successfully.';
+
+  @override
+  String get reviewDeletedSuccess => 'Review deleted.';
+
+  @override
+  String get reviewDeleteFailed => 'Could not delete the review.';
+
+  @override
+  String get reviewModerationThanks =>
+      'Thanks for your review — we will publish it once validated.';
+
+  @override
+  String get loginRequiredToLike => 'You must sign in to like.';
+
+  @override
+  String get reviewNoCommentToTranslate =>
+      'This review has no comment to translate.';
+
+  @override
+  String get reviewAlreadyInLanguage =>
+      'The review is already in this language.';
+
+  @override
+  String get reviewTranslateUnavailable =>
+      'Translation temporarily unavailable.';
+
+  @override
+  String get reviewTranslateFailed => 'Could not translate the review.';
+
+  @override
+  String get deleteReviewBody =>
+      'Are you sure you want to delete your review? This action cannot be undone.';
+
+  @override
+  String get profileNotFound => 'Profile not found.';
+
+  @override
+  String get profileUnavailable => 'Profile unavailable.';
+
+  @override
+  String get logoutFailed => 'Could not sign out.';
+
+  @override
+  String get reviewNoEvent => 'This review has no event.';
+
+  @override
+  String get sessionNoEvent => 'This session has no event.';
+
+  @override
+  String get loadFriendsFailed => 'Could not load friends list.';
+
+  @override
+  String get friendRequestNoLongerValid => 'Request is no longer valid.';
+
+  @override
+  String get friendRequestSent => 'Request sent.';
+
+  @override
+  String get friendRecommendationNoLongerValid =>
+      'Recommendation is no longer valid.';
+
+  @override
+  String get calendarSyncTitle => 'Sync with calendar';
+
+  @override
+  String get calendarSyncSubtitle => 'Import sessions to your calendar';
+
+  @override
+  String get inviteButton => 'Invite';
+
+  @override
+  String get searchHint => 'Search...';
+
+  @override
+  String get searchEventsHint => 'Search events...';
+
+  @override
+  String get noResults => 'No results';
+
+  @override
+  String get agendaDetailNoSessions =>
+      'You do not have any events scheduled for this day.';
+
+  @override
+  String get dateTimeToBeDetermined => 'Date and time to be determined';
+
+  @override
+  String get friendRecommendationsTitle => 'Friend recommendations';
+
+  @override
+  String get peopleYouMightKnowTitle => 'People you might know';
+
+  @override
+  String get friendRequestsTitle => 'Friend requests';
+
+  @override
+  String pendingRequestsToReview(Object count) {
+    return '$count pending to review';
+  }
+
+  @override
+  String get noActiveChatsYet => 'You do not have any active chats yet.';
+
+  @override
+  String get noUsersFoundWithThisName => 'No user was found with this name.';
+
+  @override
+  String get loadRecommendationsFailed => 'Could not load recommendations.';
+
+  @override
+  String get friendRecommendationsOne => '1 recommendation';
+
+  @override
+  String friendRecommendationsMany(Object count) {
+    return '$count recommendations';
   }
 }

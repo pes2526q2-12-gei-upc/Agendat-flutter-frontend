@@ -11,6 +11,7 @@ import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/models/user_summary.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/utils/user_list_utils.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Modal bottom sheet que mostra els amics de l'usuari autenticat per
 /// convidar-los a una sessió concreta d'un esdeveniment. Permet cerca per
@@ -101,7 +102,7 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
     if (myId is! int) {
       setState(() {
         _loading = false;
-        _error = 'Cal iniciar sessió per enviar invitacions.';
+        _error = AppLocalizations.of(context).loginRequiredToManageInvitations;
       });
       return;
     }
@@ -141,7 +142,7 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'No s\'ha pogut carregar la teva llista d\'amics.';
+        _error = AppLocalizations.of(context).actionFailedFallback;
       });
     }
   }
@@ -271,9 +272,9 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Convida amics',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context).inviteToSessionTitle,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
@@ -284,7 +285,7 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
           ),
           const SizedBox(height: 2),
           Text(
-            'Sessió: $dateLabel · $timeLabel',
+            '${AppLocalizations.of(context).date}: $dateLabel · ${AppLocalizations.of(context).time}: $timeLabel',
             style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
           ),
         ],
@@ -300,12 +301,12 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
         focusNode: _searchFocus,
         onChanged: (value) => setState(() => _filter = value.trim()),
         decoration: InputDecoration(
-          hintText: 'Cerca un amic per nom',
+          hintText: AppLocalizations.of(context).searchChatHint,
           prefixIcon: const Icon(Icons.search, color: Colors.black54),
           suffixIcon: _filter.isEmpty
               ? null
               : IconButton(
-                  tooltip: 'Esborra',
+                  tooltip: AppLocalizations.of(context).clearSearch,
                   icon: const Icon(Icons.close, color: Colors.black54),
                   onPressed: () {
                     _searchController.clear();
@@ -358,7 +359,7 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
                   backgroundColor: _accentRed,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Reintentar'),
+                child: Text(AppLocalizations.of(context).retry),
               ),
             ],
           ),
@@ -369,8 +370,8 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
     if (_friends.isEmpty) {
       return _buildEmpty(
         icon: Icons.group_outlined,
-        title: 'Encara no tens cap amic.',
-        subtitle: 'Cerca usuaris i envia\'ls una sol·licitud d\'amistat.',
+        title: AppLocalizations.of(context).noFriendsYet,
+        subtitle: AppLocalizations.of(context).noFriendsYetSubtitle,
       );
     }
 
@@ -378,7 +379,7 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
     if (visible.isEmpty) {
       return _buildEmpty(
         icon: Icons.search_off,
-        title: 'Cap amic coincideix amb la cerca.',
+        title: AppLocalizations.of(context).noFriendsMatchSearch,
       );
     }
 
@@ -440,12 +441,13 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
   }
 
   Widget _buildFooter() {
+    final l10n = AppLocalizations.of(context);
     final count = _selectedIds.length;
     final label = count == 0
-        ? 'Selecciona almenys un amic'
+        ? l10n.selectAtLeastOneFriend
         : count == 1
-        ? 'Enviar 1 invitació'
-        : 'Enviar $count invitacions';
+        ? l10n.sendOneInvitation
+        : l10n.sendInvitationsCount(count);
 
     return Container(
       decoration: BoxDecoration(
