@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class SearchBar extends StatelessWidget {
   const SearchBar({
@@ -31,7 +32,7 @@ class SearchBar extends StatelessWidget {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          labelText: 'Cerca esdeveniments...',
+          labelText: AppLocalizations.of(context).searchEventsHint,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10.0),

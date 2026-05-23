@@ -4,6 +4,7 @@ import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/core/models/user_summary.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/features/social/presentation/widgets/social_avatar.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class SocialUserResultTile extends StatelessWidget {
   const SocialUserResultTile({required this.user, required this.onTap});
@@ -87,7 +88,7 @@ class SocialRecommendationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reason = _recommendationReason;
+    final reason = _recommendationReason(context);
 
     return Material(
       color: Colors.grey.shade50,
@@ -155,8 +156,8 @@ class SocialRecommendationTile extends StatelessWidget {
                           ),
                         )
                       : const Icon(Icons.person_add_alt_1, size: 17),
-                  label: const Text(
-                    'Afegir',
+                  label: Text(
+                    AppLocalizations.of(context).addFriend,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -187,10 +188,11 @@ class SocialRecommendationTile extends StatelessWidget {
     );
   }
 
-  String get _recommendationReason {
+  String _recommendationReason(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final shared = recommendation.sharedConnectionsCount;
-    if (shared == 1) return '1 amic en comú';
-    return '$shared amics en comú';
+    if (shared == 1) return l10n.sharedFriendsOne;
+    return l10n.sharedFriendsMany(shared);
   }
 }
 
@@ -245,7 +247,8 @@ class SocialFriendRequestTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          sender?.displayName ?? 'Usuari desconegut',
+                          sender?.displayName ??
+                              AppLocalizations.of(context).unknownUser,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -300,8 +303,8 @@ class SocialFriendRequestTile extends StatelessWidget {
                                 ),
                               )
                             : const Icon(Icons.check, size: 18),
-                        label: const Text(
-                          'Acceptar',
+                        label: Text(
+                          AppLocalizations.of(context).accept,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -328,8 +331,8 @@ class SocialFriendRequestTile extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: isBusy ? null : onReject,
                         icon: const Icon(Icons.close, size: 18),
-                        label: const Text(
-                          'Rebutjar',
+                        label: Text(
+                          AppLocalizations.of(context).reject,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,

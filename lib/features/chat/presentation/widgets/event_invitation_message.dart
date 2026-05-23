@@ -11,6 +11,7 @@ import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Bombolla especial per representar una invitació a una sessió d'esdeveniment
 /// dins d'una conversa de xat. Mostra el títol de l'esdeveniment, la data/hora
@@ -106,8 +107,8 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
         AppSnackBar.show(
           context,
           accepted
-              ? 'Invitació acceptada. Assistència registrada.'
-              : 'Invitació rebutjada.',
+              ? AppLocalizations.of(context).invitationAcceptedRegistered
+              : AppLocalizations.of(context).invitationRejected,
           isError: !accepted,
         );
         return;
@@ -124,11 +125,11 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
     final String text;
     switch (result) {
       case RespondInvitationUnauthorized():
-        text = 'Cal iniciar sessió per gestionar invitacions.';
+        text = AppLocalizations.of(context).loginRequiredToManageInvitations;
       case RespondInvitationInvalid():
-        text = 'Aquesta invitació ja no és vàlida.';
+        text = AppLocalizations.of(context).invitationNoLongerValid;
       case RespondInvitationFailure(:final message):
-        text = message ?? 'No s\'ha pogut completar l\'acció.';
+        text = message ?? AppLocalizations.of(context).actionFailedFallback;
       case RespondInvitationSuccess():
         return;
     }
@@ -256,8 +257,8 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
           Expanded(
             child: Text(
               widget.isSentByMe
-                  ? 'Has enviat una invitació'
-                  : 'T\'han convidat a un esdeveniment',
+                  ? AppLocalizations.of(context).invitationSentByYou
+                  : AppLocalizations.of(context).invitationReceived,
               style: theme.textTheme.labelLarge?.copyWith(
                 color: onBubble.withValues(alpha: 0.85),
                 fontWeight: FontWeight.w600,
@@ -271,7 +272,7 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
 
   Widget _buildBody(ThemeData theme, Color onBubble) {
     final title = _invitation.eventDenomination.isEmpty
-        ? 'Esdeveniment'
+        ? AppLocalizations.of(context).eventLabel
         : _invitation.eventDenomination;
     final sessionLabel = _formatSessionWindow();
 
@@ -341,7 +342,7 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
                 ),
               ),
               icon: const Icon(Icons.close_rounded, size: 18),
-              label: const Text('Denegar'),
+              label: Text(AppLocalizations.of(context).deny),
             ),
           ),
           const SizedBox(width: 8),
@@ -366,7 +367,7 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
                       ),
                     )
                   : const Icon(Icons.check_rounded, size: 18),
-              label: const Text('Acceptar'),
+              label: Text(AppLocalizations.of(context).accept),
             ),
           ),
         ],
@@ -426,11 +427,23 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
   (String, IconData, Color) _statusPresentation() {
     switch (_invitation.status) {
       case EventInvitationStatus.pending:
-        return ('Pendent', Icons.hourglass_top_rounded, Colors.orange);
+        return (
+          AppLocalizations.of(context).invitationStatusPending,
+          Icons.hourglass_top_rounded,
+          Colors.orange,
+        );
       case EventInvitationStatus.accepted:
-        return ('Acceptada', Icons.check_circle_rounded, Colors.green);
+        return (
+          AppLocalizations.of(context).invitationStatusAccepted,
+          Icons.check_circle_rounded,
+          Colors.green,
+        );
       case EventInvitationStatus.denied:
-        return ('Denegada', Icons.cancel_rounded, Colors.redAccent);
+        return (
+          AppLocalizations.of(context).invitationStatusDenied,
+          Icons.cancel_rounded,
+          Colors.redAccent,
+        );
     }
   }
 

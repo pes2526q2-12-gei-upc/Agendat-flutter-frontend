@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 
 class FilterSection extends StatelessWidget {
@@ -226,7 +227,7 @@ class _OptionSearchDialogState extends State<_OptionSearchDialog> {
               child: TextField(
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Cerca...',
+                  hintText: AppLocalizations.of(context).searchHint,
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -253,11 +254,11 @@ class _OptionSearchDialogState extends State<_OptionSearchDialog> {
             const Divider(height: 1),
             Flexible(
               child: _filtered.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(24),
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        'Cap resultat',
-                        style: TextStyle(color: Colors.grey),
+                        AppLocalizations.of(context).noResults,
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     )
                   : ListView.builder(

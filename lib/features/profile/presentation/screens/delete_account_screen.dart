@@ -3,6 +3,7 @@ import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});
@@ -15,22 +16,21 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   bool _isDeleting = false;
 
   Future<void> _requestDeleteAccount() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Confirma'),
-          content: const Text(
-            'Estàs segur/a que vols eliminar el teu compte? Aquesta acció no es pot desfer.',
-          ),
+          title: Text(l10n.confirmTitle),
+          content: Text(l10n.deleteAccountConfirmBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel·lar'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Eliminar'),
+              child: Text(l10n.delete),
             ),
           ],
         );
@@ -56,14 +56,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             context: context,
             builder: (dialogContext) {
               return AlertDialog(
-                title: const Text('Sessió caducada'),
-                content: const Text(
-                  'La teva sessió ha caducat. Tanca la sessió i torna a iniciar-la per eliminar el compte.',
-                ),
+                title: Text(l10n.sessionExpiredTitle),
+                content: Text(l10n.deleteAccountSessionExpiredBody),
                 actions: [
                   FilledButton(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('OK'),
+                    child: Text(l10n.ok),
                   ),
                 ],
               );
@@ -74,14 +72,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             context: context,
             builder: (dialogContext) {
               return AlertDialog(
-                title: const Text('Error en eliminar el compte'),
-                content: const Text(
-                  'S\'ha produït un error. Si us plau, torna-ho a intentar més tard.',
-                ),
+                title: Text(l10n.deleteAccountErrorTitle),
+                content: Text(l10n.deleteAccountFailureBody),
                 actions: [
                   FilledButton(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('OK'),
+                    child: Text(l10n.ok),
                   ),
                 ],
               );
@@ -97,16 +93,15 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Eliminar compte')),
+      appBar: AppBar(title: Text(l10n.deleteAccountTitle)),
       body: Padding(
         padding: AppScreenSpacing.content,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Si elimines el teu compte, s\'esborraran les teves dades personals i es tancarà la sessió.',
-            ),
+            Text(l10n.deleteAccountDescription),
             const SizedBox(height: 16),
             FilledButton.tonal(
               onPressed: _isDeleting ? null : _requestDeleteAccount,
@@ -116,7 +111,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       width: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Eliminar el meu compte'),
+                  : Text(l10n.deleteAccountButton),
             ),
           ],
         ),

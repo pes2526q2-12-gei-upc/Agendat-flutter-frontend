@@ -21,6 +21,7 @@ import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,13 +69,14 @@ class MyApp extends StatelessWidget {
       builder: (context, _, __) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Agenda\'t',
+          onGenerateTitle: (context) => AppLocalizations.of(context).appName,
           localizationsDelegates: const [
+            AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [Locale('ca'), Locale('es'), Locale('en')],
+          supportedLocales: AppLocalizations.supportedLocales,
           locale: AppLanguage.toLocale(),
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(

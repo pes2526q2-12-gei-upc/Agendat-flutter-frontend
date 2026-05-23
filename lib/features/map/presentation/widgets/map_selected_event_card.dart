@@ -1,3 +1,4 @@
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
@@ -36,6 +37,7 @@ class MapSelectedEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final showSkeleton = isLoading && preview == null;
     final buttonsEnabled = !showSkeleton;
 
@@ -100,8 +102,7 @@ class MapSelectedEventCard extends StatelessWidget {
                 if (hasCurrentLocation) ...[
                   const SizedBox(height: 2),
                   Text(
-                    // Si tenim GPS, ensenya km des de la ubi de l'usuari.
-                    '${distanceKm.toStringAsFixed(1)} km des de la teva ubicacio',
+                    l10n.distanceFromLocation(distanceKm.toStringAsFixed(1)),
                     style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -116,7 +117,7 @@ class MapSelectedEventCard extends StatelessWidget {
                       minimumSize: const Size.fromHeight(38),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
-                    child: const Text('Veure ruta'),
+                    child: Text(l10n.viewRoute),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -130,7 +131,7 @@ class MapSelectedEventCard extends StatelessWidget {
                       minimumSize: const Size.fromHeight(38),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
-                    child: const Text('Veure detalls'),
+                    child: Text(l10n.viewDetails),
                   ),
                 ),
               ],

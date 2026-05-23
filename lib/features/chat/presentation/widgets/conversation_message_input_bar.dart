@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Camp d'entrada i botó d'enviar per a la conversa.
 class ConversationMessageInputBar extends StatelessWidget {
@@ -57,7 +58,7 @@ class ConversationMessageInputBar extends StatelessWidget {
                           top: 4,
                           right: 4,
                           child: IconButton.filled(
-                            tooltip: 'Treu la imatge',
+                            tooltip: AppLocalizations.of(context).removeImage,
                             constraints: const BoxConstraints.tightFor(
                               width: 32,
                               height: 32,
@@ -90,7 +91,7 @@ class ConversationMessageInputBar extends StatelessWidget {
                     builder: (context, value, _) {
                       final hasText = value.text.isNotEmpty;
                       return IconButton(
-                        tooltip: 'Afegir imatge',
+                        tooltip: AppLocalizations.of(context).addImage,
                         onPressed: disabled || hasText ? null : onPickImage,
                         icon: pickingImage
                             ? const SizedBox(
@@ -115,7 +116,7 @@ class ConversationMessageInputBar extends StatelessWidget {
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => onSend(),
                       decoration: InputDecoration(
-                        hintText: 'Escriu un missatge...',
+                        hintText: AppLocalizations.of(context).writeMessageHint,
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(

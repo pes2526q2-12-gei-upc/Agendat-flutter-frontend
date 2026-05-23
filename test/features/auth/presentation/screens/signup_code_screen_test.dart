@@ -1,11 +1,14 @@
 import 'package:agendat/features/auth/presentation/screens/signup_code_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Future<void> pumpScreen(WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: SignupCodeScreen(email: 'user@example.com', username: 'user'),
       ),
     );

@@ -14,6 +14,7 @@ import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -61,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     if (password.isEmpty) {
-      _showSnackBar('Introdueix la contrasenya.');
+      _showSnackBar(AppLocalizations.of(context).enterPassword);
       return;
     }
 
@@ -323,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Inicia sessió per continuar',
+                    AppLocalizations.of(context).loginContinuePrompt,
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 28),
@@ -438,16 +439,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.arrow_forward,
                           size: 20,
                           color: Colors.white,
                         ),
-                        SizedBox(width: 8),
-                        Text('Inicia sessió'),
+                        const SizedBox(width: 8),
+                        Text(AppLocalizations.of(context).loginTitle),
                       ],
                     ),
                   ),
@@ -490,7 +491,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     icon: _GoogleGIcon(),
-                    label: const Text('Continua amb Google'),
+                    label: Text(
+                      AppLocalizations.of(context).continueWithGoogle,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Center(
@@ -503,9 +506,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      child: const Text(
-                        'He oblidat la meva contrasenya',
-                        style: TextStyle(
+                      child: Text(
+                        AppLocalizations.of(context).forgotPasswordLink,
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: EventTextUtils.kPrimaryRed,

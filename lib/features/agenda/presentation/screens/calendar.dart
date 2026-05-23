@@ -7,6 +7,7 @@ import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/agenda/presentation/screens/agenda_detail_screen.dart';
 import 'package:agendat/features/agenda/presentation/screens/agenda_list_screen.dart';
 import 'package:agendat/core/state/root_tab_state.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -21,20 +22,6 @@ enum _AgendaView { calendar, list }
 class _CalendarScreenState extends State<CalendarScreen> {
   static const Color _kAccentRed = Color.fromARGB(255, 152, 38, 30);
   static const Color _kSessionDayRed = Color(0xFFFFDDE0);
-  static const List<String> _monthNames = [
-    'Gener',
-    'Febrer',
-    'Març',
-    'Abril',
-    'Maig',
-    'Juny',
-    'Juliol',
-    'Agost',
-    'Setembre',
-    'Octubre',
-    'Novembre',
-    'Desembre',
-  ];
 
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
 
@@ -81,8 +68,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: const MainAppBar(title: "Agenda"),
+      appBar: MainAppBar(title: l10n.agendaTitle),
       backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
         child: RefreshIndicator(
@@ -99,7 +87,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       AppScreenSpacing.horizontal,
                       0,
                     ),
-                    child: _buildViewSwitch(),
+                    child: _buildViewSwitch(context),
                   ),
                   Expanded(child: _buildBody(context, snapshot)),
                 ],
@@ -111,7 +99,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildViewSwitch() {
+  Widget _buildViewSwitch(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(6),
@@ -127,16 +116,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       child: SegmentedButton<_AgendaView>(
-        segments: const [
+        segments: [
           ButtonSegment<_AgendaView>(
             value: _AgendaView.calendar,
             icon: Icon(Icons.calendar_month_rounded),
-            label: Text('Calendari'),
+            label: Text(l10n.calendarTab),
           ),
           ButtonSegment<_AgendaView>(
             value: _AgendaView.list,
             icon: Icon(Icons.view_agenda_rounded),
-            label: Text('Llista'),
+            label: Text(l10n.listTab),
           ),
         ],
         selected: const {_AgendaView.calendar},
@@ -191,14 +180,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     if (snapshot.hasError) {
-      return _buildErrorState(snapshot.error);
+      return _buildErrorState(context, snapshot.error);
     }
 
     final sessions = _sortedSessions(snapshot.data ?? const []);
     return _buildCalendarView(context, sessions);
   }
 
-  Widget _buildErrorState(Object? error) {
+  Widget _buildErrorState(BuildContext context, Object? error) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -210,7 +200,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Text(
               userMessageFromError(
                 error ?? 'Error desconegut',
-                fallback: 'No s\'ha pogut carregar l\'agenda.',
+                fallback: l10n.loadAgendaFailed,
               ),
               textAlign: TextAlign.center,
             ),
@@ -221,7 +211,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 backgroundColor: _kAccentRed,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Reintentar'),
+              child: Text(l10n.retry),
             ),
           ],
         ),
@@ -255,6 +245,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final weekRows = (totalDayCells / 7).ceil();
 
     const dayLabels = ['DL', 'DM', 'DC', 'DJ', 'DV', 'DS', 'DG'];
+    final monthLabel = MaterialLocalizations.of(
+      context,
+    ).formatMonthYear(monthDate);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -280,7 +273,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               Expanded(
                 child: Text(
-                  '${_monthNames[monthDate.month - 1]} ${monthDate.year}',
+                  monthLabel,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 18,

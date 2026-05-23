@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/features/auth/data/models/create_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/auth/utils/password_validator.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/signup_code_screen.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/l10n/app_localizations.dart';
+import 'package:agendat/features/auth/utils/password_validator.dart'
+    show PasswordValidationIssue, PasswordValidator;
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -69,22 +71,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
     final fullName = _nameController.text.trim();
+    final l10n = AppLocalizations.of(context);
 
     if (username.isEmpty) {
-      _showSnackBar('Introdueix un nom d\'usuari.');
+      _showSnackBar(l10n.enterUsername);
       return;
     }
     if (email.isEmpty) {
-      _showSnackBar('Introdueix el correu electrònic.');
+      _showSnackBar(l10n.enterEmail);
       return;
     }
     final passwordError = PasswordValidator.validate(password);
     if (passwordError != null) {
-      _showSnackBar(passwordError);
+      _showSnackBar(_passwordValidationMessage(l10n, passwordError));
       return;
     }
     if (password != confirmPassword) {
-      _showSnackBar('Les contrasenyes no coincideixen.');
+      _showSnackBar(l10n.passwordsDoNotMatch);
       return;
     }
 
@@ -108,7 +111,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         );
       case RequestSignupCodeFailure(:final statusCode, :final body):
-        String message = 'No s\'ha pogut enviar el codi de verificació.';
+        String message = l10n.signupCodeSendFailed;
         if (body != null) {
           if (body['email'] != null) {
             message = (body['email'] is List)
@@ -126,7 +129,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             message = body['detail'].toString();
           }
         } else if (statusCode == -1) {
-          message = 'Error de connexió. Comprova la xarxa.';
+          message = l10n.connectionErrorCheckYourConnection;
         }
         _showSnackBar(message);
     }
@@ -186,7 +189,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Navigator.pop(context);
                               },
                               behavior: HitTestBehavior.opaque,
-                              child: const Row(
+                              child: Row(
                                 children: [
                                   Icon(
                                     Icons.arrow_back_ios_new,
@@ -195,7 +198,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   ),
                                   SizedBox(width: 4),
                                   Text(
-                                    'Enrere',
+                                    AppLocalizations.of(context).back,
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
@@ -238,8 +241,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             children: [
                               const _CalendarIcon(),
                               const SizedBox(height: 12),
-                              const Text(
-                                'Crea el teu compte',
+                              Text(
+                                AppLocalizations.of(
+                                  context,
+                                ).createYourAccountTitle,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 26,
@@ -248,7 +253,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Uneix-te a Agenda\'t',
+                                AppLocalizations.of(context).joinAgendaSubtitle,
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.95),
                                   fontSize: 14,
@@ -277,12 +282,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildLabel('Nom d\'usuari'),
+                  _buildLabel(AppLocalizations.of(context).usernameLabel),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _usernameController,
                     focusNode: _usernameFocusNode,
-                    hintText: 'Nom d\'usuari únic',
+                    hintText: AppLocalizations.of(context).usernameUniqueHint,
                     keyboardType: TextInputType.text,
                     textInputAction: TextInputAction.next,
                     onSubmitted: (_) {
@@ -290,12 +295,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Nom complet'),
+                  _buildLabel(AppLocalizations.of(context).fullNameLabel),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _nameController,
                     focusNode: _nameFocusNode,
-                    hintText: 'El teu nom',
+                    hintText: AppLocalizations.of(context).nameHint,
                     keyboardType: TextInputType.name,
                     textInputAction: TextInputAction.next,
                     onSubmitted: (_) {
@@ -303,12 +308,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Correu electrònic'),
+                  _buildLabel(AppLocalizations.of(context).emailLabel),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _emailController,
                     focusNode: _emailFocusNode,
-                    hintText: 'exemple@correu.cat',
+                    hintText: AppLocalizations.of(context).emailExampleHint,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     onSubmitted: (_) {
@@ -316,12 +321,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Contrasenya'),
+                  _buildLabel(AppLocalizations.of(context).passwordLabel),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _passwordController,
                     focusNode: _passwordFocusNode,
-                    hintText: PasswordValidator.requirementsHint,
+                    hintText: AppLocalizations.of(
+                      context,
+                    ).passwordRequirementsHint,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.next,
                     onSubmitted: (_) {
@@ -345,12 +352,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Confirma la contrasenya'),
+                  _buildLabel(
+                    AppLocalizations.of(context).confirmPasswordLabel,
+                  ),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _confirmPasswordController,
                     focusNode: _confirmPasswordFocusNode,
-                    hintText: 'Repeteix la contrasenya',
+                    hintText: AppLocalizations.of(
+                      context,
+                    ).repeatPasswordHintAuth,
                     obscureText: _obscureConfirmPassword,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submitWithKeyboard(),
@@ -400,7 +411,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             color: Colors.white,
                           ),
                         const SizedBox(width: 8),
-                        Text(_isLoading ? 'Creant compte...' : 'Crear compte'),
+                        Text(
+                          _isLoading
+                              ? AppLocalizations.of(
+                                  context,
+                                ).createAccountLoading
+                              : AppLocalizations.of(context).createAccount,
+                        ),
                       ],
                     ),
                   ),
@@ -414,9 +431,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           color: Colors.grey.shade600,
                         ),
                         children: [
-                          const TextSpan(text: 'Ja tens compte? '),
                           TextSpan(
-                            text: 'Inicia sessió',
+                            text:
+                                '${AppLocalizations.of(context).haveAccountPrompt} ',
+                          ),
+                          TextSpan(
+                            text: AppLocalizations.of(context).signIn,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: EventTextUtils.kPrimaryRed,
@@ -434,22 +454,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         fontSize: 12,
                         color: Colors.grey.shade600,
                       ),
-                      children: const [
-                        TextSpan(text: 'En registrar-te acceptes els '),
+                      children: [
                         TextSpan(
-                          text: 'Termes d\'ús',
-                          style: TextStyle(
-                            decoration: TextDecoration.underline,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        TextSpan(text: ' i la '),
-                        TextSpan(
-                          text: 'Política de privacitat.',
-                          style: TextStyle(
-                            decoration: TextDecoration.underline,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          text: AppLocalizations.of(context).signupTermsText,
                         ),
                       ],
                     ),
@@ -516,6 +523,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
         suffixIcon: suffixIcon,
       ),
     );
+  }
+
+  String _passwordValidationMessage(
+    AppLocalizations l10n,
+    PasswordValidationIssue issue,
+  ) {
+    switch (issue) {
+      case PasswordValidationIssue.tooShort:
+        return l10n.passwordTooShort;
+      case PasswordValidationIssue.needsUppercase:
+        return l10n.passwordNeedsUppercase;
+      case PasswordValidationIssue.needsLowercase:
+        return l10n.passwordNeedsLowercase;
+      case PasswordValidationIssue.needsNumber:
+        return l10n.passwordNeedsNumber;
+      case PasswordValidationIssue.needsSpecialChar:
+        return l10n.passwordNeedsSpecialChar;
+    }
   }
 }
 

@@ -20,6 +20,7 @@ import 'package:agendat/features/events/presentation/widgets/session_picker_dial
 import 'package:agendat/features/reviews/presentation/widgets/reviews_section.dart';
 import 'package:agendat/core/services/google_calendar_service.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key, required this.eventCode});
@@ -254,7 +255,7 @@ class _EventScreenState extends State<EventScreen> {
                       Icons.calendar_today_rounded,
                       color: Color(0xFFD96B6B),
                     ),
-                    title: const Text('Data'),
+                    title: Text(AppLocalizations.of(context).date),
                     subtitle: Text(_formatDate(selectedStartDate)),
                     trailing: TextButton(
                       onPressed: () async {
@@ -263,7 +264,7 @@ class _EventScreenState extends State<EventScreen> {
                           initialDate: selectedStartDate,
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
-                          confirmText: 'D\'acord',
+                          confirmText: AppLocalizations.of(context).confirm,
                         );
                         if (pickedDate == null) return;
                         setDialogState(() {
@@ -277,7 +278,7 @@ class _EventScreenState extends State<EventScreen> {
                       style: TextButton.styleFrom(
                         foregroundColor: const Color.fromARGB(255, 175, 40, 40),
                       ),
-                      child: const Text('Canvia'),
+                      child: Text(AppLocalizations.of(context).change),
                     ),
                   ),
                   ListTile(
@@ -286,7 +287,7 @@ class _EventScreenState extends State<EventScreen> {
                       Icons.access_time_rounded,
                       color: Color.fromARGB(255, 175, 40, 40),
                     ),
-                    title: const Text('Hora'),
+                    title: Text(AppLocalizations.of(context).time),
                     subtitle: Text(selectedStartTime.format(dialogContext)),
                     trailing: TextButton(
                       onPressed: () async {
@@ -294,7 +295,7 @@ class _EventScreenState extends State<EventScreen> {
                           context: dialogContext,
                           initialTime: selectedStartTime,
                           initialEntryMode: TimePickerEntryMode.input,
-                          confirmText: 'D\'acord',
+                          confirmText: AppLocalizations.of(context).confirm,
                           builder: (context, child) {
                             final mediaQuery = MediaQuery.of(context);
                             return MediaQuery(
@@ -313,7 +314,7 @@ class _EventScreenState extends State<EventScreen> {
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFC84D4D),
                       ),
-                      child: const Text('Canvia'),
+                      child: Text(AppLocalizations.of(context).change),
                     ),
                   ),
                   const SizedBox(height: 0),
@@ -325,7 +326,7 @@ class _EventScreenState extends State<EventScreen> {
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFC84D4D),
                   ),
-                  child: const Text('Cancel·la'),
+                  child: Text(AppLocalizations.of(context).cancel),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -335,7 +336,7 @@ class _EventScreenState extends State<EventScreen> {
                     backgroundColor: const Color.fromARGB(255, 175, 40, 40),
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Confirmar'),
+                  child: Text(AppLocalizations.of(context).confirm),
                 ),
               ],
             );
@@ -356,15 +357,16 @@ class _EventScreenState extends State<EventScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _handleConvidar(EventExtended event) async {
+    final l10n = AppLocalizations.of(context);
     if (_isPreparingInvitation) return;
 
     if (!_isAuthenticated) {
-      AppSnackBar.show(context, 'Cal iniciar sessió per enviar invitacions.');
+      AppSnackBar.show(context, l10n.loginRequiredToManageInvitations);
       return;
     }
 
     if (!_canInviteToEvent(event)) {
-      AppSnackBar.show(context, 'No es pot convidar a aquest esdeveniment.');
+      AppSnackBar.show(context, l10n.cannotInviteToEvent);
       return;
     }
 
@@ -436,14 +438,14 @@ class _EventScreenState extends State<EventScreen> {
     if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
       AppSnackBar.show(
         context,
-        'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
+        AppLocalizations.of(context).sessionBeforeEventStart,
       );
       return null;
     }
     if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
       AppSnackBar.show(
         context,
-        'La sessió seleccionada és posterior al final de l\'esdeveniment.',
+        AppLocalizations.of(context).sessionAfterEventEnd,
       );
       return null;
     }
@@ -466,13 +468,16 @@ class _EventScreenState extends State<EventScreen> {
         context,
         userMessageFromApiException(
           e,
-          fallback: 'No s\'ha pogut crear la sessió per convidar.',
+          fallback: AppLocalizations.of(context).createInvitationSessionFailed,
         ),
       );
       return null;
     } catch (_) {
       if (!mounted) return null;
-      AppSnackBar.show(context, 'No s\'ha pogut crear la sessió per convidar.');
+      AppSnackBar.show(
+        context,
+        AppLocalizations.of(context).createInvitationSessionFailed,
+      );
       return null;
     }
   }
@@ -487,8 +492,10 @@ class _EventScreenState extends State<EventScreen> {
       AppSnackBar.show(
         context,
         successes == 1
-            ? 'Invitació enviada correctament.'
-            : '$successes invitacions enviades correctament.',
+            ? AppLocalizations.of(context).invitationSentSuccessfully
+            : AppLocalizations.of(
+                context,
+              ).invitationSummaryCounts(successes, errors.length),
         isError: false,
       );
       return;
@@ -505,7 +512,7 @@ class _EventScreenState extends State<EventScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Resum de l\'enviament'),
+          title: Text(AppLocalizations.of(context).sendSummaryTitle),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
@@ -513,7 +520,9 @@ class _EventScreenState extends State<EventScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$successes invitacions enviades · ${errors.length} amb error',
+                  AppLocalizations.of(
+                    context,
+                  ).invitationSummaryCounts(successes, errors.length),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
@@ -542,7 +551,7 @@ class _EventScreenState extends State<EventScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Tanca'),
+              child: Text(AppLocalizations.of(context).close),
             ),
           ],
         );
@@ -554,17 +563,17 @@ class _EventScreenState extends State<EventScreen> {
   String _friendlySendErrorMessage(SendInvitationResult result) {
     switch (result) {
       case SendInvitationSuccess():
-        return 'OK';
+        return AppLocalizations.of(context).ok;
       case SendInvitationUnauthorized():
-        return 'Cal iniciar sessió per enviar invitacions.';
+        return AppLocalizations.of(context).loginRequiredToManageInvitations;
       case SendInvitationInvalidRecipient():
-        return 'Usuari destinatari no vàlid.';
+        return AppLocalizations.of(context).inviteInvalidRecipient;
       case SendInvitationEventNotInvitable():
-        return 'No es pot convidar a aquest esdeveniment.';
+        return AppLocalizations.of(context).cannotInviteToEvent;
       case SendInvitationDuplicate():
-        return 'Ja has enviat una invitació per aquest esdeveniment.';
+        return AppLocalizations.of(context).inviteAlreadySent;
       case SendInvitationFailure(:final message):
-        return message ?? 'No s\'ha pogut enviar la invitació.';
+        return message ?? AppLocalizations.of(context).inviteSendFailed;
     }
   }
 
@@ -572,7 +581,7 @@ class _EventScreenState extends State<EventScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: const MainAppBar(title: 'Detalls'),
+      appBar: MainAppBar(title: AppLocalizations.of(context).detailsTitle),
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
@@ -596,14 +605,14 @@ class _EventScreenState extends State<EventScreen> {
                     Text(
                       userMessageFromError(
                         snapshot.error!,
-                        fallback: 'No s\'ha pogut carregar l\'esdeveniment.',
+                        fallback: AppLocalizations.of(context).loadEventFailed,
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _retryLoad,
-                      child: const Text('Reintentar'),
+                      child: Text(AppLocalizations.of(context).retry),
                     ),
                   ],
                 ),
@@ -849,6 +858,7 @@ class _EventScreenState extends State<EventScreen> {
   }
 
   Widget _buildConvidarButton(EventExtended event) {
+    final l10n = AppLocalizations.of(context);
     final canInvite = _canInviteToEvent(event);
     final isBusy = _isPreparingInvitation;
     final isEnabled = canInvite && !isBusy;
@@ -882,8 +892,8 @@ class _EventScreenState extends State<EventScreen> {
                 ),
               )
             : const Icon(Icons.group_add_rounded),
-        label: const Text(
-          'Convidar',
+        label: Text(
+          l10n.inviteButton,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -892,7 +902,7 @@ class _EventScreenState extends State<EventScreen> {
     if (canInvite) return button;
 
     return Tooltip(
-      message: 'No es pot convidar a aquest esdeveniment.',
+      message: l10n.cannotInviteToEvent,
       triggerMode: TooltipTriggerMode.tap,
       child: button,
     );

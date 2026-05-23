@@ -1,3 +1,4 @@
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class AppNavigationBar extends StatelessWidget {
@@ -43,6 +44,7 @@ class AppNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ClipRRect(
       child: NavigationBar(
         selectedIndex: currentIndex,
@@ -56,20 +58,20 @@ class AppNavigationBar extends StatelessWidget {
           return const TextStyle(color: Colors.white70);
         }),
         destinations: [
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.home, color: Colors.white70),
             selectedIcon: Icon(Icons.home, color: Colors.white),
-            label: 'Inici',
+            label: l10n.navHome,
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.map, color: Colors.white70),
             selectedIcon: Icon(Icons.map, color: Colors.white),
-            label: 'Mapa',
+            label: l10n.navMap,
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.calendar_month, color: Colors.white70),
             selectedIcon: Icon(Icons.calendar_month, color: Colors.white),
-            label: 'Agenda',
+            label: l10n.navAgenda,
           ),
           NavigationDestination(
             icon: _socialIconWithBadge(
@@ -82,12 +84,12 @@ class AppNavigationBar extends StatelessWidget {
               socialUnreadConversationCount,
               socialPendingFriendRequestsCount,
             ),
-            label: 'Social',
+            label: l10n.navSocial,
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.person, color: Colors.white70),
             selectedIcon: Icon(Icons.person, color: Colors.white),
-            label: 'Perfil',
+            label: l10n.navProfile,
           ),
         ],
       ),

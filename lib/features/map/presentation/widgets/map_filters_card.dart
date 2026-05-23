@@ -1,3 +1,4 @@
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/query/categories_query.dart';
@@ -108,6 +109,7 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       color: Colors.white,
       elevation: 2,
@@ -118,8 +120,8 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Filtres',
+            Text(
+              l10n.filtersTitle,
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -136,17 +138,17 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
             ],
 
             FilterSection(
-              title: 'Categoria',
+              title: l10n.category,
               options: _categories,
               selectedValue: _filters.category,
               searchable: true,
-              allLabel: 'Totes',
+              allLabel: l10n.allFeminine,
               onChanged: _onCategoryChanged,
             ),
             const SizedBox(height: 12),
 
-            const Text(
-              'Data',
+            Text(
+              l10n.date,
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -162,7 +164,7 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Aplicar filtres'),
+                child: Text(l10n.applyFilters),
               ),
             ),
             const SizedBox(height: 8),
@@ -176,7 +178,7 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  label: const Text('Netejar filtres'),
+                  label: Text(l10n.clearFilters),
                 ),
               ),
             if (!_filters.isDefault) const SizedBox(height: 8),
@@ -188,7 +190,7 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Cancel·lar'),
+                child: Text(l10n.cancel),
               ),
             ),
           ],

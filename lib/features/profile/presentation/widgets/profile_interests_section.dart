@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class ProfileInterestsSection extends StatelessWidget {
   const ProfileInterestsSection({
@@ -17,6 +18,8 @@ class ProfileInterestsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -38,7 +41,7 @@ class ProfileInterestsSection extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  isOwnProfile ? 'Els meus interessos' : 'Interessos',
+                  isOwnProfile ? l10n.myInterestsTitle : l10n.interestsTitle,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -49,7 +52,7 @@ class ProfileInterestsSection extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onEditTap,
                   icon: const Icon(Icons.tune_rounded, size: 18),
-                  label: const Text('Editar'),
+                  label: Text(l10n.editInterests),
                   style: TextButton.styleFrom(
                     foregroundColor: EventTextUtils.kPrimaryRed,
                     textStyle: const TextStyle(
@@ -64,7 +67,7 @@ class ProfileInterestsSection extends StatelessWidget {
           const SizedBox(height: 12),
           if (interests.isEmpty)
             Text(
-              'Cap interès afegit',
+              l10n.noInterestsAdded,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey.shade500,

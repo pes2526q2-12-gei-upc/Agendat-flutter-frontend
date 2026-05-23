@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class AppSearchBar extends StatelessWidget {
   const AppSearchBar({
@@ -8,7 +9,7 @@ class AppSearchBar extends StatelessWidget {
     this.onChanged,
     this.onSubmitted,
     this.onTap,
-    this.hintText = 'Cerca...',
+    this.hintText = '',
     this.textInputAction,
     this.suffixIcon,
     this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -34,7 +35,9 @@ class AppSearchBar extends StatelessWidget {
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         onTap: onTap,
-        hintText: hintText,
+        hintText: hintText.isEmpty
+            ? AppLocalizations.of(context).searchHint
+            : hintText,
         textInputAction: textInputAction,
         leading: const Icon(Icons.search),
         trailing: suffixIcon == null ? null : [suffixIcon!],
