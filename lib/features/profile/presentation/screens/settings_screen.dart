@@ -94,9 +94,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (statusCode == 401 || statusCode == 403) {
           _showMessage(_unauthenticatedMessage);
         } else if (statusCode == -1) {
-          _showMessage('Error de connexió. Comprova la teva connexió.');
+          _showMessage(l10n.connectionErrorCheckYourConnection);
         } else {
-          _showMessage('No s\'han pogut desar les preferències d\'alertes.');
+          _showMessage(l10n.actionFailedFallback);
         }
       case UpdateProfileValidationError():
         setState(() {
@@ -107,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
-        _showMessage('No s\'han pogut desar les preferències d\'alertes.');
+        _showMessage(l10n.actionFailedFallback);
     }
   }
 
@@ -188,20 +188,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (statusCode == 401 || statusCode == 403) {
           _showMessage(_unauthenticatedMessage);
         } else if (statusCode == -1) {
-          _showMessage('Error de connexió. Comprova la teva connexió.');
+          _showMessage(l10n.connectionErrorCheckYourConnection);
         } else {
-          _showMessage(
-            'No s\'ha pogut actualitzar la sincronització de calendari.',
-          );
+          _showMessage(l10n.actionFailedFallback);
         }
       case UpdateProfileValidationError():
         setState(() {
           _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
-        _showMessage(
-          'No s\'ha pogut actualitzar la sincronització de calendari.',
-        );
+        _showMessage(l10n.actionFailedFallback);
     }
   }
 
@@ -304,6 +300,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildNotificationBlock() {
+    final l10n = AppLocalizations.of(context);
     return NotificationAlertsBlock(
       notificationsAllowed: _notificationsAllowed,
       enabled: !_isSaving,
@@ -317,8 +314,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         secondChild: Column(
           children: [
             SubalertSwitchTile(
-              title: 'Recordatoris d\'esdeveniments',
-              subtitle: 'Avisos previs per no perdre sessions o activitats.',
+              title: l10n.eventRemindersTitle,
+              subtitle: l10n.eventRemindersSubtitle,
               value: _eventRemindersAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
@@ -329,8 +326,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             SubalertSwitchTile(
-              title: 'Canvis en esdeveniments',
-              subtitle: 'Actualitzacions d\'horari, ubicació o cancel·lacions.',
+              title: l10n.eventChangesTitle,
+              subtitle: l10n.eventChangesSubtitle,
               value: _eventUpdatesAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
@@ -341,9 +338,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             SubalertSwitchTile(
-              title: 'Alertes socials',
-              subtitle:
-                  'Notificacions relacionades amb amistats i activitat social.',
+              title: l10n.socialAlertsTitle,
+              subtitle: l10n.notificationPreferencesIntro,
               value: _socialAlertsAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
