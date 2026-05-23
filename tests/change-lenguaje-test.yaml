@@ -1,0 +1,54 @@
+# Fer aquest test després del sign up ja que així ja està el compte creat
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+# Happy path de login
+- tapOn: El teu nom d'usuari
+- inputText: Casteller16
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertNotVisible: Inicia sessió per continuar
+
+# Canviar l'idioma
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- tapOn:
+    point: 90%,4%
+- assertVisible: Configuració
+- tapOn:
+    point: 75%, 22%
+- tapOn: 'English'
+- waitForAnimationToEnd
+- assertVisible: Settings
+- tapOn: Back
+- tapOn: |-
+    Home
+    Tab 1 of 5
+- assertVisible: Filters
+- tapOn: |-
+    Map
+    Tab 2 of 5
+- assertVisible: Culture near you
+- tapOn: |-
+    Profile
+    Tab 5 of 5
+- tapOn:
+    point: 90%,4%
+- tapOn:
+    point: 75%, 22%
+- tapOn: 'Català'
+- assertVisible: Configuració
+- tapOn: Enrere
+- tapOn: |-
+    Inici
+    Pestanya 1 de 5
+- assertVisible: Filtres
+- tapOn: |-
+    Mapa
+    Pestanya 2 de 5
+- assertVisible: La cultura a prop teu

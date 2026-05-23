@@ -21,20 +21,20 @@ appId: com.example.agendat
 
 # Error2: Contrasenya incorrecta
 - tapOn: El teu nom d'usuari
-- inputText: Casteller98
+- inputText: Casteller16
 - tapOn: La teva contrasenya
 - inputText: k.87_oP]
 - pressKey: Enter
 - assertVisible: No s'ha pogut iniciar sessió.
 - waitForAnimationToEnd
-- tapOn: Casteller98
+- tapOn: Casteller16
 - eraseText
 - tapOn: ••••••••
 - eraseText
 
 # Happy path
 - tapOn: El teu nom d'usuari
-- inputText: Casteller98
+- inputText: Casteller16
 - tapOn: La teva contrasenya
 - inputText: k.87_oP[
 - pressKey: Enter

@@ -7,7 +7,7 @@ appId: com.example.agendat
 
 # Happy path de login
 - tapOn: El teu nom d'usuari
-- inputText: Casteller123
+- inputText: Casteller16
 - tapOn: La teva contrasenya
 - inputText: k.87_oP[
 - pressKey: Enter

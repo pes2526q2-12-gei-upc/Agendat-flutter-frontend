@@ -16,13 +16,13 @@ appId: com.example.agendat
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
 - inputText: Casteller16@gmail.com # Augmentar aquí
-- tapOn: Mínim 8 caràcters
+- tapOn: Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial
 - inputText: k.87_oP[
 - pressKey: Enter
 - inputText: k.87_oP[
 - pressKey: Enter
 - waitForAnimationToEnd
-- assertVisible: Revisa el teu correu
+- assertVisible: Verifica el compte
 - tapOn: Enrere
 - waitForAnimationToEnd
 
