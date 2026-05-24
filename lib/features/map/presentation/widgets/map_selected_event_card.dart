@@ -4,7 +4,8 @@ import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
 
 class MapSelectedEventCard extends StatelessWidget {
-  static const double _kStaticCardHeight = 210;
+  /// Alçada màxima abans d'activar scroll (la card es redueix si n'hi ha menys).
+  static const double _kMaxCardHeight = 280;
 
   const MapSelectedEventCard({
     required this.marker,
@@ -42,7 +43,7 @@ class MapSelectedEventCard extends StatelessWidget {
     final buttonsEnabled = !showSkeleton;
 
     return Container(
-      height: _kStaticCardHeight,
+      constraints: const BoxConstraints(maxHeight: _kMaxCardHeight),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -57,84 +58,87 @@ class MapSelectedEventCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 6),
-                // Padding right per no quedar sota la creueta de tancar.
-                Padding(
-                  padding: const EdgeInsets.only(right: 28),
-                  child: showSkeleton
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _skeletonLine(width: double.infinity, height: 18),
-                            const SizedBox(height: 6),
-                            _skeletonLine(width: 160, height: 14),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              preview?.displayTitle ?? '',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+          // Padding right per no quedar sota la creueta de tancar.
+          Padding(
+            padding: const EdgeInsets.only(top: 6, right: 28),
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showSkeleton)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _skeletonLine(width: double.infinity, height: 18),
+                          const SizedBox(height: 6),
+                          _skeletonLine(width: 160, height: 14),
+                        ],
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            preview?.displayTitle ?? '',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
                             ),
-                            Text(
-                              preview?.displayDateRange ?? '',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            preview?.displayDateRange ?? '',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    if (hasCurrentLocation) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.distanceFromLocation(
+                          distanceKm.toStringAsFixed(1),
                         ),
-                ),
-                if (hasCurrentLocation) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    l10n.distanceFromLocation(distanceKm.toStringAsFixed(1)),
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 6),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: buttonsEnabled ? onRoutePressed : null,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(38),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: buttonsEnabled ? onRoutePressed : null,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(38),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: Text(l10n.viewRoute),
+                      ),
                     ),
-                    child: Text(l10n.viewRoute),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: buttonsEnabled ? onMoreDetailsPressed : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8B1E1E),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(38),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: buttonsEnabled ? onMoreDetailsPressed : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B1E1E),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(38),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: Text(l10n.viewDetails),
+                      ),
                     ),
-                    child: Text(l10n.viewDetails),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
           Positioned(
