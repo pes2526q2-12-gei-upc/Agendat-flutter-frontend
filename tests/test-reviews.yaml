@@ -1,0 +1,83 @@
+# Fer aquest test després de test-event-view-and-session
+# perquè així ja hi ha una sessió creada
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+# Happy path de login
+- tapOn: El teu nom d'usuari
+- inputText: Casteller15
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertNotVisible: Inicia sessió per continuar
+
+# Happy path de començar a valorar un esdeveniment
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- tapOn:
+    point: 50%, 50%
+- tapOn:
+    point: 50%, 26%
+- tapOn: Afegir valoració
+
+# Error: falten camps (General no valorat)
+- tapOn: Afegir
+- assertVisible: Has de posar almenys 1 estrella a General.
+
+# Happy path crear valoració
+- tapOn:
+    point: 78%,40%
+- tapOn:
+    point: 88%,44%
+- tapOn:
+    point: 88%,49%
+- tapOn:
+    point: 88%,53%
+- tapOn: Escriu un comentari (opcional)...
+- inputText: Em va semblar mlot interessant!
+- tapOn: Afegir
+- assertVisible: Moltes gràcies per la teva valoració, quan l'haguem validat la publicarem.
+- tapOn: Enrere
+- swipe:
+    start: "95%, 30%"
+    end: "95%, 70%"
+- assertVisible: |-
+    Ressenyes
+    1
+    Pestanya 2 de 2
+
+# Happy path editar valoració
+- tapOn:
+    point: 45%, 45%
+- tapOn:
+    point: 50%, 50%
+- tapOn:
+    point: 50%, 32%
+- tapOn:
+    point: 81%, 45%
+- tapOn:
+    point: 88%, 49%
+- tapOn:
+    point: 84%, 74%
+- eraseText
+- inputText: Em va semblar molt interessant!
+- tapOn: Desar
+- assertVisible: Moltes gràcies per la teva valoració, quan l'haguem validat la publicarem.
+
+# Happy path d'esborrar valoració
+- tapOn: Enrere
+- swipe:
+    start: "95%, 30%"
+    end: "95%, 70%"
+- tapOn:
+    point: 50%, 50%
+- tapOn:
+    point: 50%, 32%
+- tapOn:
+    point: 89%, 45%
+- tapOn: Eliminar
+- assertVisible: Valoració eliminada.

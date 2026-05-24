@@ -1091,7 +1091,7 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get reviewModerationThanks =>
-      'Moltes gràcies per la teva valoració, quan l\'hem validat la publicarem.';
+      'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.';
 
   @override
   String get loginRequiredToLike => 'Cal iniciar sessió per fer like.';
