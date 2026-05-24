@@ -80,6 +80,8 @@ appId: com.example.agendat
     Sol·licituds d'amistat
     1 pendents per revisar
 - tapOn: Acceptar
+
+# Happy path d'enviar missatge
 - tapOn:
     point: 50%, 23%
 - tapOn: Escriu un missatge...

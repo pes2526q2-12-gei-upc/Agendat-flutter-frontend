@@ -46,17 +46,26 @@ appId: com.example.agendat
 - tapOn: Assistir
 - tapOn: Canvia
 - tapOn: Canvia a introducció de text
-- inputText: 1/5/2026 # s'ha de posar un dia vàlid diferent cada cop
+- inputText: 24/5/2026 # s'ha de posar un dia vàlid diferent
+# cada cop o canviar l'hora de la sessió
 - tapOn: Confirmar
 - tapOn:
     text: Canvia
     index: 1
-- tapOn: '00'
+- tapOn:
+    point: 44%, 45%
 - eraseText
-- inputText: 11
+- inputText: 13 # <-aquí
 - tapOn: Confirmar
 - tapOn: Confirmar
 - waitForAnimationToEnd
 - tapOn:
     point: 50%, 80%
 - assertVisible: Assistència registrada correctament.
+- tapOn: Enrere
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- assertVisible: |- # Canviar hora i dia de la sessió corresponent
+    Exposició "Aynu. Una cultura indígena del Japó"
+    24/05/2026 · 13:00
