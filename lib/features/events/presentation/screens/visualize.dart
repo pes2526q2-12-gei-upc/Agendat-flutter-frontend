@@ -10,6 +10,7 @@ import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/async_epoch.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/filter_button.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/main_app_bar.dart';
@@ -72,6 +73,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsQuery.persistedFiltersListenable.addListener(
       _onSharedFiltersChanged,
     );
+    _eventsQuery.translatedContentRevisionListenable.addListener(
+      _onTranslatedContentChanged,
+    );
     _scrollController.addListener(_onScroll);
     _loadFirstPage(forceRefresh: true);
   }
@@ -80,6 +84,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   void dispose() {
     _eventsQuery.persistedFiltersListenable.removeListener(
       _onSharedFiltersChanged,
+    );
+    _eventsQuery.translatedContentRevisionListenable.removeListener(
+      _onTranslatedContentChanged,
     );
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -97,6 +104,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
     _activeFilters = sharedFilters;
     _loadFirstPage();
+  }
+
+  void _onTranslatedContentChanged() {
+    if (!mounted) return;
+    _loadFirstPage(forceRefresh: true);
   }
 
   void _onScroll() {
@@ -325,6 +337,50 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     );
   }
 
+  String _localizedLocation(Event event) {
+    final parts = [
+      EventTextUtils.labelOrNull(event.municipi),
+      EventTextUtils.labelOrNull(event.provincia),
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).toList();
+    if (parts.isEmpty) return AppLocalizations.of(context).toBeDetermined;
+    return parts.join(', ');
+  }
+
+  String _localizedPrivacy(Event event) {
+    final l10n = AppLocalizations.of(context);
+    return event.isPrivate ? l10n.privateEvent : l10n.publicEvent;
+  }
+
+  String _localizedDateRange(Event event) {
+    final l10n = AppLocalizations.of(context);
+    final startDay = event.startDate == null
+        ? null
+        : DateTime(
+            event.startDate!.year,
+            event.startDate!.month,
+            event.startDate!.day,
+          );
+    final endDay = event.endDate == null
+        ? null
+        : DateTime(
+            event.endDate!.year,
+            event.endDate!.month,
+            event.endDate!.day,
+          );
+    final start = EventTextUtils.formatDisplayDate(event.startDate);
+    final end = EventTextUtils.formatDisplayDate(event.endDate);
+    if (start == null && end == null) return l10n.toBeDetermined;
+    if (start != null && end != null && startDay == endDay) return start;
+    if (start != null && end != null) return '$start - $end';
+    if (start != null) return '$start - ${l10n.toBeDetermined}';
+    return '${l10n.toBeDetermined} - $end';
+  }
+
+  String _localizedCategory(Event event) {
+    return EventTextUtils.categoriesToCapitalizedString(event.categories) ??
+        AppLocalizations.of(context).generalRating;
+  }
+
   Widget eventCard(Event event) {
     return Material(
       color: Colors.transparent,
@@ -391,7 +447,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventPlace(Event event) {
     return Text(
-      event.location,
+      _localizedLocation(event),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -415,7 +471,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventPrivacy(Event event) {
     return Text(
-      event.displayPrivacy,
+      _localizedPrivacy(event),
       textAlign: TextAlign.end,
       style: const TextStyle(
         fontSize: 13,
@@ -429,7 +485,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventDate(Event event) {
     return Text(
-      event.displayDateRange,
+      _localizedDateRange(event),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -457,7 +513,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
-          event.displayCategory,
+          _localizedCategory(event),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           softWrap: false,

@@ -34,6 +34,8 @@ class EventsQuery {
 
   final EventsApi _api = EventsApi();
   final QueryClient _client = QueryClient.instance;
+  final ValueNotifier<int> _translatedContentRevisionNotifier =
+      ValueNotifier<int>(0);
   // Punt únic de veritat per al filtre compartit (Map + Visualize).
   final ValueNotifier<EventFilters?> _persistedFiltersNotifier =
       ValueNotifier<EventFilters?>(null);
@@ -47,8 +49,19 @@ class EventsQuery {
   EventFilters? get persistedFilters => _persistedFiltersNotifier.value;
   ValueListenable<EventFilters?> get persistedFiltersListenable =>
       _persistedFiltersNotifier;
+  ValueListenable<int> get translatedContentRevisionListenable =>
+      _translatedContentRevisionNotifier;
 
   ValueListenable<List<Event>> get publishedEvents => _publishedEventsNotifier;
+
+  @visibleForTesting
+  int get translatedContentRevisionForTesting =>
+      _translatedContentRevisionNotifier.value;
+
+  @visibleForTesting
+  void resetTranslatedContentRevisionForTesting([int value = 0]) {
+    _translatedContentRevisionNotifier.value = value;
+  }
 
   void setPersistedFilters(EventFilters filters) {
     // Si no canvia res, no disparem listeners perquè seria fer soroll.
@@ -62,6 +75,15 @@ class EventsQuery {
   /// acaba de carregar (primera pàgina, més pàgines per scroll, etc.).
   void publishEvents(List<Event> events) {
     _publishedEventsNotifier.value = List<Event>.unmodifiable(events);
+  }
+
+  /// Increments the revision used by translated event queries.
+  ///
+  /// Existing cache entries are invalidated first so new readers fetch
+  /// translated content under a fresh key space.
+  void refreshTranslatedContent() {
+    invalidateAll();
+    _translatedContentRevisionNotifier.value++;
   }
 
   /// Returns every event for [filters] (iterating all pages under the hood).
@@ -192,10 +214,10 @@ class EventsQuery {
 
   /// Invalidates only the cached list queries (every filter combination,
   /// including the per-page entries used by infinite scroll).
-  void invalidateLists() => _client.invalidatePrefix('$_prefix:list');
+  void invalidateLists() => _client.invalidatePrefix(_scopePrefix('list'));
 
   /// Invalidates every cached map-pins query (any date/category/name combo).
-  void invalidateMapPins() => _client.invalidatePrefix('$_prefix:map');
+  void invalidateMapPins() => _client.invalidatePrefix(_scopePrefix('map'));
 
   /// Invalidates the cached detail for a specific event code.
   void invalidateDetail(String eventCode) =>
@@ -205,18 +227,26 @@ class EventsQuery {
   void invalidatePreview(String eventCode) =>
       _client.invalidate(_previewKey(eventCode.trim()));
 
+  @visibleForTesting
+  String debugPageKeyForTesting(EventFilters? filters, int offset, int limit) =>
+      _pageKey(filters, offset, limit);
+
+  @visibleForTesting
+  String debugDetailKeyForTesting(String eventCode) =>
+      _detailKey(eventCode.trim());
+
   String _listKey(EventFilters? filters) {
     if (filters == null || filters.isEmpty) {
-      return '$_prefix:list';
+      return _scopedKey('list');
     }
-    return '$_prefix:list:${_filterSignature(filters)}';
+    return _scopedKey('list', _filterSignature(filters));
   }
 
   String _pageKey(EventFilters? filters, int offset, int limit) {
     final signature = (filters == null || filters.isEmpty)
         ? ''
         : _filterSignature(filters);
-    return '$_prefix:list:page:$offset:$limit:$signature';
+    return _scopedKey('list', 'page:$offset:$limit:$signature');
   }
 
   String _filterSignature(EventFilters filters) {
@@ -230,15 +260,24 @@ class EventsQuery {
     return params.join('&');
   }
 
-  String _detailKey(String eventCode) => '$_prefix:detail:$eventCode';
+  String _detailKey(String eventCode) => _scopedKey('detail', eventCode);
 
-  String _previewKey(String eventCode) => '$_prefix:preview:$eventCode';
+  String _previewKey(String eventCode) => _scopedKey('preview', eventCode);
 
   String _mapKey({DateTime? date, String? category, String? name}) {
     final dateKey = date == null ? '' : _formatDateKey(date);
     final categoryKey = category?.trim() ?? '';
     final nameKey = name?.trim() ?? '';
-    return '$_prefix:map:$dateKey:$categoryKey:$nameKey';
+    return _scopedKey('map', '$dateKey:$categoryKey:$nameKey');
+  }
+
+  String _scopePrefix(String scope) => '$_prefix:$scope';
+
+  String _scopedKey(String scope, [String? suffix]) {
+    final revision = _translatedContentRevisionNotifier.value;
+    final prefix = '${_scopePrefix(scope)}:r$revision';
+    if (suffix == null || suffix.isEmpty) return prefix;
+    return '$prefix:$suffix';
   }
 
   static String _formatDateKey(DateTime date) {

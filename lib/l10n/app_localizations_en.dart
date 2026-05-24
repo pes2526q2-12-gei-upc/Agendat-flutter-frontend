@@ -807,6 +807,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paid => 'Paid';
 
   @override
+  String get eventInformationTitle => 'Event information';
+
+  @override
+  String get interestingLinksTitle => 'Interesting links';
+
+  @override
+  String get attendButton => 'Attend';
+
+  @override
+  String get publicEvent => 'Public';
+
+  @override
+  String get privateEvent => 'Private';
+
+  @override
+  String get toBeDetermined => 'To be determined';
+
+  @override
+  String get attendanceCalendarSyncDescription =>
+      'Session synced automatically from the Agenda\'t app';
+
+  @override
+  String get attendanceCalendarSyncPartial =>
+      'Attendance recorded, but it could not be added to Google Calendar.';
+
+  @override
+  String get attendanceRegistered => 'Attendance recorded successfully.';
+
+  @override
+  String get attendanceRegisterFailed => 'Could not record attendance.';
+
+  @override
   String get chatNotAvailableYet =>
       'This chat is not available yet. Try again in a few seconds.';
 

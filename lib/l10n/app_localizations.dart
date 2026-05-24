@@ -1582,6 +1582,66 @@ abstract class AppLocalizations {
   /// **'De pagament'**
   String get paid;
 
+  /// No description provided for @eventInformationTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Informació de l\'esdeveniment'**
+  String get eventInformationTitle;
+
+  /// No description provided for @interestingLinksTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Enllaços d\'interès'**
+  String get interestingLinksTitle;
+
+  /// No description provided for @attendButton.
+  ///
+  /// In ca, this message translates to:
+  /// **'Assistir'**
+  String get attendButton;
+
+  /// No description provided for @publicEvent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Públic'**
+  String get publicEvent;
+
+  /// No description provided for @privateEvent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Privat'**
+  String get privateEvent;
+
+  /// No description provided for @toBeDetermined.
+  ///
+  /// In ca, this message translates to:
+  /// **'Per determinar'**
+  String get toBeDetermined;
+
+  /// No description provided for @attendanceCalendarSyncDescription.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sessió sincronitzada automàticament des de l\'aplicació Agenda\'t'**
+  String get attendanceCalendarSyncDescription;
+
+  /// No description provided for @attendanceCalendarSyncPartial.
+  ///
+  /// In ca, this message translates to:
+  /// **'Assistència registrada, però no s\'ha pogut afegir a Google Calendar.'**
+  String get attendanceCalendarSyncPartial;
+
+  /// No description provided for @attendanceRegistered.
+  ///
+  /// In ca, this message translates to:
+  /// **'Assistència registrada correctament.'**
+  String get attendanceRegistered;
+
+  /// No description provided for @attendanceRegisterFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'ha pogut registrar l\'assistència.'**
+  String get attendanceRegisterFailed;
+
   /// No description provided for @chatNotAvailableYet.
   ///
   /// In ca, this message translates to:

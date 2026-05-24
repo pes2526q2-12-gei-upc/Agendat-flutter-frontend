@@ -36,6 +36,38 @@ class MapSelectedEventCard extends StatelessWidget {
   final VoidCallback onMoreDetailsPressed;
   final VoidCallback onClosePressed;
 
+  String _localizedPreviewDateRange(
+    BuildContext context,
+    EventPreview? preview,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final startDay = preview?.startDate == null
+        ? null
+        : DateTime(
+            preview!.startDate!.year,
+            preview.startDate!.month,
+            preview.startDate!.day,
+          );
+    final endDay = preview?.endDate == null
+        ? null
+        : DateTime(
+            preview!.endDate!.year,
+            preview.endDate!.month,
+            preview.endDate!.day,
+          );
+    final start = preview?.startDate == null
+        ? null
+        : '${preview!.startDate!.day.toString().padLeft(2, '0')}/${preview.startDate!.month.toString().padLeft(2, '0')}/${preview.startDate!.year}';
+    final end = preview?.endDate == null
+        ? null
+        : '${preview!.endDate!.day.toString().padLeft(2, '0')}/${preview.endDate!.month.toString().padLeft(2, '0')}/${preview.endDate!.year}';
+    if (start == null && end == null) return l10n.toBeDetermined;
+    if (start != null && end != null && startDay == endDay) return start;
+    if (start != null && end != null) return '$start - $end';
+    if (start != null) return '$start - ${l10n.toBeDetermined}';
+    return '${l10n.toBeDetermined} - $end';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -88,13 +120,17 @@ class MapSelectedEventCard extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            preview?.displayDateRange ?? '',
+                            _localizedPreviewDateRange(context, preview),
                             style: const TextStyle(
                               fontWeight: FontWeight.w500,
                               fontSize: 14,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),

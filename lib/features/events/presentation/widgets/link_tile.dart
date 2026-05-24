@@ -28,29 +28,32 @@ class LinkTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        Icons.open_in_new_rounded,
-        color: isPrimary
-            ? const Color.fromARGB(255, 202, 3, 3)
-            : Colors.blueGrey,
-        size: 20,
-      ),
-      title: Text(
-        label,
-        style: TextStyle(
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(
+          Icons.open_in_new_rounded,
           color: isPrimary
               ? const Color.fromARGB(255, 202, 3, 3)
-              : Colors.black87,
-          fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
-          fontSize: 14,
-          decoration: TextDecoration.underline,
+              : Colors.blueGrey,
+          size: 20,
         ),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: isPrimary
+                ? const Color.fromARGB(255, 202, 3, 3)
+                : Colors.black87,
+            fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+        onTap: () => _openLink(context),
+        dense: true,
+        visualDensity: VisualDensity.compact,
       ),
-      onTap: () => _openLink(context),
-      dense: true,
-      visualDensity: VisualDensity.compact,
     );
   }
 }
