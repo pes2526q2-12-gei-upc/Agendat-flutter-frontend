@@ -58,6 +58,8 @@ class _EventScreenState extends State<EventScreen> {
 
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   Uri? _parseUrl(String? urlString) {
     if (!_hasText(urlString)) return null;
     final normalized = urlString!.trim();
@@ -71,10 +73,31 @@ class _EventScreenState extends State<EventScreen> {
   @override
   void initState() {
     super.initState();
+    _eventsQuery.translatedContentRevisionListenable.addListener(
+      _onTranslatedContentChanged,
+    );
     _eventFuture = _eventsQuery.getEventByCode(widget.eventCode);
   }
 
+  @override
+  void dispose() {
+    _eventsQuery.translatedContentRevisionListenable.removeListener(
+      _onTranslatedContentChanged,
+    );
+    super.dispose();
+  }
+
   void _retryLoad() {
+    setState(() {
+      _eventFuture = _eventsQuery.getEventByCode(
+        widget.eventCode,
+        forceRefresh: true,
+      );
+    });
+  }
+
+  void _onTranslatedContentChanged() {
+    if (!mounted) return;
     setState(() {
       _eventFuture = _eventsQuery.getEventByCode(
         widget.eventCode,
@@ -113,18 +136,12 @@ class _EventScreenState extends State<EventScreen> {
         : DateUtils.dateOnly(event.endDate!);
 
     if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
-      AppSnackBar.show(
-        context,
-        'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
-      );
+      AppSnackBar.show(context, l10n.sessionBeforeEventStart);
       return;
     }
 
     if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
-      AppSnackBar.show(
-        context,
-        'La sessió seleccionada és posterior al final de l\'esdeveniment.',
-      );
+      AppSnackBar.show(context, l10n.sessionAfterEventEnd);
       return;
     }
 
@@ -147,19 +164,19 @@ class _EventScreenState extends State<EventScreen> {
       if (_addToGoogleCalendar) {
         final accessToken = await _googleCalendarService.getAccessToken();
         if (accessToken != null && mounted) {
-          final calendarSuccess = await _googleCalendarService.createCalendarEvent(
-            accessToken: accessToken,
-            eventTitle: '${event.title}',
-            startDateTime: selectedDateTime,
-            endDateTime: endDateTime,
-            description:
-                'Sessió sincronitzada automàticament des de l\'aplicació Agenda\'t',
-          );
+          final calendarSuccess = await _googleCalendarService
+              .createCalendarEvent(
+                accessToken: accessToken,
+                eventTitle: '${event.title}',
+                startDateTime: selectedDateTime,
+                endDateTime: endDateTime,
+                description: l10n.attendanceCalendarSyncDescription,
+              );
 
           if (!calendarSuccess && mounted) {
             AppSnackBar.show(
               context,
-              'Assistència registrada, però no s\'ha pogut afegir a Google Calendar.',
+              l10n.attendanceCalendarSyncPartial,
               duration: const Duration(seconds: 3),
             );
           }
@@ -167,28 +184,18 @@ class _EventScreenState extends State<EventScreen> {
       }
 
       if (!mounted) return;
-      AppSnackBar.show(
-        context,
-        'Assistència registrada correctament.',
-        isError: false,
-      );
+      AppSnackBar.show(context, l10n.attendanceRegistered, isError: false);
     } on ApiException catch (e) {
       if (!mounted) return;
       AppSnackBar.show(
         context,
-        userMessageFromApiException(
-          e,
-          fallback: 'No s\'ha pogut registrar l\'assistència.',
-        ),
+        userMessageFromApiException(e, fallback: l10n.attendanceRegisterFailed),
       );
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.show(
         context,
-        userMessageFromError(
-          e,
-          fallback: 'No s\'ha pogut registrar l\'assistència.',
-        ),
+        userMessageFromError(e, fallback: l10n.attendanceRegisterFailed),
       );
     } finally {
       if (mounted) {
@@ -350,6 +357,29 @@ class _EventScreenState extends State<EventScreen> {
     final dd = date.day.toString().padLeft(2, '0');
     final mm = date.month.toString().padLeft(2, '0');
     return '$dd/$mm/${date.year}';
+  }
+
+  String _localizedDateRange(Event event) {
+    final start = EventTextUtils.formatDisplayDate(event.startDate);
+    final end = EventTextUtils.formatDisplayDate(event.endDate);
+    if (start == null && end == null) return l10n.toBeDetermined;
+    if (start != null && end != null && start == end) return start;
+    if (start != null && end != null) return '$start - $end';
+    if (start != null) return '$start - ${l10n.toBeDetermined}';
+    return '${l10n.toBeDetermined} - $end';
+  }
+
+  String _localizedPrivacy(Event event) {
+    return event.isPrivate ? l10n.privateEvent : l10n.publicEvent;
+  }
+
+  String? _localizedLocation(Event event) {
+    final parts = [
+      EventTextUtils.labelOrNull(event.municipi),
+      EventTextUtils.labelOrNull(event.provincia),
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).toList();
+    if (parts.isEmpty) return null;
+    return parts.join(', ');
   }
 
   // ---------------------------------------------------------------------------
@@ -581,7 +611,7 @@ class _EventScreenState extends State<EventScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: MainAppBar(title: AppLocalizations.of(context).detailsTitle),
+      appBar: MainAppBar(title: l10n.detailsTitle),
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
@@ -605,14 +635,14 @@ class _EventScreenState extends State<EventScreen> {
                     Text(
                       userMessageFromError(
                         snapshot.error!,
-                        fallback: AppLocalizations.of(context).loadEventFailed,
+                        fallback: l10n.loadEventFailed,
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _retryLoad,
-                      child: Text(AppLocalizations.of(context).retry),
+                      child: Text(l10n.retry),
                     ),
                   ],
                 ),
@@ -621,7 +651,8 @@ class _EventScreenState extends State<EventScreen> {
           }
 
           final event = snapshot.data!;
-          final String displayDateRange = event.displayDateRange;
+          final displayDateRange = _localizedDateRange(event);
+          final displayLocation = _localizedLocation(event);
           final List<String> formattedCategories = event.categories
               .map(EventTextUtils.labelOrNull)
               .whereType<String>()
@@ -662,7 +693,7 @@ class _EventScreenState extends State<EventScreen> {
                 // si el text és massa llarg.
                 if (_hasText(event.description))
                   SectionCard(
-                    title: 'Descripció',
+                    title: l10n.descriptionLabel,
                     trailing: InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () {
@@ -701,53 +732,52 @@ class _EventScreenState extends State<EventScreen> {
                   ),
 
                 SectionCard(
-                  title: 'Informació de l\'esdeveniment',
+                  title: l10n.eventInformationTitle,
                   content: Column(
                     children: [
                       InfoRow(
                         icon: Icons.calendar_today_rounded,
-                        label: 'Data',
+                        label: l10n.date,
                         value: displayDateRange,
                       ),
                       if (_hasText(event.schedule))
                         InfoRow(
                           icon: Icons.access_time_rounded,
-                          label: 'Horari',
+                          label: l10n.horari,
                           value: event.schedule!.trim(),
                         ),
 
                       InfoRow(
                         icon: Icons.lock_outline_rounded,
-                        label: 'Privacitat',
-                        value: event.displayPrivacy,
+                        label: l10n.privacy,
+                        value: _localizedPrivacy(event),
                       ),
 
                       InfoRow(
                         icon: Icons.euro_rounded,
-                        label: 'Preu',
-                        value: event.free ? 'Gratuït' : 'De pagament',
+                        label: l10n.price,
+                        value: event.free ? l10n.free : l10n.paid,
                       ),
 
                       if (_hasText(event.modality))
                         InfoRow(
                           icon: Icons.info_outline_rounded,
-                          label: 'Modalitat',
+                          label: l10n.modalitat,
                           value: event.modality!.trim(),
                         ),
 
                       if (_hasText(event.address))
                         InfoRow(
                           icon: Icons.location_on_rounded,
-                          label: 'Adreça',
+                          label: l10n.address,
                           value: event.address!.trim(),
                         ),
 
-                      if (_hasText(event.location) &&
-                          event.location != 'Per determinar')
+                      if (displayLocation != null)
                         InfoRow(
                           icon: Icons.map_rounded,
-                          label: 'Ubicació',
-                          value: event.location,
+                          label: l10n.location,
+                          value: displayLocation,
                         ),
                     ],
                   ),
@@ -757,22 +787,22 @@ class _EventScreenState extends State<EventScreen> {
                     _parseUrl(event.url_locality) != null ||
                     _parseUrl(event.url_ticket) != null)
                   SectionCard(
-                    title: 'Enllaços d\'interès',
+                    title: l10n.interestingLinksTitle,
                     content: Column(
                       children: [
                         if (_parseUrl(event.url_activity) != null)
                           LinkTile(
-                            label: 'Web de l\'activitat',
+                            label: l10n.activityWebsite,
                             uri: _parseUrl(event.url_activity)!,
                           ),
                         if (_parseUrl(event.url_locality) != null)
                           LinkTile(
-                            label: 'Web de la localitat',
+                            label: l10n.localityWebsite,
                             uri: _parseUrl(event.url_locality)!,
                           ),
                         if (_parseUrl(event.url_ticket) != null)
                           LinkTile(
-                            label: 'Compra d\'entrades',
+                            label: l10n.tickets,
                             uri: _parseUrl(event.url_ticket)!,
                             isPrimary: true,
                           ),
@@ -838,8 +868,8 @@ class _EventScreenState extends State<EventScreen> {
                               ),
                             ),
                           )
-                        : const Text(
-                            'Assistir',
+                        : Text(
+                            l10n.attendButton,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

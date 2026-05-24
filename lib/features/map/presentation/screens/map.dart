@@ -77,8 +77,19 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _filters = MapFilters.today();
+    _eventsQuery.translatedContentRevisionListenable.addListener(
+      _onTranslatedContentChanged,
+    );
     _loadCurrentLocation();
     _loadPins(forceRefresh: true);
+  }
+
+  @override
+  void dispose() {
+    _eventsQuery.translatedContentRevisionListenable.removeListener(
+      _onTranslatedContentChanged,
+    );
+    super.dispose();
   }
 
   Future<void> _loadCurrentLocation() async {
@@ -119,6 +130,15 @@ class _MapScreenState extends State<MapScreen> {
         _pinsError = e;
         _isLoadingPins = false;
       });
+    }
+  }
+
+  void _onTranslatedContentChanged() {
+    if (!mounted) return;
+    _loadPins(forceRefresh: true);
+    final selected = _selectedMarker;
+    if (selected != null) {
+      unawaited(_loadPreviewForMarker(selected, forceRefresh: true));
     }
   }
 
@@ -173,7 +193,10 @@ class _MapScreenState extends State<MapScreen> {
     setState(_clearSelection);
   }
 
-  Future<void> _onMarkerTap(MapEventMarker marker) async {
+  Future<void> _loadPreviewForMarker(
+    MapEventMarker marker, {
+    bool forceRefresh = false,
+  }) async {
     final epoch = _previewEpoch.bump();
     setState(() {
       _selectedMarker = marker;
@@ -182,16 +205,31 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     try {
-      final preview = await _eventsQuery.getEventPreview(marker.code);
-      if (!mounted || !_previewEpoch.isCurrent(epoch)) return;
+      final preview = await _eventsQuery.getEventPreview(
+        marker.code,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted ||
+          !_previewEpoch.isCurrent(epoch) ||
+          _selectedMarker?.code != marker.code) {
+        return;
+      }
       setState(() {
         _selectedPreview = preview;
         _isLoadingPreview = false;
       });
     } catch (_) {
-      if (!mounted || !_previewEpoch.isCurrent(epoch)) return;
+      if (!mounted ||
+          !_previewEpoch.isCurrent(epoch) ||
+          _selectedMarker?.code != marker.code) {
+        return;
+      }
       setState(() => _isLoadingPreview = false);
     }
+  }
+
+  Future<void> _onMarkerTap(MapEventMarker marker) {
+    return _loadPreviewForMarker(marker);
   }
 
   /// Actualitza el paràmetre `name` enviat al backend i recarrega els pins.

@@ -813,6 +813,39 @@ class AppLocalizationsCa extends AppLocalizations {
   String get paid => 'De pagament';
 
   @override
+  String get eventInformationTitle => 'Informació de l\'esdeveniment';
+
+  @override
+  String get interestingLinksTitle => 'Enllaços d\'interès';
+
+  @override
+  String get attendButton => 'Assistir';
+
+  @override
+  String get publicEvent => 'Públic';
+
+  @override
+  String get privateEvent => 'Privat';
+
+  @override
+  String get toBeDetermined => 'Per determinar';
+
+  @override
+  String get attendanceCalendarSyncDescription =>
+      'Sessió sincronitzada automàticament des de l\'aplicació Agenda\'t';
+
+  @override
+  String get attendanceCalendarSyncPartial =>
+      'Assistència registrada, però no s\'ha pogut afegir a Google Calendar.';
+
+  @override
+  String get attendanceRegistered => 'Assistència registrada correctament.';
+
+  @override
+  String get attendanceRegisterFailed =>
+      'No s\'ha pogut registrar l\'assistència.';
+
+  @override
   String get chatNotAvailableYet =>
       'Aquest xat encara no està disponible. Torna-ho a provar en uns segons.';
 
