@@ -16,7 +16,6 @@ class Review {
   });
 
   /// Identificador a la BBDD. És `null` per a valoracions encara no
-  /// persistides (p. ex. dades mock o formularis de creació).
   final int? id;
 
   /// Id del reviewer. Serveix per saber si la review és de l'usuari loggejat.

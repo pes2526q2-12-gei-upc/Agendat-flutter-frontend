@@ -94,6 +94,19 @@ class ProfileQuery {
     );
   }
 
+  /// Reputació de l'usuari (`reputacio` del GET /api/users/{id}/).
+  /// Retorna `null` si el perfil no es pot carregar.
+  Future<double?> getUserReputation(
+    int userId, {
+    bool forceRefresh = false,
+  }) async {
+    final result = await getUserProfile(userId, forceRefresh: forceRefresh);
+    if (result is ProfileSuccess) {
+      return result.profile.reputacio;
+    }
+    return null;
+  }
+
   /// Aplica l'estat d'amistat retornat pel backend (`friendship_status`) a
   /// les caches locals: conjunts d'ids (bloquejats, eliminats com a amic) i
   /// llista d'amics cachejada. No fa cap mutació si el perfil correspon a
