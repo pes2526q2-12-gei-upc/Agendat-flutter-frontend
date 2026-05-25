@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:agendat/core/api/api_client.dart';
@@ -114,6 +113,7 @@ class PushNotificationsService {
     }
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    final messaging = _messaging!;
     await messaging.setForegroundNotificationPresentationOptions(
       alert: false,
       badge: false,

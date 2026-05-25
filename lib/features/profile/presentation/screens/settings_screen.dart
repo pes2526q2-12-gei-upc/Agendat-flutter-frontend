@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/user_preferences_api.dart';

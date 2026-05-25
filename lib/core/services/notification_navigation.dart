@@ -4,10 +4,10 @@ import 'package:agendat/core/navigation/app_navigator.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/services/notification_payload.dart';
 import 'package:agendat/core/services/notification_route_destination.dart';
-import 'package:agendat/features/chat/presentation/screens/chat_screen.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/features/chat/presentation/screens/friend_conversation_screen.dart';
+import 'package:agendat/features/events/presentation/screens/event_view_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/presentation/screens/friend_requests_screen.dart';
+import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -78,7 +78,7 @@ Future<void> openNotification(NotificationPayload notification) async {
       }
     case NotificationDestinationType.friendRequests:
       navigator.push<void>(
-        MaterialPageRoute<void>(builder: (_) => const FriendRequestsScreen()),
+        MaterialPageRoute<void>(builder: (_) => const SocialScreen()),
       );
     case NotificationDestinationType.userProfile:
       final userId = destination.userId;
