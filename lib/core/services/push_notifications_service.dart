@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:agendat/core/api/api_client.dart';
+import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/services/notification_formatter.dart';
 import 'package:agendat/core/services/notification_navigation.dart';
 import 'package:agendat/core/services/notification_payload.dart';
@@ -25,6 +26,19 @@ const ui.Color _androidNotificationColor = ui.Color(0xFFE53935);
 final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 bool _localNotificationsInitialized = false;
+
+@visibleForTesting
+Map<String, String> buildNotificationDeviceRegistrationBody({
+  required String token,
+  required String platform,
+  String? languageCode,
+}) {
+  return <String, String>{
+    'token': token,
+    'platform': platform,
+    'selected_language': _normalizedSelectedLanguageCode(languageCode),
+  };
+}
 
 bool get _supportsFirebaseMessaging {
   if (kIsWeb) return false;
@@ -59,7 +73,16 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     debugPrint('$_logPrefix background Firebase init failed: $e');
   }
 
-  await _showAndroidStructuredNotification(message);
+  try {
+    await AppLanguage.loadFromStorage();
+  } catch (e) {
+    debugPrint('$_logPrefix background language load failed: $e');
+  }
+
+  await _showAndroidStructuredNotification(
+    message,
+    languageCode: AppLanguage.code,
+  );
 }
 
 class PushNotificationsService {
@@ -227,11 +250,42 @@ class PushNotificationsService {
     }
   }
 
+  Future<void> updateRegisteredDeviceLanguage([String? languageCode]) async {
+    final deviceId = await TokenStorage.readNotificationDeviceId();
+    if (deviceId == null) {
+      debugPrint(
+        '$_logPrefix device language update skipped because no device id is saved',
+      );
+      return;
+    }
+
+    final selectedLanguage = _normalizedSelectedLanguageCode(languageCode);
+    try {
+      await ApiClient.patchJson(
+        '/api/notifications/devices/$deviceId/',
+        body: {'selected_language': selectedLanguage},
+      );
+      debugPrint(
+        '$_logPrefix device $deviceId language updated to $selectedLanguage',
+      );
+    } on ApiException catch (e) {
+      debugPrint(
+        '$_logPrefix update device language failed '
+        '(HTTP ${e.statusCode}) for ${e.uri}: ${e.body}',
+      );
+    } catch (e) {
+      debugPrint('$_logPrefix update device language failed: $e');
+    }
+  }
+
   Future<void> _saveToken(String token) async {
     try {
       final response = await ApiClient.postJson(
         '/api/notifications/devices/',
-        body: {'token': token, 'platform': _platformName},
+        body: buildNotificationDeviceRegistrationBody(
+          token: token,
+          platform: _platformName,
+        ),
         expectedStatusCode: 201,
       );
 
@@ -324,7 +378,10 @@ Future<void> _initializeLocalNotifications() async {
   _localNotificationsInitialized = true;
 }
 
-Future<void> _showAndroidStructuredNotification(RemoteMessage message) async {
+Future<void> _showAndroidStructuredNotification(
+  RemoteMessage message, {
+  String? languageCode,
+}) async {
   if (!_supportsAndroidLocalNotifications) return;
 
   final dataKeys = _sortedDataKeys(message.data);
@@ -354,8 +411,14 @@ Future<void> _showAndroidStructuredNotification(RemoteMessage message) async {
 
   try {
     await _initializeLocalNotifications();
-    final notificationTitle = formatNotificationTitle(payload);
-    final notificationBody = formatNotificationSubtitle(payload);
+    final notificationTitle = formatNotificationTitle(
+      payload,
+      languageCode: languageCode,
+    );
+    final notificationBody = formatNotificationSubtitle(
+      payload,
+      languageCode: languageCode,
+    );
     if (notificationTitle.isEmpty && notificationBody.isEmpty) {
       debugPrint(
         '$_logPrefix local notification skipped because formatted display '
@@ -445,7 +508,8 @@ List<String> _sortedDataKeys(Map<String, dynamic> data) {
 }
 
 int _notificationIdFor(RemoteMessage message, NotificationPayload payload) {
-  final raw = payload.id ??
+  final raw =
+      payload.id ??
       _routeParam(payload, 'message_id') ??
       _routeParam(payload, 'invitation_id') ??
       _routeParam(payload, 'review_id') ??
@@ -471,8 +535,8 @@ AndroidNotificationCategory _androidCategoryFor(NotificationPayload payload) {
   return switch (payload.action?.key) {
     'chat.message' => AndroidNotificationCategory.message,
     'event.reminder' => AndroidNotificationCategory.reminder,
-    'friend_request.sent' || 'friend_request.accepted' =>
-      AndroidNotificationCategory.social,
+    'friend_request.sent' ||
+    'friend_request.accepted' => AndroidNotificationCategory.social,
     _ => AndroidNotificationCategory.status,
   };
 }
@@ -482,4 +546,11 @@ String? _routeParam(NotificationPayload payload, String key) {
   final value = params?[key]?.toString().trim();
   if (value == null || value.isEmpty) return null;
   return value;
+}
+
+String _normalizedSelectedLanguageCode(String? languageCode) {
+  final code = languageCode ?? AppLanguage.code;
+  final normalized = code.trim().toUpperCase();
+  if (AppLanguage.supported.contains(normalized)) return normalized;
+  return AppLanguage.defaultCode;
 }

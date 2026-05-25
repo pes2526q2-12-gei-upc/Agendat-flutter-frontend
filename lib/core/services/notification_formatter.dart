@@ -3,21 +3,21 @@ import 'package:agendat/core/services/notification_payload.dart';
 
 const Map<String, Map<String, String>> _localizedActionLabels = {
   'CA': {
-    'friend_request.sent': 't\'ha enviat una sol.licitud d\'amistat',
-    'friend_request.accepted': 'ha acceptat la teva sol.licitud d\'amistat',
+    'friend_request.sent': 't\'ha enviat una sol·licitud d\'amistat',
+    'friend_request.accepted': 'ha acceptat la teva sol·licitud d\'amistat',
     'chat.message': 't\'ha enviat un missatge',
     'event_invitation.sent': 't\'ha convidat a un esdeveniment',
-    'event_invitation.accepted': 'ha acceptat la teva invitacio',
+    'event_invitation.accepted': 'ha acceptat la teva invitació',
     'review.liked': 'ha fet m\'agrada a la teva ressenya',
-    'event.reminder': 'comenca aviat',
+    'event.reminder': 'comença aviat',
   },
   'ES': {
     'friend_request.sent': 'te ha enviado una solicitud de amistad',
     'friend_request.accepted': 'ha aceptado tu solicitud de amistad',
     'chat.message': 'te ha enviado un mensaje',
     'event_invitation.sent': 'te ha invitado a un evento',
-    'event_invitation.accepted': 'ha aceptado tu invitacion',
-    'review.liked': 'le ha gustado tu resena',
+    'event_invitation.accepted': 'ha aceptado tu invitación',
+    'review.liked': 'le ha gustado tu reseña',
     'event.reminder': 'empieza pronto',
   },
   'EN': {
@@ -86,13 +86,22 @@ String formatNotificationTitle(
       '';
 }
 
-String formatNotificationSubtitle(NotificationPayload notification) {
-  final title = formatNotificationTitle(notification);
+String formatNotificationSubtitle(
+  NotificationPayload notification, {
+  String? languageCode,
+}) {
+  final title = formatNotificationTitle(
+    notification,
+    languageCode: languageCode,
+  );
   final candidates = notification.action?.key == 'chat.message'
       ? [
           notification.preview?.text,
           notification.body,
-          _chatPreviewFallback(notification.preview?.kind),
+          _chatPreviewFallback(
+            notification.preview?.kind,
+            languageCode: languageCode,
+          ),
           notification.target?.name,
         ]
       : [
@@ -101,8 +110,7 @@ String formatNotificationSubtitle(NotificationPayload notification) {
           notification.target?.name,
         ];
 
-  return _firstNonBlank(candidates, except: title) ??
-      '';
+  return _firstNonBlank(candidates, except: title) ?? '';
 }
 
 String _normalizeLanguageCode(String code) {
@@ -111,22 +119,39 @@ String _normalizeLanguageCode(String code) {
   return 'EN';
 }
 
-String? _chatPreviewFallback(String? kind) {
-  return switch (kind?.trim()) {
-    'image' => 'Sent you an image.',
-    'file' => 'Sent you a file.',
-    'event_invitation' => 'Sent you an event invitation.',
-    _ => null,
-  };
+const Map<String, Map<String, String>> _localizedChatPreviewFallbacks = {
+  'CA': {
+    'image': 'T\'ha enviat una imatge.',
+    'file': 'T\'ha enviat un fitxer.',
+    'event_invitation': 'T\'ha enviat una invitació a un esdeveniment.',
+  },
+  'ES': {
+    'image': 'Te ha enviado una imagen.',
+    'file': 'Te ha enviado un archivo.',
+    'event_invitation': 'Te ha enviado una invitación a un evento.',
+  },
+  'EN': {
+    'image': 'Sent you an image.',
+    'file': 'Sent you a file.',
+    'event_invitation': 'Sent you an event invitation.',
+  },
+};
+
+String? _chatPreviewFallback(String? kind, {String? languageCode}) {
+  final normalizedKind = kind?.trim();
+  if (normalizedKind == null || normalizedKind.isEmpty) return null;
+  final normalizedLanguage = _normalizeLanguageCode(
+    languageCode ?? AppLanguage.code,
+  );
+  return _localizedChatPreviewFallbacks[normalizedLanguage]?[normalizedKind] ??
+      _localizedChatPreviewFallbacks['EN']?[normalizedKind];
 }
 
 String? _firstNonBlank(Iterable<String?> values, {String? except}) {
   final normalizedExcept = except?.trim();
   for (final value in values) {
     final trimmed = value?.trim();
-    if (trimmed != null &&
-        trimmed.isNotEmpty &&
-        trimmed != normalizedExcept) {
+    if (trimmed != null && trimmed.isNotEmpty && trimmed != normalizedExcept) {
       return trimmed;
     }
   }
