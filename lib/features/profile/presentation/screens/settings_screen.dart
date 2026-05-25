@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:agendat/l10n/app_localizations.dart';
 
+import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/user_preferences_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/models/user_profile.dart';
-import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/features/profile/application/notification_preferences.dart';
 import 'package:agendat/features/profile/presentation/widgets/language_selector_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/notification_alerts_block.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
@@ -28,40 +30,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String get _unauthenticatedMessage => l10n.loginRequired;
 
-  late bool _notificationsAllowed;
-  late bool _eventRemindersAllowed;
-  late bool _eventUpdatesAllowed;
-  late bool _socialAlertsAllowed;
+  late NotificationPreferences _notificationPreferences;
   late bool _calendarSyncAllowed;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _notificationsAllowed = widget.currentProfile.notificationsAllowed;
-    _eventRemindersAllowed = widget.currentProfile.eventRemindersAllowed;
-    _eventUpdatesAllowed = widget.currentProfile.eventUpdatesAllowed;
-    _socialAlertsAllowed = widget.currentProfile.socialAlertsAllowed;
+    _notificationPreferences = NotificationPreferences.fromProfile(
+      widget.currentProfile,
+    );
     _calendarSyncAllowed = widget.currentProfile.calendarSyncAllowed;
   }
 
-  Future<void> _persistPreferences() async {
+  Future<void> _persistPreferences({
+    required NotificationPreferences requested,
+    required NotificationPreferences previous,
+  }) async {
     if (currentLoggedInUser == null || currentAuthToken == null) {
       _showMessage(_unauthenticatedMessage);
       return;
     }
 
-    final previousNotificationsAllowed = _notificationsAllowed;
-    final previousEventReminders = _eventRemindersAllowed;
-    final previousEventUpdates = _eventUpdatesAllowed;
-    final previousSocialAlerts = _socialAlertsAllowed;
     final previousCalendarSync = _calendarSyncAllowed;
 
     final result = await updateUserProfile(widget.currentProfile.id, {
-      'notifications_allowed': _notificationsAllowed,
-      'event_reminders_allowed': _eventRemindersAllowed,
-      'event_updates_allowed': _eventUpdatesAllowed,
-      'social_alerts_allowed': _socialAlertsAllowed,
+      ...requested.toJson(),
       'calendar_sync_allowed': _calendarSyncAllowed,
     });
 
@@ -73,21 +67,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ...currentLoggedInUser ?? <String, dynamic>{},
           ...profile.toJson(),
           'id': profile.id,
+          ...requested.toJson(),
         });
+        if (requested.notificationsAllowed) {
+          await PushNotificationsService.instance
+              .requestPermissionAndRegisterDevice();
+        } else {
+          await PushNotificationsService.instance.unregisterDevice();
+        }
+        if (!mounted) return;
         setState(() {
-          _notificationsAllowed = profile.notificationsAllowed;
-          _eventRemindersAllowed = profile.eventRemindersAllowed;
-          _eventUpdatesAllowed = profile.eventUpdatesAllowed;
-          _socialAlertsAllowed = profile.socialAlertsAllowed;
+          _notificationPreferences = requested;
           _calendarSyncAllowed = profile.calendarSyncAllowed;
           _isSaving = false;
         });
       case UpdateProfileFailure(:final statusCode):
         setState(() {
-          _notificationsAllowed = previousNotificationsAllowed;
-          _eventRemindersAllowed = previousEventReminders;
-          _eventUpdatesAllowed = previousEventUpdates;
-          _socialAlertsAllowed = previousSocialAlerts;
+          _notificationPreferences = previous;
           _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
@@ -100,10 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       case UpdateProfileValidationError():
         setState(() {
-          _notificationsAllowed = previousNotificationsAllowed;
-          _eventRemindersAllowed = previousEventReminders;
-          _eventUpdatesAllowed = previousEventUpdates;
-          _socialAlertsAllowed = previousSocialAlerts;
+          _notificationPreferences = previous;
           _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
@@ -117,36 +110,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
+    final previous = _notificationPreferences;
+    final requested = previous.withMasterSwitch(enabled);
     setState(() {
       _isSaving = true;
-      _notificationsAllowed = enabled;
-      _eventRemindersAllowed = enabled;
-      _eventUpdatesAllowed = enabled;
-      _socialAlertsAllowed = enabled;
+      _notificationPreferences = requested;
     });
 
-    await _persistPreferences();
+    await _persistPreferences(requested: requested, previous: previous);
   }
 
   Future<void> _updateSubalert({
     required bool value,
-    required void Function(bool value) assignLocalValue,
+    required NotificationPreferenceChannel channel,
   }) async {
     if (currentLoggedInUser == null || currentAuthToken == null) {
       _showMessage(_unauthenticatedMessage);
       return;
     }
 
+    final previous = _notificationPreferences;
+    final requested = previous.withChannel(channel, value);
     setState(() {
       _isSaving = true;
-      assignLocalValue(value);
-      _notificationsAllowed =
-          _eventRemindersAllowed ||
-          _eventUpdatesAllowed ||
-          _socialAlertsAllowed;
+      _notificationPreferences = requested;
     });
 
-    await _persistPreferences();
+    await _persistPreferences(requested: requested, previous: previous);
   }
 
   Future<void> _updateCalendarSyncAllowed(bool enabled) async {
@@ -302,12 +292,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildNotificationBlock() {
     final l10n = AppLocalizations.of(context);
     return NotificationAlertsBlock(
-      notificationsAllowed: _notificationsAllowed,
+      notificationsAllowed: _notificationPreferences.notificationsAllowed,
       enabled: !_isSaving,
       onToggleNotifications: _updateNotificationsAllowed,
       child: AnimatedCrossFade(
         duration: const Duration(milliseconds: 180),
-        crossFadeState: _notificationsAllowed
+        crossFadeState: _notificationPreferences.notificationsAllowed
             ? CrossFadeState.showSecond
             : CrossFadeState.showFirst,
         firstChild: const SizedBox.shrink(),
@@ -316,37 +306,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SubalertSwitchTile(
               title: l10n.eventRemindersTitle,
               subtitle: l10n.eventRemindersSubtitle,
-              value: _eventRemindersAllowed,
+              value: _notificationPreferences.eventRemindersAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
                 value: value,
-                assignLocalValue: (nextValue) {
-                  _eventRemindersAllowed = nextValue;
-                },
+                channel: NotificationPreferenceChannel.eventReminders,
               ),
             ),
             SubalertSwitchTile(
               title: l10n.eventChangesTitle,
               subtitle: l10n.eventChangesSubtitle,
-              value: _eventUpdatesAllowed,
+              value: _notificationPreferences.eventUpdatesAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
                 value: value,
-                assignLocalValue: (nextValue) {
-                  _eventUpdatesAllowed = nextValue;
-                },
+                channel: NotificationPreferenceChannel.eventUpdates,
               ),
             ),
             SubalertSwitchTile(
               title: l10n.socialAlertsTitle,
               subtitle: l10n.notificationPreferencesIntro,
-              value: _socialAlertsAllowed,
+              value: _notificationPreferences.socialAlertsAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
                 value: value,
-                assignLocalValue: (nextValue) {
-                  _socialAlertsAllowed = nextValue;
-                },
+                channel: NotificationPreferenceChannel.socialAlerts,
               ),
             ),
           ],

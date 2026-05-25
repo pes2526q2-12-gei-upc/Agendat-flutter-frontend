@@ -84,27 +84,9 @@ class Message extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (hasImage) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                resolvedImageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: 220,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 160,
-                    alignment: Alignment.center,
-                    color: isSentByMe
-                        ? Colors.white.withValues(alpha: 0.14)
-                        : Colors.grey.shade100,
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: onBubble.withValues(alpha: 0.65),
-                    ),
-                  );
-                },
-              ),
+            _MessageImage(
+              imageUrl: resolvedImageUrl,
+              isSentByMe: isSentByMe,
             ),
             if (hasText) const SizedBox(height: 8),
           ],
@@ -164,6 +146,66 @@ class Message extends StatelessWidget {
           ),
           if (isSentByMe) ...[const SizedBox(width: 8), avatar],
         ],
+      ),
+    );
+  }
+
+}
+
+class _MessageImage extends StatelessWidget {
+  const _MessageImage({
+    required this.imageUrl,
+    required this.isSentByMe,
+  });
+
+  final String imageUrl;
+  final bool isSentByMe;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallbackColor = isSentByMe
+        ? Colors.white.withValues(alpha: 0.16)
+        : Colors.grey.shade100;
+    final fallbackIconColor = isSentByMe ? Colors.white70 : Colors.black38;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: 180,
+          maxWidth: 280,
+          maxHeight: 260,
+        ),
+        child: AspectRatio(
+          aspectRatio: 3 / 2,
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: fallbackColor,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    value: loadingProgress.expectedTotalBytes == null
+                        ? null
+                        : loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: fallbackColor,
+              alignment: Alignment.center,
+              child: Icon(Icons.broken_image_outlined, color: fallbackIconColor),
+            ),
+          ),
+        ),
       ),
     );
   }

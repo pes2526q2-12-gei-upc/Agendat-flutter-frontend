@@ -604,8 +604,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
 
     if (mounted) {
-      await _loadProfile(forceRefresh: true);
+      _syncProfilePreferencesFromSession();
     }
+  }
+
+  void _syncProfilePreferencesFromSession() {
+    final profile = _profile;
+    if (profile == null) return;
+
+    setState(() {
+      _profile = profile.copyWithPreferences(
+        notificationsAllowed: _boolFromCurrentUser('notifications_allowed'),
+        eventRemindersAllowed: _boolFromCurrentUser('event_reminders_allowed'),
+        eventUpdatesAllowed: _boolFromCurrentUser('event_updates_allowed'),
+        socialAlertsAllowed: _boolFromCurrentUser('social_alerts_allowed'),
+        calendarSyncAllowed: _boolFromCurrentUser('calendar_sync_allowed'),
+      );
+    });
+  }
+
+  bool? _boolFromCurrentUser(String key) {
+    final value = currentLoggedInUser?[key];
+    return value is bool ? value : null;
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/services/app_language.dart';
+import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/l10n/app_localizations.dart';
@@ -67,6 +68,8 @@ class _LanguageSelectorTileState extends State<LanguageSelectorTile> {
             'id': profile.id,
             'selected_language': code,
           });
+          await PushNotificationsService.instance
+              .updateRegisteredDeviceLanguage(code);
           EventsQuery.instance.refreshTranslatedContent();
         case UpdateProfileFailure(:final statusCode):
           await _revertLanguage(previous);

@@ -1,0 +1,208 @@
+import 'package:agendat/core/services/app_language.dart';
+import 'package:agendat/core/services/notification_formatter.dart';
+import 'package:agendat/core/services/notification_payload.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('notification formatter', () {
+    test('formats actor primary text from localized action key', () {
+      const notification = NotificationPayload(
+        actor: NotificationActor(displayName: 'Maria'),
+        action: NotificationAction(key: 'friend_request.sent'),
+        title: 'Backend fallback',
+      );
+
+      expect(
+        formatNotificationTitle(notification, languageCode: 'EN'),
+        'Maria sent you a friend request',
+      );
+    });
+
+    test('formats target-only primary text for event reminders', () {
+      const notification = NotificationPayload(
+        action: NotificationAction(key: 'event.reminder'),
+        target: NotificationTarget(name: 'Concert de Primavera'),
+      );
+
+      expect(
+        formatNotificationTitle(notification, languageCode: 'EN'),
+        'Concert de Primavera starts soon',
+      );
+    });
+
+    test('uses preview text before target name and fallback body', () {
+      const notification = NotificationPayload(
+        body: 'Fallback body',
+        target: NotificationTarget(name: 'Concert de Primavera'),
+        preview: NotificationPreview(text: 'Hola'),
+      );
+
+      expect(formatNotificationSubtitle(notification), 'Hola');
+    });
+
+    test('formats chat title from sender and body from text preview', () {
+      const notification = NotificationPayload(
+        title: 'Backend sender',
+        body: 'Fallback message',
+        actor: NotificationActor(displayName: 'Maria'),
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(kind: 'text', text: 'Hola'),
+      );
+
+      expect(
+        formatNotificationTitle(notification, languageCode: 'EN'),
+        'Maria',
+      );
+      expect(formatNotificationSubtitle(notification), 'Hola');
+    });
+
+    test('formats chat image preview with readable fallback body', () {
+      const notification = NotificationPayload(
+        title: 'Maria',
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(
+          kind: 'image',
+          imageUrl: 'https://example.com/image.jpg',
+        ),
+      );
+
+      expect(
+        formatNotificationTitle(notification, languageCode: 'EN'),
+        'Maria',
+      );
+      expect(
+        formatNotificationSubtitle(notification, languageCode: 'EN'),
+        'Sent you an image.',
+      );
+    });
+
+    test('localizes chat attachment fallback subtitles', () {
+      const imageNotification = NotificationPayload(
+        title: 'Maria',
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(kind: 'image'),
+      );
+      const fileNotification = NotificationPayload(
+        title: 'Maria',
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(kind: 'file'),
+      );
+      const invitationNotification = NotificationPayload(
+        title: 'Maria',
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(kind: 'event_invitation'),
+      );
+
+      expect(
+        formatNotificationSubtitle(imageNotification, languageCode: 'CA'),
+        'T\'ha enviat una imatge.',
+      );
+      expect(
+        formatNotificationSubtitle(fileNotification, languageCode: 'ES'),
+        'Te ha enviado un archivo.',
+      );
+      expect(
+        formatNotificationSubtitle(invitationNotification, languageCode: 'EN'),
+        'Sent you an event invitation.',
+      );
+    });
+
+    test('uses subtitle language code instead of defaulting to English', () {
+      const notification = NotificationPayload(
+        title: 'Maria',
+        action: NotificationAction(key: 'chat.message'),
+        preview: NotificationPreview(kind: 'event_invitation'),
+      );
+
+      AppLanguage.setCode('EN');
+
+      expect(
+        formatNotificationSubtitle(notification, languageCode: 'ES'),
+        'Te ha enviado una invitación a un evento.',
+      );
+    });
+
+    test('does not repeat event reminder title as subtitle', () {
+      const notification = NotificationPayload(
+        body: 'Concert de Primavera starts soon',
+        action: NotificationAction(key: 'event.reminder'),
+        target: NotificationTarget(name: 'Concert de Primavera'),
+      );
+
+      expect(
+        formatNotificationTitle(notification, languageCode: 'EN'),
+        'Concert de Primavera starts soon',
+      );
+      expect(formatNotificationSubtitle(notification), 'Concert de Primavera');
+    });
+
+    test('uses fallback title and body when action key is unknown', () {
+      const notification = NotificationPayload(
+        title: 'Backend title',
+        body: 'Backend body',
+        action: NotificationAction(key: 'unknown.action', label: 'Raw label'),
+      );
+
+      expect(formatNotificationTitle(notification), 'Backend title');
+      expect(formatNotificationSubtitle(notification), 'Backend body');
+    });
+
+    test(
+      'falls back to action label when title is missing and key is unknown',
+      () {
+        const notification = NotificationPayload(
+          action: NotificationAction(key: 'unknown.action', label: 'Raw label'),
+        );
+
+        expect(formatNotificationTitle(notification), 'Raw label');
+      },
+    );
+
+    test('localizes known action labels from AppLanguage', () {
+      AppLanguage.setCode('ES');
+      expect(
+        localizedNotificationActionLabel('chat.message'),
+        'te ha enviado un mensaje',
+      );
+
+      AppLanguage.setCode('CA');
+      expect(
+        localizedNotificationActionLabel('event.reminder'),
+        'comença aviat',
+      );
+
+      AppLanguage.setCode('EN');
+      expect(
+        localizedNotificationActionLabel('review.liked'),
+        'liked your review',
+      );
+    });
+
+    test(
+      'localizes action labels in every supported notification language',
+      () {
+        expect(
+          localizedNotificationActionLabel(
+            'friend_request.sent',
+            languageCode: 'CA',
+          ),
+          't\'ha enviat una sol·licitud d\'amistat',
+        );
+        expect(
+          localizedNotificationActionLabel(
+            'event_invitation.accepted',
+            languageCode: 'ES',
+          ),
+          'ha aceptado tu invitación',
+        );
+        expect(
+          localizedNotificationActionLabel(
+            'event.reminder',
+            languageCode: 'EN',
+          ),
+          'starts soon',
+        );
+      },
+    );
+  });
+}
