@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/core/api/reviews_api.dart' show ReviewsApi;
 import 'package:agendat/core/utils/app_snackbar.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 
 /// Formulari inline per afegir o editar una valoració d'un esdeveniment.
@@ -36,6 +37,7 @@ class AddReviewForm extends StatefulWidget {
     required int ambientRating,
     required int accessibilitatRating,
     required String comment,
+    required bool clearExistingImages,
     required List<XFile> media,
   })
   onSubmit;
@@ -75,11 +77,16 @@ class _AddReviewFormState extends State<AddReviewForm> {
   );
 
   final List<XFile> _selectedMedia = [];
+  bool _clearExistingImages = false;
 
   int get _existingMediaCount =>
       widget.initialImageCount < 0 ? 0 : widget.initialImageCount;
 
-  int get _totalMediaCount => _existingMediaCount + _selectedMedia.length;
+  int get _effectiveExistingMediaCount =>
+      _clearExistingImages ? 0 : _existingMediaCount;
+
+  int get _totalMediaCount =>
+      _effectiveExistingMediaCount + _selectedMedia.length;
 
   static const _ratingInputStyle = TextStyle(
     fontSize: 14,
@@ -148,6 +155,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
       ambientRating: _ambientRating,
       accessibilitatRating: _accessibilitatRating,
       comment: _commentController.text,
+      clearExistingImages: _clearExistingImages,
       media: _selectedMedia,
     );
   }
@@ -240,6 +248,10 @@ class _AddReviewFormState extends State<AddReviewForm> {
           const SizedBox(height: 12),
           _buildCommentField(),
           const SizedBox(height: 8),
+          if (widget.isEditing && _existingMediaCount > 0) ...[
+            _buildClearExistingImagesToggle(),
+            const SizedBox(height: 8),
+          ],
           _buildAddMediaButton(),
           if (_selectedMedia.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -316,6 +328,29 @@ class _AddReviewFormState extends State<AddReviewForm> {
 
   /// Vista prèvia d'una imatge triada. A web, [Image.file] no està suportat;
   /// el path del picker acostuma a ser un URL `blob:` vàlid per [Image.network].
+  Widget _buildClearExistingImagesToggle() {
+    final l10n = AppLocalizations.of(context);
+    return SwitchListTile.adaptive(
+      contentPadding: EdgeInsets.zero,
+      value: _clearExistingImages,
+      onChanged: (value) => setState(() => _clearExistingImages = value),
+      title: Text(
+        l10n.reviewClearExistingImagesLabel,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+      subtitle: Text(
+        l10n.reviewClearExistingImagesHelp,
+        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      ),
+      activeThumbColor: _brandRed,
+      activeTrackColor: _brandRed.withValues(alpha: 0.35),
+    );
+  }
+
   Widget _pickedImagePreview(XFile file) {
     const w = 70.0;
     const h = 70.0;

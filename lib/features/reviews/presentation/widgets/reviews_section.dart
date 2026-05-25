@@ -445,18 +445,22 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     required int ambientRating,
     required int accessibilitatRating,
     required String comment,
+    required bool clearExistingImages,
     required List<XFile> media,
   }) async {
     if (_isSubmitting) return;
 
     final editingIndex = _editingIndex;
     final existing = editingIndex != null ? _reviews[editingIndex] : null;
-    final existingImageCount = existing?.imageUrls.length ?? 0;
+    final existingImageCount = clearExistingImages
+        ? 0
+        : (existing?.imageUrls.length ?? 0);
     final totalImageCount = existingImageCount + media.length;
+    final reviewImageLimitMessage = AppLocalizations.of(
+      context,
+    ).reviewImageLimitReached;
     if (totalImageCount > ReviewsApi.maxImagesPerReview) {
-      _showSnack(
-        'Màxim ${ReviewsApi.maxImagesPerReview} imatges per valoració.',
-      );
+      _showSnack(reviewImageLimitMessage);
       return;
     }
 
@@ -475,6 +479,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           ambient: ambientRating,
           accessibilitat: accessibilitatRating,
           comment: submittedComment,
+          clearImages: clearExistingImages,
           images: uploadImages,
         );
       } else {

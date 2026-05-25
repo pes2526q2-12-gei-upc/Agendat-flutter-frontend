@@ -90,6 +90,7 @@ class ReviewsQuery {
     required int ambient,
     required int accessibilitat,
     String? comment,
+    bool clearImages = false,
     List<ReviewUploadImage> images = const [],
   }) async {
     final dto = ReviewDto(
@@ -100,6 +101,7 @@ class ReviewsQuery {
       ambient: ambient,
       accessibilitat: accessibilitat,
       comment: _normalizeComment(comment),
+      clearImages: clearImages,
     );
     final saved = await _api.updateReview(
       eventCode.trim(),

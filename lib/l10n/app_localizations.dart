@@ -2080,6 +2080,24 @@ abstract class AppLocalizations {
   /// **'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.'**
   String get reviewModerationThanks;
 
+  /// No description provided for @reviewImageLimitReached.
+  ///
+  /// In ca, this message translates to:
+  /// **'Una valoració pot contenir com a màxim 3 imatges.'**
+  String get reviewImageLimitReached;
+
+  /// No description provided for @reviewClearExistingImagesLabel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Eliminar les imatges anteriors'**
+  String get reviewClearExistingImagesLabel;
+
+  /// No description provided for @reviewClearExistingImagesHelp.
+  ///
+  /// In ca, this message translates to:
+  /// **'Activa-ho per esborrar les imatges actuals abans de desar les noves.'**
+  String get reviewClearExistingImagesHelp;
+
   /// No description provided for @loginRequiredToLike.
   ///
   /// In ca, this message translates to:

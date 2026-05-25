@@ -347,18 +347,110 @@ class _ReviewCardState extends State<ReviewCard> {
         itemCount: widget.review.imageUrls.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          return ClipRRect(
+          return InkWell(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              widget.review.imageUrls[index],
-              width: 70,
-              height: 70,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+            onTap: () => _openImageGallery(index),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                widget.review.imageUrls[index],
                 width: 70,
                 height: 70,
-                color: Colors.grey[200],
-                child: const Icon(Icons.broken_image, size: 24),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 70,
+                  height: 70,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.broken_image, size: 24),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _openImageGallery(int initialIndex) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _ReviewImageGalleryScreen(
+          imageUrls: widget.review.imageUrls,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+}
+
+class _ReviewImageGalleryScreen extends StatefulWidget {
+  const _ReviewImageGalleryScreen({
+    required this.imageUrls,
+    required this.initialIndex,
+  });
+
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  @override
+  State<_ReviewImageGalleryScreen> createState() =>
+      _ReviewImageGalleryScreenState();
+}
+
+class _ReviewImageGalleryScreenState extends State<_ReviewImageGalleryScreen> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex.clamp(0, widget.imageUrls.length - 1);
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text('${_currentIndex + 1}/${widget.imageUrls.length}'),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.imageUrls.length,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            minScale: 1,
+            maxScale: 4,
+            child: Center(
+              child: Image.network(
+                widget.imageUrls[index],
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(
+                      Icons.broken_image_outlined,
+                      size: 48,
+                      color: Colors.white70,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Image unavailable',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

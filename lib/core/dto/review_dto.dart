@@ -18,6 +18,7 @@ class ReviewDto {
   final int likesCount;
   final bool isLikedByMe;
   final bool acceptedForModeration;
+  final bool clearImages;
 
   const ReviewDto({
     this.id,
@@ -35,6 +36,7 @@ class ReviewDto {
     this.likesCount = 0,
     this.isLikedByMe = false,
     this.acceptedForModeration = false,
+    this.clearImages = false,
   });
 
   ReviewDto copyWith({String? authorAvatarUrl, bool? acceptedForModeration}) {
@@ -55,6 +57,7 @@ class ReviewDto {
       isLikedByMe: isLikedByMe,
       acceptedForModeration:
           acceptedForModeration ?? this.acceptedForModeration,
+      clearImages: clearImages,
     );
   }
 
@@ -136,7 +139,7 @@ class ReviewDto {
       'atmosphere_rating': ambient,
       'accessibility_rating': accessibilitat,
       'comment': comment ?? '',
-      'clear_images': false,
+      'clear_images': clearImages,
     };
   }
 
