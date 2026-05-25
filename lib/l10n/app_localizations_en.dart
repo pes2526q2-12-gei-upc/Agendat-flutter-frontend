@@ -1080,6 +1080,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Thanks for your review — we will publish it once validated.';
 
   @override
+  String get reviewImageLimitReached =>
+      'A review can contain at most 3 images.';
+
+  @override
+  String get reviewClearExistingImagesLabel => 'Remove previous images';
+
+  @override
+  String get reviewClearExistingImagesHelp =>
+      'Enable this to delete current images before saving the new ones.';
+
+  @override
   String get loginRequiredToLike => 'You must sign in to like.';
 
   @override

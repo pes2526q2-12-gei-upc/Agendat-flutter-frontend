@@ -48,6 +48,9 @@ class InviteFriendTile extends StatelessWidget {
                   radius: 22,
                   profileImage: friend.profileImage,
                   fallbackLabel: friend.displayName,
+                  userId: friend.id,
+                  reputation: friend.reputation,
+                  showLevelRing: true,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

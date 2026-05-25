@@ -157,6 +157,8 @@ class _FriendshipPrimaryButton extends StatelessWidget {
             : Icon(icon, size: 18),
         label: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
@@ -204,6 +206,8 @@ class _FriendshipOutlinedButton extends StatelessWidget {
             : Icon(icon, size: 18),
         label: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         style: OutlinedButton.styleFrom(

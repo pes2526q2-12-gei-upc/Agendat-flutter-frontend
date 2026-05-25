@@ -7,6 +7,7 @@ import 'package:agendat/core/api/events_api.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/async_epoch.dart';
@@ -76,6 +77,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsQuery.translatedContentRevisionListenable.addListener(
       _onTranslatedContentChanged,
     );
+    rootTabActivationNotifier.addListener(_onRootTabActivated);
     _scrollController.addListener(_onScroll);
     _loadFirstPage(forceRefresh: true);
   }
@@ -88,6 +90,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsQuery.translatedContentRevisionListenable.removeListener(
       _onTranslatedContentChanged,
     );
+    rootTabActivationNotifier.removeListener(_onRootTabActivated);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -108,6 +111,12 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   void _onTranslatedContentChanged() {
     if (!mounted) return;
+    _loadFirstPage(forceRefresh: true);
+  }
+
+  void _onRootTabActivated() {
+    if (!mounted) return;
+    if (rootTabActivationNotifier.value.index != kHomeTabIndex) return;
     _loadFirstPage(forceRefresh: true);
   }
 
@@ -423,8 +432,8 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 const SizedBox(height: 2),
               Row(
                 children: [
-                  eventDate(event),
-                  const Spacer(),
+                  Expanded(child: eventDate(event)),
+                  const SizedBox(width: 12),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,

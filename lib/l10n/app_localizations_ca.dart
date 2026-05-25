@@ -1097,6 +1097,17 @@ class AppLocalizationsCa extends AppLocalizations {
   String get loginRequiredToLike => 'Cal iniciar sessió per fer like.';
 
   @override
+  String get reviewImageLimitReached =>
+      'Una valoració pot contenir com a màxim 3 imatges.';
+
+  @override
+  String get reviewClearExistingImagesLabel => 'Eliminar les imatges anteriors';
+
+  @override
+  String get reviewClearExistingImagesHelp =>
+      'Activa-ho per esborrar les imatges actuals abans de desar les noves.';
+
+  @override
   String get reviewNoCommentToTranslate =>
       'Aquesta valoració no té comentari per traduir.';
 

@@ -84,10 +84,7 @@ class Message extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (hasImage) ...[
-            _MessageImage(
-              imageUrl: resolvedImageUrl,
-              isSentByMe: isSentByMe,
-            ),
+            _MessageImage(imageUrl: resolvedImageUrl, isSentByMe: isSentByMe),
             if (hasText) const SizedBox(height: 8),
           ],
           if (hasText)
@@ -149,14 +146,10 @@ class Message extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _MessageImage extends StatelessWidget {
-  const _MessageImage({
-    required this.imageUrl,
-    required this.isSentByMe,
-  });
+  const _MessageImage({required this.imageUrl, required this.isSentByMe});
 
   final String imageUrl;
   final bool isSentByMe;
@@ -202,7 +195,10 @@ class _MessageImage extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) => Container(
               color: fallbackColor,
               alignment: Alignment.center,
-              child: Icon(Icons.broken_image_outlined, color: fallbackIconColor),
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: fallbackIconColor,
+              ),
             ),
           ),
         ),

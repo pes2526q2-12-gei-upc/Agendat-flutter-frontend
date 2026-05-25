@@ -481,6 +481,8 @@ class _InviteFriendsBottomSheetState extends State<InviteFriendsBottomSheet> {
                 : const Icon(Icons.send_rounded),
             label: Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),

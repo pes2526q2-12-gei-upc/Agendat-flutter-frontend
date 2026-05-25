@@ -57,7 +57,10 @@ void main() {
 
       final image = tester.widget<Image>(find.byType(Image));
       expect(image.image, isA<NetworkImage>());
-      expect((image.image as NetworkImage).url, 'https://example.com/photo.jpg');
+      expect(
+        (image.image as NetworkImage).url,
+        'https://example.com/photo.jpg',
+      );
       expect(find.text('(sense text)'), findsNothing);
     });
   });

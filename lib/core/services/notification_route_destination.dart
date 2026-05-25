@@ -73,8 +73,10 @@ NotificationDestination? _eventDestination(
   NotificationPayload notification,
   NotificationDestinationType type,
 ) {
-  final params = notification.target?.route?.params ?? const <String, dynamic>{};
-  final eventCode = _stringParam(params, 'event_code') ?? notification.target?.id;
+  final params =
+      notification.target?.route?.params ?? const <String, dynamic>{};
+  final eventCode =
+      _stringParam(params, 'event_code') ?? notification.target?.id;
   if (eventCode == null || eventCode.isEmpty) return null;
   return NotificationDestination(type: type, eventCode: eventCode);
 }

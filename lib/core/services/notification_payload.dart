@@ -28,15 +28,18 @@ class NotificationPayload {
   final DateTime? createdAt;
 
   static NotificationPayload? fromData(Map<String, dynamic> data) {
-    final actor = NotificationActor.fromJson(_jsonMapValue(data['actor'])) ??
+    final actor =
+        NotificationActor.fromJson(_jsonMapValue(data['actor'])) ??
         _legacyActorFromData(data);
-    final action = NotificationAction.fromJson(_jsonMapValue(data['action'])) ??
+    final action =
+        NotificationAction.fromJson(_jsonMapValue(data['action'])) ??
         _legacyActionFromData(data);
-    final target = NotificationTarget.fromJson(_jsonMapValue(data['target'])) ??
+    final target =
+        NotificationTarget.fromJson(_jsonMapValue(data['target'])) ??
         _legacyTargetFromData(data);
     final preview =
         NotificationPreview.fromJson(_jsonMapValue(data['preview'])) ??
-            _legacyPreviewFromData(data);
+        _legacyPreviewFromData(data);
 
     final title = _stringValue(data['title']);
     final body = _stringValue(data['body']);
@@ -105,7 +108,10 @@ class NotificationActor {
   }
 
   bool get isEmpty =>
-      id == null && username == null && displayName == null && profileImage == null;
+      id == null &&
+      username == null &&
+      displayName == null &&
+      profileImage == null;
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -159,7 +165,8 @@ class NotificationTarget {
     return target.isEmpty ? null : target;
   }
 
-  bool get isEmpty => type == null && id == null && name == null && route == null;
+  bool get isEmpty =>
+      type == null && id == null && name == null && route == null;
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -214,7 +221,9 @@ class NotificationPreview {
         'url',
       ]),
     );
-    return preview.kind == null && preview.text == null && preview.imageUrl == null
+    return preview.kind == null &&
+            preview.text == null &&
+            preview.imageUrl == null
         ? null
         : preview;
   }
@@ -267,7 +276,8 @@ NotificationTarget? _legacyTargetFromData(Map<String, dynamic> data) {
   if (chatId == null) return null;
 
   final messageId = _stringValue(data['message_id']);
-  final userId = _stringValue(data['user_id']) ?? _stringValue(data['actor_id']);
+  final userId =
+      _stringValue(data['user_id']) ?? _stringValue(data['actor_id']);
   return NotificationTarget(
     type: 'chat',
     id: chatId,
@@ -297,11 +307,7 @@ NotificationPreview? _legacyPreviewFromData(Map<String, dynamic> data) {
       _stringValue(data['type']) ??
       (imageUrl == null ? null : 'image');
   if (body == null && imageUrl == null && kind == null) return null;
-  return NotificationPreview(
-    kind: kind,
-    text: body,
-    imageUrl: imageUrl,
-  );
+  return NotificationPreview(kind: kind, text: body, imageUrl: imageUrl);
 }
 
 Map<String, dynamic>? _jsonMapValue(Object? value) {

@@ -42,6 +42,8 @@ class ProfileInterestsSection extends StatelessWidget {
               Expanded(
                 child: Text(
                   isOwnProfile ? l10n.myInterestsTitle : l10n.interestsTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -49,17 +51,23 @@ class ProfileInterestsSection extends StatelessWidget {
                 ),
               ),
               if (isOwnProfile)
-                TextButton.icon(
-                  onPressed: onEditTap,
-                  icon: const Icon(Icons.tune_rounded, size: 18),
-                  label: Text(l10n.editInterests),
-                  style: TextButton.styleFrom(
-                    foregroundColor: EventTextUtils.kPrimaryRed,
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed: onEditTap,
+                    icon: const Icon(Icons.tune_rounded, size: 18),
+                    label: Text(
+                      l10n.editInterests,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    visualDensity: VisualDensity.compact,
+                    style: TextButton.styleFrom(
+                      foregroundColor: EventTextUtils.kPrimaryRed,
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
                 ),
             ],
@@ -81,16 +89,27 @@ class ProfileInterestsSection extends StatelessWidget {
               children: interests
                   .map(
                     (i) => Chip(
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _emojiForInterest(i),
-                            style: const TextStyle(fontSize: 16, height: 1),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(i.name),
-                        ],
+                      label: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.52,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _emojiForInterest(i),
+                              style: const TextStyle(fontSize: 16, height: 1),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                i.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       backgroundColor: Colors.grey.shade100,
                       side: BorderSide(color: Colors.grey.shade300),

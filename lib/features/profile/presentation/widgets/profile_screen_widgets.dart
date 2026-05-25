@@ -75,6 +75,8 @@ class ProfileLogoutButton extends StatelessWidget {
         ),
         label: Text(
           AppLocalizations.of(context).logout,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -96,7 +98,13 @@ class ProfileAttendedTabLabel extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(AppLocalizations.of(context).showAttended),
+            Flexible(
+              child: Text(
+                AppLocalizations.of(context).showAttended,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

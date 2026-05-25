@@ -1096,6 +1096,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get loginRequiredToLike => 'Debes iniciar sesión para poner me gusta.';
 
   @override
+  String get reviewImageLimitReached =>
+      'Una valoración puede contener como máximo 3 imágenes.';
+
+  @override
+  String get reviewClearExistingImagesLabel =>
+      'Eliminar las imágenes anteriores';
+
+  @override
+  String get reviewClearExistingImagesHelp =>
+      'Actívalo para borrar las imágenes actuales antes de guardar las nuevas.';
+
+  @override
   String get reviewNoCommentToTranslate =>
       'Esta valoración no tiene comentario para traducir.';
 

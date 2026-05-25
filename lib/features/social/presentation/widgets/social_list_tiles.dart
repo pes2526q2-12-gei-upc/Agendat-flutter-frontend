@@ -34,7 +34,11 @@ class SocialUserResultTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              SocialAvatar(profileImage: user.profileImage),
+              SocialAvatar(
+                profileImage: user.profileImage,
+                userId: user.id,
+                reputation: user.reputation,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -100,7 +104,11 @@ class SocialRecommendationTile extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              SocialAvatar(profileImage: recommendation.profileImage),
+              SocialAvatar(
+                profileImage: recommendation.profileImage,
+                userId: recommendation.id,
+                reputation: recommendation.reputation,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -240,7 +248,11 @@ class SocialFriendRequestTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  SocialAvatar(profileImage: sender?.profileImage),
+                  SocialAvatar(
+                    profileImage: sender?.profileImage,
+                    userId: sender?.id,
+                    reputation: sender?.reputation,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

@@ -156,6 +156,7 @@ class ApiClient {
     Map<String, String>? fields,
     List<http.MultipartFile>? files,
     int expectedStatusCode = 200,
+    Set<int>? acceptedStatusCodes,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
     final request = http.MultipartRequest('PATCH', uri);
@@ -170,9 +171,7 @@ class ApiClient {
     final streamed = await request.send().timeout(timeout);
     final response = await http.Response.fromStream(streamed);
 
-    if (response.statusCode != expectedStatusCode) {
-      throw ApiException(response.statusCode, response.body, uri);
-    }
+    _ensureStatus(response, uri, expectedStatusCode, acceptedStatusCodes);
 
     return response;
   }
@@ -182,6 +181,7 @@ class ApiClient {
     Map<String, String>? fields,
     List<http.MultipartFile>? files,
     int expectedStatusCode = 200,
+    Set<int>? acceptedStatusCodes,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
     final request = http.MultipartRequest('POST', uri);
@@ -196,9 +196,7 @@ class ApiClient {
     final streamed = await request.send().timeout(timeout);
     final response = await http.Response.fromStream(streamed);
 
-    if (response.statusCode != expectedStatusCode) {
-      throw ApiException(response.statusCode, response.body, uri);
-    }
+    _ensureStatus(response, uri, expectedStatusCode, acceptedStatusCodes);
 
     return response;
   }

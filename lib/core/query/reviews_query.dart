@@ -61,6 +61,7 @@ class ReviewsQuery {
     required int ambient,
     required int accessibilitat,
     String? comment,
+    List<ReviewUploadImage> images = const [],
   }) async {
     final dto = ReviewDto(
       eventCode: eventCode.trim(),
@@ -70,7 +71,11 @@ class ReviewsQuery {
       accessibilitat: accessibilitat,
       comment: _normalizeComment(comment),
     );
-    final saved = await _api.createReview(eventCode.trim(), dto);
+    final saved = await _api.createReview(
+      eventCode.trim(),
+      dto,
+      images: images,
+    );
     return SaveReviewResult(
       review: saved.toDomain(),
       acceptedForModeration: saved.acceptedForModeration,
@@ -85,6 +90,8 @@ class ReviewsQuery {
     required int ambient,
     required int accessibilitat,
     String? comment,
+    bool clearImages = false,
+    List<ReviewUploadImage> images = const [],
   }) async {
     final dto = ReviewDto(
       id: reviewId,
@@ -94,8 +101,13 @@ class ReviewsQuery {
       ambient: ambient,
       accessibilitat: accessibilitat,
       comment: _normalizeComment(comment),
+      clearImages: clearImages,
     );
-    final saved = await _api.updateReview(eventCode.trim(), dto);
+    final saved = await _api.updateReview(
+      eventCode.trim(),
+      dto,
+      images: images,
+    );
     return SaveReviewResult(
       review: saved.toDomain(),
       acceptedForModeration: saved.acceptedForModeration,

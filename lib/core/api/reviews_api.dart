@@ -4,6 +4,18 @@ import 'package:http/http.dart' as http;
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/dto/review_dto.dart';
 
+class ReviewUploadImage {
+  const ReviewUploadImage({
+    required this.bytes,
+    required this.filename,
+    required this.contentType,
+  });
+
+  final Uint8List bytes;
+  final String filename;
+  final String contentType;
+}
+
 /// Client HTTP per a l'API de ressenyes d'un esdeveniment.
 ///
 /// Endpoints:
@@ -17,6 +29,8 @@ import 'package:agendat/core/dto/review_dto.dart';
 /// Les ressenyes d'un usuari concret es consulten des de
 /// `features/profile/data/profile_api.dart` (model diferent), no pas aquí.
 class ReviewsApi {
+  static const int maxImagesPerReview = 3;
+
   static String _eventReviewsPath(String eventCode) =>
       '/api/events/$eventCode/reviews/';
 
@@ -44,14 +58,25 @@ class ReviewsApi {
   }
 
   /// Crea una nova ressenya per a [eventCode].
-  Future<ReviewDto> createReview(String eventCode, ReviewDto review) async {
+  Future<ReviewDto> createReview(
+    String eventCode,
+    ReviewDto review, {
+    List<ReviewUploadImage> images = const [],
+  }) async {
     final http.Response response;
     try {
-      response = await ApiClient.postJson(
-        _eventReviewsPath(eventCode),
-        body: review.toCreateJson(),
-        acceptedStatusCodes: const {200, 201, 202},
-      );
+      response = images.isEmpty
+          ? await ApiClient.postJson(
+              _eventReviewsPath(eventCode),
+              body: review.toCreateJson(),
+              acceptedStatusCodes: const {200, 201, 202},
+            )
+          : await ApiClient.postMultipart(
+              _eventReviewsPath(eventCode),
+              fields: _multipartFieldsFrom(review.toCreateJson()),
+              files: _multipartFilesFrom(images),
+              acceptedStatusCodes: const {200, 201, 202},
+            );
     } on ApiException catch (e) {
       final attendance = _attendanceErrorFrom(e);
       if (attendance != null) throw attendance;
@@ -78,18 +103,29 @@ class ReviewsApi {
   }
 
   /// Edita una ressenya existent. `review.id` ha d'estar definit.
-  Future<ReviewDto> updateReview(String eventCode, ReviewDto review) async {
+  Future<ReviewDto> updateReview(
+    String eventCode,
+    ReviewDto review, {
+    List<ReviewUploadImage> images = const [],
+  }) async {
     final reviewId = review.id;
     if (reviewId == null) {
       throw ArgumentError('updateReview requires review.id to be set');
     }
     final http.Response response;
     try {
-      response = await ApiClient.patchJson(
-        _eventReviewPath(eventCode, reviewId),
-        body: review.toUpdateJson(),
-        acceptedStatusCodes: const {200, 202},
-      );
+      response = images.isEmpty
+          ? await ApiClient.patchJson(
+              _eventReviewPath(eventCode, reviewId),
+              body: review.toUpdateJson(),
+              acceptedStatusCodes: const {200, 202},
+            )
+          : await ApiClient.patchMultipart(
+              _eventReviewPath(eventCode, reviewId),
+              fields: _multipartFieldsFrom(review.toUpdateJson()),
+              files: _multipartFilesFrom(images),
+              acceptedStatusCodes: const {200, 202},
+            );
     } on ApiException catch (e) {
       final attendance = _attendanceErrorFrom(e);
       if (attendance != null) throw attendance;
@@ -283,6 +319,38 @@ class ReviewsApi {
       // El body no és JSON.
     }
     return ReviewAlreadyExistsException(detail ?? e.body);
+  }
+
+  Map<String, String> _multipartFieldsFrom(Map<String, dynamic> json) {
+    return json.map((key, value) => MapEntry(key, _stringifyFieldValue(value)));
+  }
+
+  String _stringifyFieldValue(Object? value) {
+    if (value == null) return '';
+    if (value is bool) return value ? 'true' : 'false';
+    return value.toString();
+  }
+
+  List<http.MultipartFile> _multipartFilesFrom(List<ReviewUploadImage> images) {
+    if (images.length > maxImagesPerReview) {
+      throw ArgumentError(
+        'A review can contain at most $maxImagesPerReview images.',
+      );
+    }
+
+    return images
+        .map((image) {
+          if (image.bytes.isEmpty) {
+            throw ArgumentError('Review image bytes cannot be empty.');
+          }
+          return ApiClient.multipartFileFromBytes(
+            field: 'images',
+            bytes: image.bytes,
+            filename: image.filename,
+            contentType: image.contentType,
+          );
+        })
+        .toList(growable: false);
   }
 }
 

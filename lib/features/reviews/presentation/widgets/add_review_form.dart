@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:agendat/core/api/reviews_api.dart' show ReviewsApi;
 import 'package:agendat/core/utils/app_snackbar.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 
 /// Formulari inline per afegir o editar una valoració d'un esdeveniment.
@@ -24,6 +26,7 @@ class AddReviewForm extends StatefulWidget {
     this.initialAccessibilitatRating = 0,
     this.initialComment = '',
     this.isEditing = false,
+    this.initialImageCount = 0,
   });
 
   /// Callback amb les dades introduïdes. Es crida només si la validació
@@ -34,6 +37,7 @@ class AddReviewForm extends StatefulWidget {
     required int ambientRating,
     required int accessibilitatRating,
     required String comment,
+    required bool clearExistingImages,
     required List<XFile> media,
   })
   onSubmit;
@@ -47,6 +51,7 @@ class AddReviewForm extends StatefulWidget {
   final int initialAmbientRating;
   final int initialAccessibilitatRating;
   final String initialComment;
+  final int initialImageCount;
 
   /// Si és `true` es mostra el títol "EDITAR VALORACIÓ" i el botó "Desar";
   /// altrament es mostra "AFEGIR VALORACIÓ" i "Afegir".
@@ -59,7 +64,7 @@ class AddReviewForm extends StatefulWidget {
 class _AddReviewFormState extends State<AddReviewForm> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
   static const int _maxCommentLength = 500;
-  static const int _maxMediaCount = 5;
+  static const int _maxMediaCount = ReviewsApi.maxImagesPerReview;
   static const List<String> _allowedExtensions = ['png', 'jpg', 'jpeg'];
 
   late int _generalRating = widget.initialGeneralRating;
@@ -72,6 +77,16 @@ class _AddReviewFormState extends State<AddReviewForm> {
   );
 
   final List<XFile> _selectedMedia = [];
+  bool _clearExistingImages = false;
+
+  int get _existingMediaCount =>
+      widget.initialImageCount < 0 ? 0 : widget.initialImageCount;
+
+  int get _effectiveExistingMediaCount =>
+      _clearExistingImages ? 0 : _existingMediaCount;
+
+  int get _totalMediaCount =>
+      _effectiveExistingMediaCount + _selectedMedia.length;
 
   static const _ratingInputStyle = TextStyle(
     fontSize: 14,
@@ -140,6 +155,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
       ambientRating: _ambientRating,
       accessibilitatRating: _accessibilitatRating,
       comment: _commentController.text,
+      clearExistingImages: _clearExistingImages,
       media: _selectedMedia,
     );
   }
@@ -176,7 +192,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
   /// Obre el selector de la galeria i afegeix els fitxers vàlids que
   /// es triïn (respectant la mida màxima i les extensions permeses).
   Future<void> _pickMedia() async {
-    if (_selectedMedia.length >= _maxMediaCount) {
+    if (_totalMediaCount >= _maxMediaCount) {
       _showSnack('Màxim $_maxMediaCount fitxers permesos.');
       return;
     }
@@ -192,7 +208,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
         );
         continue;
       }
-      if (_selectedMedia.length >= _maxMediaCount) break;
+      if (_totalMediaCount >= _maxMediaCount) break;
       setState(() => _selectedMedia.add(file));
     }
   }
@@ -232,6 +248,10 @@ class _AddReviewFormState extends State<AddReviewForm> {
           const SizedBox(height: 12),
           _buildCommentField(),
           const SizedBox(height: 8),
+          if (widget.isEditing && _existingMediaCount > 0) ...[
+            _buildClearExistingImagesToggle(),
+            const SizedBox(height: 8),
+          ],
           _buildAddMediaButton(),
           if (_selectedMedia.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -297,7 +317,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
     return OutlinedButton.icon(
       onPressed: _pickMedia,
       icon: const Icon(Icons.add_photo_alternate_outlined),
-      label: Text('Afegir fotos (${_selectedMedia.length}/$_maxMediaCount)'),
+      label: Text('Afegir fotos ($_totalMediaCount/$_maxMediaCount)'),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.black54,
         side: BorderSide(color: Colors.grey.shade300),
@@ -308,6 +328,29 @@ class _AddReviewFormState extends State<AddReviewForm> {
 
   /// Vista prèvia d'una imatge triada. A web, [Image.file] no està suportat;
   /// el path del picker acostuma a ser un URL `blob:` vàlid per [Image.network].
+  Widget _buildClearExistingImagesToggle() {
+    final l10n = AppLocalizations.of(context);
+    return SwitchListTile.adaptive(
+      contentPadding: EdgeInsets.zero,
+      value: _clearExistingImages,
+      onChanged: (value) => setState(() => _clearExistingImages = value),
+      title: Text(
+        l10n.reviewClearExistingImagesLabel,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+      subtitle: Text(
+        l10n.reviewClearExistingImagesHelp,
+        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      ),
+      activeThumbColor: _brandRed,
+      activeTrackColor: _brandRed.withValues(alpha: 0.35),
+    );
+  }
+
   Widget _pickedImagePreview(XFile file) {
     const w = 70.0;
     const h = 70.0;
