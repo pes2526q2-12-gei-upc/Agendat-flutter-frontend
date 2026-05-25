@@ -5,6 +5,7 @@ import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
@@ -19,6 +20,7 @@ import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/state/root_tab_state.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_attended_sessions_tab.dart';
@@ -27,6 +29,7 @@ import 'package:agendat/features/profile/presentation/widgets/profile_interests_
 import 'package:agendat/features/profile/presentation/widgets/profile_reviews_tab.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_summary_card.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_screen_widgets.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
@@ -41,6 +44,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   TabController? _tabController;
   bool _isLoading = true;
   bool _isLoggingOut = false;
@@ -212,19 +217,24 @@ class _ProfileScreenState extends State<ProfileScreen>
       case ProfileNotFound():
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Perfil no trobat.';
+          _errorMessage = l10n.profileNotFound;
         });
       case ProfileUnavailable():
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Aquest perfil no està disponible.';
+          _errorMessage = l10n.profileUnavailable;
         });
-      case ProfileFailure(:final statusCode, :final error):
+      case ProfileFailure(:final message, :final statusCode, :final error):
         setState(() {
           _isLoading = false;
-          _errorMessage = error != null
-              ? 'Error de connexió. Comprova la teva connexió a internet.'
-              : 'Error del servidor (codi $statusCode).';
+          _errorMessage =
+              message ??
+              (error != null
+                  ? userMessageFromError(
+                      error,
+                      fallback: l10n.profileConnectionError,
+                    )
+                  : l10n.profileServerError(statusCode));
         });
     }
   }
@@ -269,20 +279,21 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _requestLogOut() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Confirma'),
-          content: const Text('Estàs segur/a que vols tancar la sessió?'),
+          title: Text(l10n.confirmTitle),
+          content: Text(l10n.logoutConfirmBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel·lar'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Tancar sessió'),
+              child: Text(l10n.logout),
             ),
           ],
         );
@@ -296,9 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       await logout();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut tancar la sessió.')),
-      );
+      AppSnackBar.show(context, l10n.logoutFailed);
       setState(() => _isLoggingOut = false);
       return;
     }
@@ -337,11 +346,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     required FriendshipStatus successStatus,
     required String successMessage,
     required String genericErrorMessage,
-    String unauthorizedMessage = 'Cal iniciar sessió per fer aquesta acció.',
-    String notFoundMessage = 'Perfil no vàlid.',
-    String invalidActionMessage =
-        'Aquesta acció no és vàlida perquè actualment no sou amics.',
+    String unauthorizedMessage = '',
+    String notFoundMessage = '',
+    String invalidActionMessage = '',
   }) async {
+    final l10n = AppLocalizations.of(context);
     if (_isFriendshipActionInProgress) return;
 
     setState(() => _isFriendshipActionInProgress = true);
@@ -376,23 +385,29 @@ class _ProfileScreenState extends State<ProfileScreen>
         if (myId != null) {
           _profileQuery.invalidateFriendRequestsList(myId);
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(successMessage)));
+        AppSnackBar.show(context, successMessage, isError: false);
       case FriendActionUnauthorized():
         setState(() => _isFriendshipActionInProgress = false);
-        ScaffoldMessenger.of(
+        AppSnackBar.show(
           context,
-        ).showSnackBar(SnackBar(content: Text(unauthorizedMessage)));
+          unauthorizedMessage.isEmpty
+              ? l10n.loginRequired
+              : unauthorizedMessage,
+        );
       case FriendActionUserNotFound():
         setState(() => _isFriendshipActionInProgress = false);
-        ScaffoldMessenger.of(
+        AppSnackBar.show(
           context,
-        ).showSnackBar(SnackBar(content: Text(notFoundMessage)));
+          notFoundMessage.isEmpty ? l10n.profileNotFound : notFoundMessage,
+        );
       case FriendActionConflict(:final message):
         setState(() => _isFriendshipActionInProgress = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message ?? invalidActionMessage)),
+        AppSnackBar.show(
+          context,
+          message ??
+              (invalidActionMessage.isEmpty
+                  ? l10n.unfriendInvalidAction
+                  : invalidActionMessage),
         );
         // El backend ens diu que la nostra premissa local sobre l'estat
         // d'amistat és incorrecta (p. ex. provem de cancel·lar una
@@ -405,13 +420,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         setState(() => _isFriendshipActionInProgress = false);
         final text =
             message ??
-            (error != null && statusCode == -1
-                ? 'Error de connexió. Comprova la teva connexió a internet.'
-                : genericErrorMessage);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(text)));
-        // Codis 400/410 en una mutació d'amistat solen voler dir el mateix
+            userMessageFromError(
+              error ?? Exception('Friend action failed'),
+              fallback: l10n.serverErrorWithCode(statusCode),
+            );
+        AppSnackBar.show(context, text);
         // que el 409: estat incoherent. Ho tractem igual i resincronitzem.
         if (statusCode == 400 || statusCode == 410) {
           _resyncProfileWithBackend();
@@ -474,6 +487,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _confirmAndUnfriendUser() async {
+    final l10n = AppLocalizations.of(context);
     final profile = _profile;
     if (profile == null) return;
 
@@ -481,23 +495,19 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Eliminar amistat'),
-          content: Text(
-            'Vols eliminar @${profile.username} de la teva xarxa d\'amics? '
-            'Deixareu de tenir un vincle directe i, si voleu, podreu '
-            'tornar-vos a enviar una sol·licitud d\'amistat en el futur.',
-          ),
+          title: Text(l10n.unfriendTitle),
+          content: Text(l10n.unfriendConfirmBody(profile.username)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel·lar'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: EventTextUtils.kPrimaryRed,
               ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Eliminar amistat'),
+              child: Text(l10n.unfriendTitle),
             ),
           ],
         );
@@ -515,12 +525,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     return _runFriendshipAction(
       action: () => unfriendUser(userId),
       successStatus: FriendshipStatus.none,
-      successMessage: 'Amistat eliminada.',
-      genericErrorMessage: 'No s\'ha pogut eliminar l\'amistat.',
-      unauthorizedMessage: 'Cal iniciar sessió per eliminar amistats.',
-      notFoundMessage: 'Perfil no vàlid.',
-      invalidActionMessage:
-          'Aquesta acció no és vàlida perquè actualment no sou amics.',
+      successMessage: l10n.unfriendSuccess,
+      genericErrorMessage: l10n.unfriendError,
+      unauthorizedMessage: l10n.unfriendUnauthorized,
+      notFoundMessage: l10n.unfriendNotFound,
+      invalidActionMessage: l10n.unfriendInvalidAction,
     );
   }
 
@@ -555,17 +564,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _navigateToEditInterests() async {
+    final l10n = AppLocalizations.of(context);
     final profile = _profile;
     if (profile == null) return;
     final userId = _isOwnProfile ? _currentUserId : profile.id;
     if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No s\'ha pogut obrir l\'editor d\'interessos. Torna a iniciar sessió.',
-          ),
-        ),
-      );
+      AppSnackBar.show(context, l10n.openInterestsEditorFailed);
       return;
     }
 
@@ -579,22 +583,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     if (updatedInterests != null && mounted) {
       setState(() => _interests = updatedInterests);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Preferències actualitzades correctament'),
-          backgroundColor: Colors.green.shade700,
-        ),
-      );
+      AppSnackBar.show(context, l10n.interestsUpdatedSuccess, isError: false);
     }
   }
 
   Future<void> _navigateToNotificationPreferences() async {
+    final l10n = AppLocalizations.of(context);
     if (currentLoggedInUser == null || currentAuthToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cal iniciar sessió per accedir a la configuració.'),
-        ),
-      );
+      AppSnackBar.show(context, l10n.loginRequired);
       return;
     }
 
@@ -642,9 +638,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final l10n = AppLocalizations.of(context);
     return AppBar(
       title: Text(
-        _isOwnProfile ? 'El meu Perfil' : 'Perfil',
+        _isOwnProfile ? l10n.myProfileTitle : l10n.profileTitle,
         style: AppThemeTokens.appBarTitle,
       ),
       backgroundColor: AppThemeTokens.appBarBackground,
@@ -671,17 +668,18 @@ class _ProfileScreenState extends State<ProfileScreen>
   /// de bloqueig per decidir l'etiqueta) i si no estem visitant el nostre
   /// propi perfil.
   List<Widget>? _buildOtherProfileActions() {
+    final l10n = AppLocalizations.of(context);
     final profile = _profile;
     if (profile == null) return null;
     if (_currentUserId == null || profile.id == _currentUserId) return null;
 
     final isBlocked = _friendshipStatus == FriendshipStatus.blockedByMe;
-    final actionLabel = isBlocked ? 'Desbloquejar' : 'Bloquejar';
+    final actionLabel = isBlocked ? l10n.unblockUser : l10n.blockUser;
     final actionIcon = isBlocked ? Icons.lock_open : Icons.block;
 
     return [
       PopupMenuButton<ProfileMenuAction>(
-        tooltip: 'Més opcions',
+        tooltip: l10n.moreOptionsTooltip,
         icon: const Icon(Icons.more_vert, color: Colors.black87),
         enabled: !_isBlockActionInProgress,
         onSelected: (action) {
@@ -742,16 +740,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   /// l'API de bloqueig. Si no n'hi ha, mostra el missatge prescrit per
   /// la user story i avorta l'acció.
   bool _ensureAuthenticatedForBlocking() {
+    final l10n = AppLocalizations.of(context);
     final hasToken =
         currentAuthToken != null && currentAuthToken!.trim().isNotEmpty;
     final hasUser = _currentUserId != null;
     if (hasToken && hasUser) return true;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cal iniciar sessió per bloquejar usuaris.'),
-      ),
-    );
+    AppSnackBar.show(context, l10n.blockUserUnauthorized);
     return false;
   }
 
@@ -761,6 +756,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   /// - Invalida les llistes d'amistat (l'amistat es trenca al backend) i la
   ///   llista de bloquejats per refrescar la propera consulta.
   Future<void> _confirmAndBlockUser() async {
+    final l10n = AppLocalizations.of(context);
     final profile = _profile;
     if (profile == null) return;
 
@@ -768,23 +764,19 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Bloquejar usuari'),
-          content: Text(
-            'Estàs segur/a que vols bloquejar @${profile.username}? '
-            'Si ja sou amics, perdreu l\'amistat. No podrà enviar-te missatges, '
-            'sol·licituds ni interactuar amb el teu contingut.',
-          ),
+          title: Text(l10n.blockUser),
+          content: Text(l10n.blockUserConfirmBody(profile.username)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel·lar'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: EventTextUtils.kPrimaryRed,
               ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Bloquejar'),
+              child: Text(l10n.blockUser),
             ),
           ],
         );
@@ -795,8 +787,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     await _runBlockAction(
       action: () => blockUser(profile.id),
       successStatus: FriendshipStatus.blockedByMe,
-      successMessage: 'Has bloquejat aquest usuari.',
-      genericErrorMessage: 'No s\'ha pogut bloquejar l\'usuari.',
+      successMessage: l10n.blockUserSuccess,
+      genericErrorMessage: l10n.blockUserError,
       isUnblock: false,
     );
   }
@@ -806,6 +798,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   /// `FriendshipStatus.none` (no es restableix l'amistat: cal tornar a
   /// passar pel flux de sol·licitud).
   Future<void> _confirmAndUnblockUser() async {
+    final l10n = AppLocalizations.of(context);
     final profile = _profile;
     if (profile == null) return;
 
@@ -813,20 +806,16 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Desbloquejar usuari'),
-          content: Text(
-            'Vols desbloquejar @${profile.username}? Podrà veure el teu perfil '
-            'i tornar a enviar-te missatges i sol·licituds d\'amistat. '
-            'L\'amistat anterior no es restableix automàticament.',
-          ),
+          title: Text(l10n.unblockUser),
+          content: Text(l10n.unblockUserConfirmBody(profile.username)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel·lar'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Desbloquejar'),
+              child: Text(l10n.unblockUser),
             ),
           ],
         );
@@ -837,8 +826,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     await _runBlockAction(
       action: () => unblockUser(profile.id),
       successStatus: FriendshipStatus.none,
-      successMessage: 'Has desbloquejat aquest usuari.',
-      genericErrorMessage: 'No s\'ha pogut desbloquejar l\'usuari.',
+      successMessage: l10n.unblockUserSuccess,
+      genericErrorMessage: l10n.unblockUserError,
       isUnblock: true,
       refreshChatsListOnSuccess: true,
     );
@@ -854,6 +843,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     required bool isUnblock,
     bool refreshChatsListOnSuccess = false,
   }) async {
+    final l10n = AppLocalizations.of(context);
     setState(() => _isBlockActionInProgress = true);
 
     final result = await action();
@@ -869,16 +859,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       case BlockActionUnauthorized():
         setState(() => _isBlockActionInProgress = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cal iniciar sessió per bloquejar usuaris.'),
-          ),
-        );
+        AppSnackBar.show(context, l10n.blockUserUnauthorized);
       case BlockActionUserNotFound():
         setState(() => _isBlockActionInProgress = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Perfil no vàlid.')));
+        AppSnackBar.show(context, l10n.blockUserNotFound);
       case BlockActionConflict(:final message):
         // El backend ja considera l'acció aplicada (ja estava bloquejat o
         // desbloquejat). Sincronitzem la UI amb l'estat real.
@@ -887,20 +871,19 @@ class _ProfileScreenState extends State<ProfileScreen>
           message:
               message ??
               (isUnblock
-                  ? 'Aquest usuari ja no estava bloquejat.'
-                  : 'Aquest usuari ja estava bloquejat.'),
+                  ? l10n.unblockUserAlreadyUnblocked
+                  : l10n.blockUserAlreadyBlocked),
           refreshChatsListOnSuccess: refreshChatsListOnSuccess,
         );
-      case BlockActionFailure(:final statusCode, :final message, :final error):
+      case BlockActionFailure(:final message, :final error):
         setState(() => _isBlockActionInProgress = false);
         final text =
             message ??
-            (error != null && statusCode == -1
-                ? 'Error de connexió. Comprova la teva connexió a internet.'
-                : genericErrorMessage);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(text)));
+            userMessageFromError(
+              error ?? Exception('Friend action failed'),
+              fallback: genericErrorMessage,
+            );
+        AppSnackBar.show(context, text);
     }
   }
 
@@ -944,9 +927,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       ChatsQuery.instance.invalidateChatsList();
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   Widget _buildBody() {
@@ -1049,7 +1030,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('Ressenyes'),
+                      Text(l10n.reviewsTitle),
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -1094,12 +1075,12 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           ] else ...[
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Ressenyes',
+                  l10n.reviewsTitle,
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -1121,9 +1102,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _openReviewEvent(UserReview review) {
     final eventCode = review.eventCode;
     if (eventCode == null || eventCode.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aquesta ressenya no té esdeveniment.')),
-      );
+      AppSnackBar.show(context, l10n.reviewNoEvent);
       return;
     }
 
@@ -1136,9 +1115,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   void _openSessionEvent(Session session) {
     if (session.event.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aquesta sessió no té esdeveniment.')),
-      );
+      AppSnackBar.show(context, l10n.sessionNoEvent);
       return;
     }
 

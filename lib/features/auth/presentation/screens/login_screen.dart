@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/services/google_auth_config.dart';
 import 'package:agendat/features/auth/data/models/login_user_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -10,8 +11,10 @@ import 'package:agendat/main.dart';
 import 'package:agendat/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/register_interests_screen.dart';
 import 'package:agendat/features/auth/presentation/screens/sign_up.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -59,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     if (password.isEmpty) {
-      _showSnackBar('Introdueix la contrasenya.');
+      _showSnackBar(AppLocalizations.of(context).enterPassword);
       return;
     }
 
@@ -150,12 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? null : Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _submitWithKeyboard() {
@@ -215,7 +213,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('Error durant el login amb Google: $e');
+      _showSnackBar(
+        userMessageFromError(e, fallback: 'Error durant el login amb Google.'),
+      );
     }
   }
 
@@ -324,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Inicia sessió per continuar',
+                    AppLocalizations.of(context).loginContinuePrompt,
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 28),
@@ -439,16 +439,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.arrow_forward,
                           size: 20,
                           color: Colors.white,
                         ),
-                        SizedBox(width: 8),
-                        Text('Inicia sessió'),
+                        const SizedBox(width: 8),
+                        Text(AppLocalizations.of(context).loginTitle),
                       ],
                     ),
                   ),
@@ -491,7 +491,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     icon: _GoogleGIcon(),
-                    label: const Text('Continua amb Google'),
+                    label: Text(
+                      AppLocalizations.of(context).continueWithGoogle,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Center(
@@ -504,9 +506,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      child: const Text(
-                        'He oblidat la meva contrasenya',
-                        style: TextStyle(
+                      child: Text(
+                        AppLocalizations.of(context).forgotPasswordLink,
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: EventTextUtils.kPrimaryRed,

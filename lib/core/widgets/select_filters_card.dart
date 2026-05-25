@@ -1,4 +1,6 @@
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/locations_query.dart';
@@ -26,6 +28,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
   late EventFilters _filters;
   bool _isLoading = true;
+  String? _loadError;
 
   List<String> _categories = [];
   List<String> _provincies = [];
@@ -56,10 +59,17 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
         _comarques = results[2];
         _municipis = results[3];
         _isLoading = false;
+        _loadError = null;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _loadError = userMessageFromError(
+          e,
+          fallback: 'No s\'han pogut carregar les opcions de filtre.',
+        );
+      });
     }
   }
 
@@ -141,6 +151,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final hasComarcaAccess = _filters.provincia != null;
     final hasMunicipiAccess =
         _filters.provincia != null && _filters.comarca != null;
@@ -155,22 +166,29 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Filtres',
+            Text(
+              l10n.filtersTitle,
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             if (_isLoading) ...[
               const Center(child: CircularProgressIndicator()),
               const SizedBox(height: 12),
+            ] else if (_loadError != null) ...[
+              Text(
+                _loadError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red.shade700),
+              ),
+              const SizedBox(height: 12),
             ],
 
             FilterSection(
-              title: 'Categoria',
+              title: l10n.category,
               options: _categories,
               selectedValue: _filters.category,
               searchable: true,
-              allLabel: 'Totes',
+              allLabel: l10n.allFeminine,
               onChanged: (value) {
                 setState(() {
                   _filters = _filters.copyWith(category: () => value);
@@ -196,35 +214,35 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
             const SizedBox(height: 12),
 
             FilterSection(
-              title: 'Província',
+              title: l10n.province,
               options: _provincies,
               selectedValue: _filters.provincia,
               searchable: true,
-              allLabel: 'Totes',
+              allLabel: l10n.allFeminine,
               onChanged: _onProvinciaChanged,
             ),
             const SizedBox(height: 12),
 
             FilterSection(
-              title: 'Comarca',
+              title: l10n.county,
               options: _comarques,
               selectedValue: _filters.comarca,
               searchable: true,
-              allLabel: 'Totes',
+              allLabel: l10n.allFeminine,
               enabled: hasComarcaAccess,
-              disabledHint: 'Selecciona una província',
+              disabledHint: l10n.selectProvince,
               onChanged: _onComarcaChanged,
             ),
             const SizedBox(height: 12),
 
             FilterSection(
-              title: 'Municipi',
+              title: l10n.municipality,
               options: _municipis,
               selectedValue: _filters.municipi,
               searchable: true,
-              allLabel: 'Tots',
+              allLabel: l10n.allMasculine,
               enabled: hasMunicipiAccess,
-              disabledHint: 'Selecciona una comarca',
+              disabledHint: l10n.selectCounty,
               onChanged: (value) {
                 setState(() {
                   _filters = _filters.copyWith(municipi: () => value);
@@ -244,7 +262,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
                   disabledForegroundColor: Colors.grey.shade500,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Aplicar filtres'),
+                child: Text(l10n.applyFilters),
               ),
             ),
             const SizedBox(height: 8),
@@ -258,7 +276,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  label: const Text('Netejar filtres'),
+                  label: Text(l10n.clearFilters),
                 ),
               ),
             if (!_filters.isEmpty) const SizedBox(height: 8),
@@ -270,7 +288,7 @@ class _SelectedFiltersCardState extends State<SelectedFiltersCard> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Cancel·lar'),
+                child: Text(l10n.cancel),
               ),
             ),
           ],

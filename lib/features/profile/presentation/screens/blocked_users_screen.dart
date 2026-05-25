@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/blocked_user_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/blocked_users_centered_message.dart';
@@ -21,6 +23,8 @@ class BlockedUsersScreen extends StatefulWidget {
 }
 
 class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   final ProfileQuery _profileQuery = ProfileQuery.instance;
 
   bool _isLoading = true;
@@ -50,7 +54,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
 
   bool _guardAuthenticated() => guardAuthenticated(
     context,
-    message: 'Cal iniciar sessió per veure el llistat d\'usuaris bloquejats.',
+    message: AppLocalizations.of(context).loginRequired,
     requireUserId: true,
   );
 
@@ -84,8 +88,10 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage =
-            'No s\'ha pogut carregar el llistat de bloquejats. Comprova la connexió.';
+        _errorMessage = userMessageFromError(
+          e,
+          fallback: 'No s\'ha pogut carregar el llistat de bloquejats.',
+        );
       });
     }
   }
@@ -122,8 +128,8 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text(
-          'Usuaris bloquejats',
+        title: Text(
+          l10n.blockedUsersTitle,
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -155,7 +161,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
           BlockedUsersCenteredMessage(
             icon: Icons.error_outline,
             title: _errorMessage!,
-            actionLabel: 'Reintentar',
+            actionLabel: l10n.retry,
             onAction: () => _loadBlockedUsers(forceRefresh: true),
           ),
         ],
@@ -169,9 +175,8 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
           const SizedBox(height: 80),
           BlockedUsersCenteredMessage(
             icon: Icons.block_outlined,
-            title: 'No has bloquejat cap usuari.',
-            subtitle:
-                'Quan bloquegis algú, apareixerà aquí perquè el puguis revisar.',
+            title: l10n.noBlockedUsers,
+            subtitle: l10n.blockedUsersSubtitle,
           ),
         ],
       );

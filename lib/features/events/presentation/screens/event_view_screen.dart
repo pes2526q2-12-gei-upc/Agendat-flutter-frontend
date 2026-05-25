@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/api/sessions_api.dart';
@@ -18,6 +20,7 @@ import 'package:agendat/features/events/presentation/widgets/session_picker_dial
 import 'package:agendat/features/reviews/presentation/widgets/reviews_section.dart';
 import 'package:agendat/core/services/google_calendar_service.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key, required this.eventCode});
@@ -55,6 +58,8 @@ class _EventScreenState extends State<EventScreen> {
 
   bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   Uri? _parseUrl(String? urlString) {
     if (!_hasText(urlString)) return null;
     final normalized = urlString!.trim();
@@ -68,10 +73,31 @@ class _EventScreenState extends State<EventScreen> {
   @override
   void initState() {
     super.initState();
+    _eventsQuery.translatedContentRevisionListenable.addListener(
+      _onTranslatedContentChanged,
+    );
     _eventFuture = _eventsQuery.getEventByCode(widget.eventCode);
   }
 
+  @override
+  void dispose() {
+    _eventsQuery.translatedContentRevisionListenable.removeListener(
+      _onTranslatedContentChanged,
+    );
+    super.dispose();
+  }
+
   void _retryLoad() {
+    setState(() {
+      _eventFuture = _eventsQuery.getEventByCode(
+        widget.eventCode,
+        forceRefresh: true,
+      );
+    });
+  }
+
+  void _onTranslatedContentChanged() {
+    if (!mounted) return;
     setState(() {
       _eventFuture = _eventsQuery.getEventByCode(
         widget.eventCode,
@@ -110,24 +136,12 @@ class _EventScreenState extends State<EventScreen> {
         : DateUtils.dateOnly(event.endDate!);
 
     if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
-          ),
-        ),
-      );
+      AppSnackBar.show(context, l10n.sessionBeforeEventStart);
       return;
     }
 
     if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'La sessió seleccionada és posterior al final de l\'esdeveniment.',
-          ),
-        ),
-      );
+      AppSnackBar.show(context, l10n.sessionAfterEventEnd);
       return;
     }
 
@@ -150,50 +164,38 @@ class _EventScreenState extends State<EventScreen> {
       if (_addToGoogleCalendar) {
         final accessToken = await _googleCalendarService.getAccessToken();
         if (accessToken != null && mounted) {
-          final calendarSuccess = await _googleCalendarService.createCalendarEvent(
-            accessToken: accessToken,
-            eventTitle: '${event.title}',
-            startDateTime: selectedDateTime,
-            endDateTime: endDateTime,
-            description:
-                'Sessió sincronitzada automàticament des de l\'aplicació Agenda\'t',
-          );
+          final calendarSuccess = await _googleCalendarService
+              .createCalendarEvent(
+                accessToken: accessToken,
+                eventTitle: '${event.title}',
+                startDateTime: selectedDateTime,
+                endDateTime: endDateTime,
+                description: l10n.attendanceCalendarSyncDescription,
+              );
 
           if (!calendarSuccess && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Assistència registrada, però no s\'ha pogut afegir a Google Calendar.',
-                ),
-                duration: Duration(seconds: 3),
-              ),
+            AppSnackBar.show(
+              context,
+              l10n.attendanceCalendarSyncPartial,
+              duration: const Duration(seconds: 3),
             );
           }
         }
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Assistència registrada correctament.')),
-      );
+      AppSnackBar.show(context, l10n.attendanceRegistered, isError: false);
     } on ApiException catch (e) {
       if (!mounted) return;
-      final detail = e.body.trim();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            detail.isEmpty
-                ? 'No s\'ha pogut registrar l\'assistència (${e.statusCode}).'
-                : 'No s\'ha pogut registrar l\'assistència (${e.statusCode}): $detail',
-          ),
-        ),
+      AppSnackBar.show(
+        context,
+        userMessageFromApiException(e, fallback: l10n.attendanceRegisterFailed),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No s\'ha pogut registrar l\'assistència.'),
-        ),
+      AppSnackBar.show(
+        context,
+        userMessageFromError(e, fallback: l10n.attendanceRegisterFailed),
       );
     } finally {
       if (mounted) {
@@ -260,7 +262,7 @@ class _EventScreenState extends State<EventScreen> {
                       Icons.calendar_today_rounded,
                       color: Color(0xFFD96B6B),
                     ),
-                    title: const Text('Data'),
+                    title: Text(AppLocalizations.of(context).date),
                     subtitle: Text(_formatDate(selectedStartDate)),
                     trailing: TextButton(
                       onPressed: () async {
@@ -269,7 +271,7 @@ class _EventScreenState extends State<EventScreen> {
                           initialDate: selectedStartDate,
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
-                          confirmText: 'D\'acord',
+                          confirmText: AppLocalizations.of(context).confirm,
                         );
                         if (pickedDate == null) return;
                         setDialogState(() {
@@ -283,7 +285,7 @@ class _EventScreenState extends State<EventScreen> {
                       style: TextButton.styleFrom(
                         foregroundColor: const Color.fromARGB(255, 175, 40, 40),
                       ),
-                      child: const Text('Canvia'),
+                      child: Text(AppLocalizations.of(context).change),
                     ),
                   ),
                   ListTile(
@@ -292,7 +294,7 @@ class _EventScreenState extends State<EventScreen> {
                       Icons.access_time_rounded,
                       color: Color.fromARGB(255, 175, 40, 40),
                     ),
-                    title: const Text('Hora'),
+                    title: Text(AppLocalizations.of(context).time),
                     subtitle: Text(selectedStartTime.format(dialogContext)),
                     trailing: TextButton(
                       onPressed: () async {
@@ -300,7 +302,7 @@ class _EventScreenState extends State<EventScreen> {
                           context: dialogContext,
                           initialTime: selectedStartTime,
                           initialEntryMode: TimePickerEntryMode.input,
-                          confirmText: 'D\'acord',
+                          confirmText: AppLocalizations.of(context).confirm,
                           builder: (context, child) {
                             final mediaQuery = MediaQuery.of(context);
                             return MediaQuery(
@@ -319,7 +321,7 @@ class _EventScreenState extends State<EventScreen> {
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFC84D4D),
                       ),
-                      child: const Text('Canvia'),
+                      child: Text(AppLocalizations.of(context).change),
                     ),
                   ),
                   const SizedBox(height: 0),
@@ -331,7 +333,7 @@ class _EventScreenState extends State<EventScreen> {
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFC84D4D),
                   ),
-                  child: const Text('Cancel·la'),
+                  child: Text(AppLocalizations.of(context).cancel),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -341,7 +343,7 @@ class _EventScreenState extends State<EventScreen> {
                     backgroundColor: const Color.fromARGB(255, 175, 40, 40),
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Confirmar'),
+                  child: Text(AppLocalizations.of(context).confirm),
                 ),
               ],
             );
@@ -357,28 +359,44 @@ class _EventScreenState extends State<EventScreen> {
     return '$dd/$mm/${date.year}';
   }
 
+  String _localizedDateRange(Event event) {
+    final start = EventTextUtils.formatDisplayDate(event.startDate);
+    final end = EventTextUtils.formatDisplayDate(event.endDate);
+    if (start == null && end == null) return l10n.toBeDetermined;
+    if (start != null && end != null && start == end) return start;
+    if (start != null && end != null) return '$start - $end';
+    if (start != null) return '$start - ${l10n.toBeDetermined}';
+    return '${l10n.toBeDetermined} - $end';
+  }
+
+  String _localizedPrivacy(Event event) {
+    return event.isPrivate ? l10n.privateEvent : l10n.publicEvent;
+  }
+
+  String? _localizedLocation(Event event) {
+    final parts = [
+      EventTextUtils.labelOrNull(event.municipi),
+      EventTextUtils.labelOrNull(event.provincia),
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).toList();
+    if (parts.isEmpty) return null;
+    return parts.join(', ');
+  }
+
   // ---------------------------------------------------------------------------
   // Flux "Convidar"
   // ---------------------------------------------------------------------------
 
   Future<void> _handleConvidar(EventExtended event) async {
+    final l10n = AppLocalizations.of(context);
     if (_isPreparingInvitation) return;
 
     if (!_isAuthenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cal iniciar sessió per enviar invitacions.'),
-        ),
-      );
+      AppSnackBar.show(context, l10n.loginRequiredToManageInvitations);
       return;
     }
 
     if (!_canInviteToEvent(event)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No es pot convidar a aquest esdeveniment.'),
-        ),
-      );
+      AppSnackBar.show(context, l10n.cannotInviteToEvent);
       return;
     }
 
@@ -448,22 +466,16 @@ class _EventScreenState extends State<EventScreen> {
         : DateUtils.dateOnly(event.endDate!);
 
     if (eventStartDate != null && selectedStartDate.isBefore(eventStartDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'La sessió seleccionada és anterior a l\'inici de l\'esdeveniment.',
-          ),
-        ),
+      AppSnackBar.show(
+        context,
+        AppLocalizations.of(context).sessionBeforeEventStart,
       );
       return null;
     }
     if (eventEndDate != null && selectedStartDate.isAfter(eventEndDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'La sessió seleccionada és posterior al final de l\'esdeveniment.',
-          ),
-        ),
+      AppSnackBar.show(
+        context,
+        AppLocalizations.of(context).sessionAfterEventEnd,
       );
       return null;
     }
@@ -482,20 +494,19 @@ class _EventScreenState extends State<EventScreen> {
       return dto.toDomain();
     } on ApiException catch (e) {
       if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No s\'ha pogut crear la sessió per convidar (${e.statusCode}).',
-          ),
+      AppSnackBar.show(
+        context,
+        userMessageFromApiException(
+          e,
+          fallback: AppLocalizations.of(context).createInvitationSessionFailed,
         ),
       );
       return null;
     } catch (_) {
       if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No s\'ha pogut crear la sessió per convidar.'),
-        ),
+      AppSnackBar.show(
+        context,
+        AppLocalizations.of(context).createInvitationSessionFailed,
       );
       return null;
     }
@@ -504,19 +515,18 @@ class _EventScreenState extends State<EventScreen> {
   void _showInvitationSummary(InviteFriendsResult result) {
     if (result.totalRequested == 0) return;
 
-    final messenger = ScaffoldMessenger.of(context);
     final successes = result.successes.length;
     final errors = result.errors;
 
     if (errors.isEmpty) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            successes == 1
-                ? 'Invitació enviada correctament.'
-                : '$successes invitacions enviades correctament.',
-          ),
-        ),
+      AppSnackBar.show(
+        context,
+        successes == 1
+            ? AppLocalizations.of(context).invitationSentSuccessfully
+            : AppLocalizations.of(
+                context,
+              ).invitationSummaryCounts(successes, errors.length),
+        isError: false,
       );
       return;
     }
@@ -524,9 +534,7 @@ class _EventScreenState extends State<EventScreen> {
     // Hi ha errors: si tots són del mateix tipus i clarament identificables,
     // mostrem un text concret; si no, obrim un diàleg amb el detall per amic.
     if (successes == 0 && errors.length == 1) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(_friendlySendErrorMessage(errors.first.result))),
-      );
+      AppSnackBar.show(context, _friendlySendErrorMessage(errors.first.result));
       return;
     }
 
@@ -534,7 +542,7 @@ class _EventScreenState extends State<EventScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Resum de l\'enviament'),
+          title: Text(AppLocalizations.of(context).sendSummaryTitle),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
@@ -542,7 +550,9 @@ class _EventScreenState extends State<EventScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$successes invitacions enviades · ${errors.length} amb error',
+                  AppLocalizations.of(
+                    context,
+                  ).invitationSummaryCounts(successes, errors.length),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
@@ -571,7 +581,7 @@ class _EventScreenState extends State<EventScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Tanca'),
+              child: Text(AppLocalizations.of(context).close),
             ),
           ],
         );
@@ -583,17 +593,17 @@ class _EventScreenState extends State<EventScreen> {
   String _friendlySendErrorMessage(SendInvitationResult result) {
     switch (result) {
       case SendInvitationSuccess():
-        return 'OK';
+        return AppLocalizations.of(context).ok;
       case SendInvitationUnauthorized():
-        return 'Cal iniciar sessió per enviar invitacions.';
+        return AppLocalizations.of(context).loginRequiredToManageInvitations;
       case SendInvitationInvalidRecipient():
-        return 'Usuari destinatari no vàlid.';
+        return AppLocalizations.of(context).inviteInvalidRecipient;
       case SendInvitationEventNotInvitable():
-        return 'No es pot convidar a aquest esdeveniment.';
+        return AppLocalizations.of(context).cannotInviteToEvent;
       case SendInvitationDuplicate():
-        return 'Ja has enviat una invitació per aquest esdeveniment.';
+        return AppLocalizations.of(context).inviteAlreadySent;
       case SendInvitationFailure(:final message):
-        return message ?? 'No s\'ha pogut enviar la invitació.';
+        return message ?? AppLocalizations.of(context).inviteSendFailed;
     }
   }
 
@@ -601,7 +611,7 @@ class _EventScreenState extends State<EventScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: const MainAppBar(title: 'Detalls'),
+      appBar: MainAppBar(title: l10n.detailsTitle),
       body: FutureBuilder<EventExtended>(
         future: _eventFuture,
         builder: (context, snapshot) {
@@ -623,13 +633,16 @@ class _EventScreenState extends State<EventScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Error: ${snapshot.error}',
+                      userMessageFromError(
+                        snapshot.error!,
+                        fallback: l10n.loadEventFailed,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _retryLoad,
-                      child: const Text('Reintentar'),
+                      child: Text(l10n.retry),
                     ),
                   ],
                 ),
@@ -638,7 +651,8 @@ class _EventScreenState extends State<EventScreen> {
           }
 
           final event = snapshot.data!;
-          final String displayDateRange = event.displayDateRange;
+          final displayDateRange = _localizedDateRange(event);
+          final displayLocation = _localizedLocation(event);
           final List<String> formattedCategories = event.categories
               .map(EventTextUtils.labelOrNull)
               .whereType<String>()
@@ -679,7 +693,7 @@ class _EventScreenState extends State<EventScreen> {
                 // si el text és massa llarg.
                 if (_hasText(event.description))
                   SectionCard(
-                    title: 'Descripció',
+                    title: l10n.descriptionLabel,
                     trailing: InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () {
@@ -718,53 +732,52 @@ class _EventScreenState extends State<EventScreen> {
                   ),
 
                 SectionCard(
-                  title: 'Informació de l\'esdeveniment',
+                  title: l10n.eventInformationTitle,
                   content: Column(
                     children: [
                       InfoRow(
                         icon: Icons.calendar_today_rounded,
-                        label: 'Data',
+                        label: l10n.date,
                         value: displayDateRange,
                       ),
                       if (_hasText(event.schedule))
                         InfoRow(
                           icon: Icons.access_time_rounded,
-                          label: 'Horari',
+                          label: l10n.horari,
                           value: event.schedule!.trim(),
                         ),
 
                       InfoRow(
                         icon: Icons.lock_outline_rounded,
-                        label: 'Privacitat',
-                        value: event.displayPrivacy,
+                        label: l10n.privacy,
+                        value: _localizedPrivacy(event),
                       ),
 
                       InfoRow(
                         icon: Icons.euro_rounded,
-                        label: 'Preu',
-                        value: event.free ? 'Gratuït' : 'De pagament',
+                        label: l10n.price,
+                        value: event.free ? l10n.free : l10n.paid,
                       ),
 
                       if (_hasText(event.modality))
                         InfoRow(
                           icon: Icons.info_outline_rounded,
-                          label: 'Modalitat',
+                          label: l10n.modalitat,
                           value: event.modality!.trim(),
                         ),
 
                       if (_hasText(event.address))
                         InfoRow(
                           icon: Icons.location_on_rounded,
-                          label: 'Adreça',
+                          label: l10n.address,
                           value: event.address!.trim(),
                         ),
 
-                      if (_hasText(event.location) &&
-                          event.location != 'Per determinar')
+                      if (displayLocation != null)
                         InfoRow(
                           icon: Icons.map_rounded,
-                          label: 'Ubicació',
-                          value: event.location,
+                          label: l10n.location,
+                          value: displayLocation,
                         ),
                     ],
                   ),
@@ -774,22 +787,22 @@ class _EventScreenState extends State<EventScreen> {
                     _parseUrl(event.url_locality) != null ||
                     _parseUrl(event.url_ticket) != null)
                   SectionCard(
-                    title: 'Enllaços d\'interès',
+                    title: l10n.interestingLinksTitle,
                     content: Column(
                       children: [
                         if (_parseUrl(event.url_activity) != null)
                           LinkTile(
-                            label: 'Web de l\'activitat',
+                            label: l10n.activityWebsite,
                             uri: _parseUrl(event.url_activity)!,
                           ),
                         if (_parseUrl(event.url_locality) != null)
                           LinkTile(
-                            label: 'Web de la localitat',
+                            label: l10n.localityWebsite,
                             uri: _parseUrl(event.url_locality)!,
                           ),
                         if (_parseUrl(event.url_ticket) != null)
                           LinkTile(
-                            label: 'Compra d\'entrades',
+                            label: l10n.tickets,
                             uri: _parseUrl(event.url_ticket)!,
                             isPrimary: true,
                           ),
@@ -855,8 +868,8 @@ class _EventScreenState extends State<EventScreen> {
                               ),
                             ),
                           )
-                        : const Text(
-                            'Assistir',
+                        : Text(
+                            l10n.attendButton,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -875,6 +888,7 @@ class _EventScreenState extends State<EventScreen> {
   }
 
   Widget _buildConvidarButton(EventExtended event) {
+    final l10n = AppLocalizations.of(context);
     final canInvite = _canInviteToEvent(event);
     final isBusy = _isPreparingInvitation;
     final isEnabled = canInvite && !isBusy;
@@ -908,8 +922,8 @@ class _EventScreenState extends State<EventScreen> {
                 ),
               )
             : const Icon(Icons.group_add_rounded),
-        label: const Text(
-          'Convidar',
+        label: Text(
+          l10n.inviteButton,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -918,7 +932,7 @@ class _EventScreenState extends State<EventScreen> {
     if (canInvite) return button;
 
     return Tooltip(
-      message: 'No es pot convidar a aquest esdeveniment.',
+      message: l10n.cannotInviteToEvent,
       triggerMode: TooltipTriggerMode.tap,
       child: button,
     );

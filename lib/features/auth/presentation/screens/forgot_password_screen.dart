@@ -1,3 +1,4 @@
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -5,6 +6,7 @@ import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/auth/data/models/forgot_password_request.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/features/auth/presentation/screens/reset_password_screen.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Pantalla 1 del flux: l'usuari introdueix el **correu** associat al compte.
 ///
@@ -31,21 +33,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? null : Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   String _messageForFailure(ForgotPasswordFailure f) {
+    final l10n = AppLocalizations.of(context);
     if (f.statusCode == -1) {
-      return 'Error de connexió. Comprova la xarxa.';
+      return l10n.connectionErrorCheckYourConnection;
     }
     final body = f.body;
     if (body == null) {
-      return 'No s\'ha pogut processar la sol·licitud.';
+      return l10n.actionFailedFallback;
     }
     if (body['detail'] != null) {
       return body['detail'].toString();
@@ -54,17 +52,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final e = body['email'];
       return e is List ? e.join(' ') : e.toString();
     }
-    return 'No s\'ha pogut enviar la sol·licitud.';
+    return l10n.actionFailedFallback;
   }
 
   Future<void> _submit() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      _showSnackBar('Introdueix el correu electrònic.');
+      _showSnackBar(AppLocalizations.of(context).enterEmail);
       return;
     }
     if (!email.contains('@')) {
-      _showSnackBar('Introdueix un correu electrònic vàlid.');
+      _showSnackBar(AppLocalizations.of(context).invalidEmailFormat);
       return;
     }
 
@@ -98,7 +96,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         backgroundColor: EventTextUtils.kPrimaryRed,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Contrasenya oblidada'),
+        title: Text(AppLocalizations.of(context).forgotPasswordTitle),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
@@ -111,7 +109,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Recupera l\'accés',
+              AppLocalizations.of(context).recoverAccess,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -120,12 +118,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Escriu el correu del teu compte. T\'enviarem un codi de 6 dígits.',
+              AppLocalizations.of(context).forgotPasswordPrompt,
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 28),
             Text(
-              'Correu electrònic',
+              AppLocalizations.of(context).emailAddressLabel,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -141,7 +139,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submitWithKeyboard(),
               decoration: InputDecoration(
-                hintText: 'exemple@correu.cat',
+                hintText: AppLocalizations.of(context).emailExampleHint,
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 filled: true,
                 fillColor: Colors.white,
@@ -187,7 +185,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Continuar'),
+                  : Text(AppLocalizations.of(context).continueButton),
             ),
           ],
         ),

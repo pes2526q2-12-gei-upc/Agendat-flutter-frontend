@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/categories_query.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/widgets/edit_interests_widgets.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class EditInterestsScreen extends StatefulWidget {
   const EditInterestsScreen({
@@ -23,6 +26,8 @@ class EditInterestsScreen extends StatefulWidget {
 }
 
 class _EditInterestsScreenState extends State<EditInterestsScreen> {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   final CategoriesQuery _categoriesQuery = CategoriesQuery.instance;
   final ProfileQuery _profileQuery = ProfileQuery.instance;
 
@@ -56,11 +61,14 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
         _categories = categories;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error al carregar les categories, refresca la pàgina';
+        _errorMessage = userMessageFromError(
+          e,
+          fallback: 'Error al carregar les categories, refresca la pàgina',
+        );
       });
     }
   }
@@ -83,9 +91,7 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
         Navigator.of(context).pop(_withCategoryEmojis(interests));
       case UpdateUserInterestsFailure():
         setState(() => _isSaving = false);
-        _showSnackBar(
-          'No s\'han pogut guardar les preferències, torna-ho a provar més tard',
-        );
+        _showSnackBar(AppLocalizations.of(context).saveInterestsFailed);
     }
   }
 
@@ -122,17 +128,16 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Editar interessos'),
+        title: Text(l10n.editInterestsTitle),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -168,7 +173,7 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
                   backgroundColor: EventTextUtils.kPrimaryRed,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Refrescar'),
+                child: Text(l10n.refresh),
               ),
             ],
           ),
@@ -230,8 +235,8 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
                     strokeWidth: 2,
                   ),
                 )
-              : const Text(
-                  'Guardar',
+              : Text(
+                  l10n.saveLabel,
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
         ),

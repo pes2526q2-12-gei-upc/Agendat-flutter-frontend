@@ -4,6 +4,7 @@ import 'package:agendat/core/models/event_invitation.dart';
 import 'package:agendat/core/models/user_summary.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/avatars.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class InviteFriendTile extends StatelessWidget {
   const InviteFriendTile({
@@ -102,10 +103,11 @@ class InviteFriendStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final (label, color) = switch (status) {
-      EventInvitationStatus.pending => ('Pendent', Colors.orange),
-      EventInvitationStatus.accepted => ('Acceptada', Colors.green),
-      EventInvitationStatus.denied => ('Denegada', Colors.redAccent),
+      EventInvitationStatus.pending => (l10n.invitationPending, Colors.orange),
+      EventInvitationStatus.accepted => (l10n.invitationAccepted, Colors.green),
+      EventInvitationStatus.denied => (l10n.invitationDenied, Colors.redAccent),
     };
 
     return Container(

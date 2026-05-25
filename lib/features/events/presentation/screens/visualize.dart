@@ -2,17 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/events_api.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/async_epoch.dart';
+import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/filter_button.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
 import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -69,6 +73,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     _eventsQuery.persistedFiltersListenable.addListener(
       _onSharedFiltersChanged,
     );
+    _eventsQuery.translatedContentRevisionListenable.addListener(
+      _onTranslatedContentChanged,
+    );
     _scrollController.addListener(_onScroll);
     _loadFirstPage(forceRefresh: true);
   }
@@ -77,6 +84,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   void dispose() {
     _eventsQuery.persistedFiltersListenable.removeListener(
       _onSharedFiltersChanged,
+    );
+    _eventsQuery.translatedContentRevisionListenable.removeListener(
+      _onTranslatedContentChanged,
     );
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -94,6 +104,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
     _activeFilters = sharedFilters;
     _loadFirstPage();
+  }
+
+  void _onTranslatedContentChanged() {
+    if (!mounted) return;
+    _loadFirstPage(forceRefresh: true);
   }
 
   void _onScroll() {
@@ -181,9 +196,11 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
     } catch (e) {
       if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() => _isLoadingMore = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No s\'han pogut carregar més esdeveniments: $e'),
+      AppSnackBar.show(
+        context,
+        userMessageFromError(
+          e,
+          fallback: AppLocalizations.of(context).loadEventsFailed,
         ),
       );
     }
@@ -210,8 +227,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: const MainAppBar(title: "Agenda't"),
+      appBar: MainAppBar(title: l10n.appName),
       backgroundColor: AppThemeTokens.screenBackground,
       body: Column(
         children: [
@@ -240,13 +258,14 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
               ),
             ),
           ),
-          Expanded(child: _buildBody()),
+          Expanded(child: _buildBody(context)),
         ],
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_isInitialLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -258,12 +277,12 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Error: $_error', textAlign: TextAlign.center),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _refresh,
-                child: const Text('Reintentar'),
+              Text(
+                userMessageFromError(_error!, fallback: l10n.loadEventsFailed),
+                textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 10),
+              ElevatedButton(onPressed: _refresh, child: Text(l10n.retry)),
             ],
           ),
         ),
@@ -275,9 +294,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         onRefresh: () async => _refresh(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
+          children: [
             SizedBox(height: 120),
-            Center(child: Text('No hi ha esdeveniments.')),
+            Center(child: Text(l10n.noEvents)),
           ],
         ),
       );
@@ -316,6 +335,50 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         },
       ),
     );
+  }
+
+  String _localizedLocation(Event event) {
+    final parts = [
+      EventTextUtils.labelOrNull(event.municipi),
+      EventTextUtils.labelOrNull(event.provincia),
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).toList();
+    if (parts.isEmpty) return AppLocalizations.of(context).toBeDetermined;
+    return parts.join(', ');
+  }
+
+  String _localizedPrivacy(Event event) {
+    final l10n = AppLocalizations.of(context);
+    return event.isPrivate ? l10n.privateEvent : l10n.publicEvent;
+  }
+
+  String _localizedDateRange(Event event) {
+    final l10n = AppLocalizations.of(context);
+    final startDay = event.startDate == null
+        ? null
+        : DateTime(
+            event.startDate!.year,
+            event.startDate!.month,
+            event.startDate!.day,
+          );
+    final endDay = event.endDate == null
+        ? null
+        : DateTime(
+            event.endDate!.year,
+            event.endDate!.month,
+            event.endDate!.day,
+          );
+    final start = EventTextUtils.formatDisplayDate(event.startDate);
+    final end = EventTextUtils.formatDisplayDate(event.endDate);
+    if (start == null && end == null) return l10n.toBeDetermined;
+    if (start != null && end != null && startDay == endDay) return start;
+    if (start != null && end != null) return '$start - $end';
+    if (start != null) return '$start - ${l10n.toBeDetermined}';
+    return '${l10n.toBeDetermined} - $end';
+  }
+
+  String _localizedCategory(Event event) {
+    return EventTextUtils.categoriesToCapitalizedString(event.categories) ??
+        AppLocalizations.of(context).generalRating;
   }
 
   Widget eventCard(Event event) {
@@ -384,7 +447,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventPlace(Event event) {
     return Text(
-      event.location,
+      _localizedLocation(event),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -392,8 +455,9 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Text eventPayment(Event event) {
+    final l10n = AppLocalizations.of(context);
     return Text(
-      event.free ? 'Gratuït' : 'De pagament',
+      event.free ? l10n.free : l10n.paid,
       textAlign: TextAlign.end,
       style: const TextStyle(
         fontSize: 16,
@@ -407,7 +471,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventPrivacy(Event event) {
     return Text(
-      event.displayPrivacy,
+      _localizedPrivacy(event),
       textAlign: TextAlign.end,
       style: const TextStyle(
         fontSize: 13,
@@ -421,7 +485,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Text eventDate(Event event) {
     return Text(
-      event.displayDateRange,
+      _localizedDateRange(event),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -449,7 +513,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
-          event.displayCategory,
+          _localizedCategory(event),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           softWrap: false,

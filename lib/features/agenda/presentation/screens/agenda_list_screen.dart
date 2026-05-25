@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
@@ -10,6 +11,7 @@ import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/main.dart';
 import 'package:flutter/material.dart';
 
@@ -58,8 +60,9 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: const MainAppBar(title: "Agenda't"),
+      appBar: MainAppBar(title: l10n.appName),
       backgroundColor: const Color(0xFFF7F4F2),
       body: SafeArea(
         child: FutureBuilder<List<Session>>(
@@ -74,7 +77,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
                     AppScreenSpacing.horizontal,
                     0,
                   ),
-                  child: _buildViewSwitch(),
+                  child: _buildViewSwitch(context),
                 ),
                 Expanded(child: _buildBody(snapshot)),
               ],
@@ -101,7 +104,8 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
     );
   }
 
-  Widget _buildViewSwitch() {
+  Widget _buildViewSwitch(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(6),
@@ -117,16 +121,16 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
         ],
       ),
       child: SegmentedButton<_AgendaView>(
-        segments: const [
+        segments: [
           ButtonSegment<_AgendaView>(
             value: _AgendaView.calendar,
             icon: Icon(Icons.calendar_month_rounded),
-            label: Text('Calendari'),
+            label: Text(l10n.calendarTab),
           ),
           ButtonSegment<_AgendaView>(
             value: _AgendaView.list,
             icon: Icon(Icons.view_agenda_rounded),
-            label: Text('Llista'),
+            label: Text(l10n.listTab),
           ),
         ],
         selected: const {_AgendaView.list},
@@ -166,6 +170,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
   }
 
   Widget _buildBody(AsyncSnapshot<List<Session>> snapshot) {
+    final l10n = AppLocalizations.of(context);
     if (snapshot.connectionState == ConnectionState.waiting) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -180,7 +185,10 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
               const Icon(Icons.error_outline_rounded, size: 48),
               const SizedBox(height: 12),
               Text(
-                'No s\'ha pogut carregar la llista.\n${snapshot.error}',
+                userMessageFromError(
+                  snapshot.error!,
+                  fallback: l10n.loadAgendaListFailed,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -190,7 +198,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
                   backgroundColor: _kAccentRed,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Reintentar'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
@@ -205,13 +213,20 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.view_agenda_outlined, size: 52, color: _kAccentRed),
-              SizedBox(height: 12),
+            children: [
+              const Icon(
+                Icons.view_agenda_outlined,
+                size: 52,
+                color: _kAccentRed,
+              ),
+              const SizedBox(height: 12),
               Text(
-                'No tens cap esdeveniment programat pròximament.',
+                l10n.noUpcomingEvents,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -226,7 +241,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
           index == 0 ? const SizedBox(height: 16) : const SizedBox(height: 12),
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _buildSectionTitle('Sessions', sessions.length);
+          return _buildSectionTitle(l10n.sessionsTitle, sessions.length);
         }
         return _buildListSessionCard(sessions[index - 1]);
       },
@@ -344,7 +359,7 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
 
   Widget _buildDeleteSessionButton(Session session) {
     return IconButton(
-      tooltip: 'Eliminar sessió',
+      tooltip: AppLocalizations.of(context).deleteSessionTooltip,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -358,17 +373,17 @@ class _AgendaListScreenState extends State<AgendaListScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Eliminar sessió'),
-          content: const Text('Vols eliminar aquesta sessió de l’agenda?'),
+          title: Text(AppLocalizations.of(context).deleteSessionTitle),
+          content: Text(AppLocalizations.of(context).deleteSessionBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel·lar'),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: TextButton.styleFrom(foregroundColor: _kAccentRed),
-              child: const Text('Eliminar'),
+              child: Text(AppLocalizations.of(context).delete),
             ),
           ],
         );

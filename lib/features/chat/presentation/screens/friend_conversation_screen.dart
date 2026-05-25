@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
@@ -20,6 +22,7 @@ import 'package:agendat/features/chat/presentation/widgets/conversation_partner_
 import 'package:agendat/features/chat/presentation/widgets/event_invitation_message.dart';
 import 'package:agendat/features/chat/presentation/widgets/inactive_conversation_banner.dart';
 import 'package:agendat/features/chat/presentation/widgets/message.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Pantalla de conversa amb càrrega real de missatges.
 class FriendConversationScreen extends StatefulWidget {
@@ -63,25 +66,22 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     return null;
   }
 
-  static const String _inactiveUnfriendBanner =
-      'Ja no sou amics amb aquest usuari. El xat es manté al llistat però '
-      'només pots llegir els missatges anteriors.';
-
-  static const String _inactiveBlockedByPartnerBanner =
-      'Aquest usuari t\'ha bloquejat. El xat es manté al llistat però '
-      'només pots llegir els missatges anteriors.';
-
   static const Set<String> _allowedImageExtensions = {'jpg', 'jpeg', 'png'};
 
   String _inactiveConversationBannerText() {
     if (_chat.blockedByMe) {
-      return 'Has bloquejat aquest usuari. El xat ja no apareix al llistat de '
-          'converses.';
+      return AppLocalizations.of(context).inactiveBlockedByMeBanner;
     }
     if (_chat.blockedMe) {
-      return _inactiveBlockedByPartnerBanner;
+      return AppLocalizations.of(context).inactiveBlockedByPartnerBanner;
     }
-    return _inactiveUnfriendBanner;
+    return AppLocalizations.of(context).inactiveUnfriendBanner;
+  }
+
+  String _receiptLabel(bool isRead) {
+    return isRead
+        ? AppLocalizations.of(context).read
+        : AppLocalizations.of(context).sent;
   }
 
   String? get _myAvatarLabel {
@@ -265,7 +265,10 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'No s\'han pogut carregar els missatges.';
+        _error = userMessageFromError(
+          e,
+          fallback: AppLocalizations.of(context).loadMessagesFailed,
+        );
       });
     }
   }
@@ -292,10 +295,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       if (_sending || myUserId == null || !_chat.canSend) {
         if (!_chat.canSend && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Aquest xat està inactiu. Només podeu llegir la conversa.',
-              ),
+            SnackBar(
+              content: Text(AppLocalizations.of(context).chatReadOnlyNotice),
             ),
           );
         }
@@ -330,10 +331,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     if (text.isEmpty || _sending || myUserId == null || !_chat.canSend) {
       if (text.isNotEmpty && !_chat.canSend && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Aquest xat està inactiu. Només podeu llegir la conversa.',
-            ),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).chatReadOnlyNotice),
           ),
         );
       }
@@ -356,8 +355,12 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
     } catch (e, st) {
       if (kDebugMode) debugPrint('[friend_conversation] send: $e\n$st');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut enviar el missatge.')),
+      AppSnackBar.show(
+        context,
+        userMessageFromError(
+          e,
+          fallback: AppLocalizations.of(context).sendMessageFailed,
+        ),
       );
     } finally {
       if (mounted) {
@@ -376,10 +379,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
         !_chat.canSend) {
       if (!_chat.canSend && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Aquest xat està inactiu. Només podeu llegir la conversa.',
-            ),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).chatReadOnlyNotice),
           ),
         );
       }
@@ -399,8 +400,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       if (extension == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Només es poden enviar imatges JPG, JPEG o PNG.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).imageFormatsOnly),
           ),
         );
         return;
@@ -410,7 +411,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       if (bytes.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('La imatge seleccionada és buida.')),
+          SnackBar(content: Text(AppLocalizations.of(context).emptyImage)),
         );
         return;
       }
@@ -425,7 +426,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
       if (kDebugMode) debugPrint('[friend_conversation] pick image: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut seleccionar la imatge.')),
+        SnackBar(content: Text(AppLocalizations.of(context).imageSelectFailed)),
       );
     } finally {
       if (mounted) {
@@ -487,13 +488,13 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
   String _sendImageErrorMessage(Object error) {
     if (error is ApiException) {
       if (error.statusCode == 413) {
-        return 'La imatge és massa gran. Prova amb una imatge més petita.';
+        return AppLocalizations.of(context).sendImageTooLarge;
       }
       if (error.statusCode >= 500) {
-        return 'El servidor no ha pogut pujar la imatge. Torna-ho a provar.';
+        return AppLocalizations.of(context).sendImageServerFailed;
       }
     }
-    return 'No s\'ha pogut enviar la imatge.';
+    return AppLocalizations.of(context).sendImageFailed;
   }
 
   void _clearSelectedImage() {
@@ -583,8 +584,8 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
           Center(
             child: Text(
               _chat.canSend
-                  ? 'Encara no hi ha missatges. Envia el primer.'
-                  : 'Encara no hi ha missatges en aquest xat.',
+                  ? AppLocalizations.of(context).noMessagesYetCanSend
+                  : AppLocalizations.of(context).noMessagesYetReadOnly,
               textAlign: TextAlign.center,
             ),
           ),
@@ -643,7 +644,7 @@ class _FriendConversationScreenState extends State<FriendConversationScreen> {
           avatarUrl: isMine ? myProfileImage : _partner.profileImage,
           avatarLabel: isMine ? (_myAvatarLabel ?? '?') : _partner.displayName,
           receiptLabel: isMine && message.id == latestSentMessageId
-              ? (message.isRead ? 'Llegit' : 'Enviat')
+              ? _receiptLabel(message.isRead)
               : null,
         );
       },

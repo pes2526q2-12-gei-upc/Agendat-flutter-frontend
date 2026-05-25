@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/screens/delete_account_screen.dart';
@@ -9,6 +10,7 @@ import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/features/profile/presentation/widgets/edit_profile_form_widgets.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 @visibleForTesting
 class ProfileFullNameParts {
@@ -104,23 +106,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _submitForm() async {
+    final l10n = AppLocalizations.of(context);
     final fullName = _fullNameController.text.trim();
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final description = _descriptionController.text.trim();
 
     if (username.isEmpty) {
-      _showSnackBar('Introdueix un nom d\'usuari.');
+      _showSnackBar(l10n.profileUsernameRequired);
       return;
     }
 
     if (email.isEmpty) {
-      _showSnackBar('Introdueix el correu electrònic.');
+      _showSnackBar(l10n.profileEmailRequired);
       return;
     }
 
     if (!_isValidEmail(email)) {
-      _showSnackBar('Format de correu electrònic no vàlid');
+      _showSnackBar(l10n.profileInvalidEmail);
       return;
     }
 
@@ -166,36 +169,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _handleUpdateResult(UpdateProfileResult result) {
+    final l10n = AppLocalizations.of(context);
     switch (result) {
       case UpdateProfileSuccess(:final profile):
-        _showSnackBar('Perfil actualitzat correctament', isError: false);
+        _showSnackBar(l10n.profileUpdatedSuccess, isError: false);
         Navigator.pop(context, profile);
 
       case UpdateProfileValidationError(:final field, :final message):
         if (field == 'email') {
-          _showSnackBar('El correu introduït ja està registrat al sistema');
+          _showSnackBar(l10n.profileEmailAlreadyRegistered);
         } else if (field == 'username') {
-          _showSnackBar('Nom d\'usuari no vàlid');
+          _showSnackBar(l10n.profileUsernameInvalid);
         } else {
           _showSnackBar(message);
         }
 
       case UpdateProfileFailure(:final statusCode):
         if (statusCode == -1) {
-          _showSnackBar('Error de connexió. Comprova la teva connexió.');
+          _showSnackBar(l10n.profileConnectionError);
         } else {
-          _showSnackBar('Error del servidor (codi $statusCode).');
+          _showSnackBar(l10n.profileServerError(statusCode));
         }
     }
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? null : Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _submitWithKeyboard() {
@@ -204,6 +203,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickProfileImage() async {
+    final l10n = AppLocalizations.of(context);
     try {
       final image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -219,16 +219,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
     } catch (_) {
       if (!mounted) return;
-      _showSnackBar('No s\'ha pogut seleccionar la imatge');
+      _showSnackBar(l10n.profileImageSelectFailed);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Editar perfil'),
+        title: Text(l10n.editProfileTitle),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -238,7 +239,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            EditProfileFieldLabel(text: 'Foto de perfil'),
+            EditProfileFieldLabel(text: l10n.profilePhotoLabel),
             const SizedBox(height: 8),
             Center(
               child: EditProfileAvatarEditor(
@@ -249,24 +250,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            EditProfileFieldLabel(text: 'Nom d\'usuari'),
+            EditProfileFieldLabel(text: l10n.usernameLabel),
             const SizedBox(height: 8),
             EditProfileStyledTextField(
               controller: _usernameController,
               focusNode: _usernameFocusNode,
-              hintText: 'El teu nom d\'usuari',
+              hintText: l10n.usernameHint,
               textInputAction: TextInputAction.next,
               onSubmitted: (_) {
                 FocusScope.of(context).requestFocus(_fullNameFocusNode);
               },
             ),
             const SizedBox(height: 20),
-            EditProfileFieldLabel(text: 'Nom complet'),
+            EditProfileFieldLabel(text: l10n.fullNameLabel),
             const SizedBox(height: 8),
             EditProfileStyledTextField(
               controller: _fullNameController,
               focusNode: _fullNameFocusNode,
-              hintText: 'El teu nom',
+              hintText: l10n.fullNameHint,
               keyboardType: TextInputType.name,
               textInputAction: TextInputAction.next,
               onSubmitted: (_) {
@@ -274,12 +275,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               },
             ),
             const SizedBox(height: 20),
-            EditProfileFieldLabel(text: 'Correu electrònic'),
+            EditProfileFieldLabel(text: l10n.emailLabel),
             const SizedBox(height: 8),
             EditProfileStyledTextField(
               controller: _emailController,
               focusNode: _emailFocusNode,
-              hintText: 'exemple@correu.com',
+              hintText: l10n.emailHint,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               onSubmitted: (_) {
@@ -287,12 +288,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               },
             ),
             const SizedBox(height: 20),
-            EditProfileFieldLabel(text: 'Descripció'),
+            EditProfileFieldLabel(text: l10n.descriptionLabel),
             const SizedBox(height: 8),
             EditProfileStyledTextField(
               controller: _descriptionController,
               focusNode: _descriptionFocusNode,
-              hintText: 'Escriu una descripció sobre tu...',
+              hintText: l10n.descriptionHint,
               maxLines: 4,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submitWithKeyboard(),
@@ -305,8 +306,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 onPressed: _isLoading
                     ? null
                     : () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('pendent')),
+                        AppSnackBar.show(
+                          context,
+                          l10n.changePasswordComingSoon,
                         );
                       },
                 style: OutlinedButton.styleFrom(
@@ -315,8 +317,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   side: BorderSide(color: Colors.grey.shade300),
                 ),
-                child: const Text(
-                  'Canviar contrasenya',
+                child: Text(
+                  l10n.changePasswordLabel,
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -343,8 +345,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                label: const Text(
-                  'Eliminar perfil',
+                label: Text(
+                  l10n.deleteAccountButton,
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -371,8 +373,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text(
-                        'Desar canvis',
+                    : Text(
+                        l10n.saveLabel,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,

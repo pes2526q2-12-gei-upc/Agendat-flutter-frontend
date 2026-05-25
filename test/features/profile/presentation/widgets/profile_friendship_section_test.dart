@@ -1,12 +1,16 @@
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_friendship_section.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('blockedByMe shows the unblock action', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: Locale('ca'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ProfileFriendshipSection(
             currentUserId: 1,
@@ -33,6 +37,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: Locale('ca'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ProfileFriendshipSection(
             currentUserId: 1,

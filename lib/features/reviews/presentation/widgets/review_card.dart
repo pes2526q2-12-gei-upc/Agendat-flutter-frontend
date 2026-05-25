@@ -8,6 +8,7 @@ import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/main.dart' show RootNavigationScreen;
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Targeta que pinta una única [Review] en mode lectura.
 ///
@@ -88,7 +89,7 @@ class _ReviewCardState extends State<ReviewCard> {
           _buildHeader(context),
           const SizedBox(height: 10),
           ReviewRatingRow(
-            label: 'Valoració general',
+            label: AppLocalizations.of(context).generalRating,
             rating: widget.review.general,
             starSize: ReviewRatingRow.cardGeneralStarSize,
             starSpacing: 3,
@@ -303,7 +304,7 @@ class _ReviewCardState extends State<ReviewCard> {
         ),
         const Spacer(),
         PopupMenuButton<String>(
-          tooltip: 'Traduïr',
+          tooltip: AppLocalizations.of(context).translate,
           enabled: !widget.isTranslating,
           onSelected: _handleLanguageChanged,
           itemBuilder: (context) => const [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Card with master notifications switch and expandable sub-alerts.
 class NotificationAlertsBlock extends StatelessWidget {
@@ -34,24 +35,26 @@ class NotificationAlertsBlock extends StatelessWidget {
       ),
       child: Column(
         children: [
-          SwitchListTile.adaptive(
-            title: const Text(
-              'Notificacions permeses',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            subtitle: Text(
-              notificationsAllowed
-                  ? 'Si les actives, els tipus d\'alerta queden disponibles a sota.'
-                  : 'Si les desactives, tots els tipus d\'alerta s\'apaguen i s\'amaguen.',
-            ),
-            value: notificationsAllowed,
-            onChanged: enabled ? onToggleNotifications : null,
-            activeThumbColor: EventTextUtils.kPrimaryRed,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 8,
-            ),
+          Builder(
+            builder: (context) {
+              final l10n = AppLocalizations.of(context);
+              return SwitchListTile.adaptive(
+                title: Text(
+                  l10n.notificationPreferencesTitle,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(l10n.notificationPreferencesIntro),
+                value: notificationsAllowed,
+                onChanged: enabled ? onToggleNotifications : null,
+                activeThumbColor: EventTextUtils.kPrimaryRed,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+              );
+            },
           ),
+
           if (notificationsAllowed)
             Column(
               children: [

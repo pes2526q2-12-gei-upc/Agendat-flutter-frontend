@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -12,6 +13,7 @@ import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 /// Pantalla que llista els amics de l'usuari autenticat.
 ///
@@ -34,6 +36,8 @@ class FriendsListScreen extends StatefulWidget {
 }
 
 class _FriendsListScreenState extends State<FriendsListScreen> {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   static const _kPrimaryRed = AppThemeTokens.brandPrimary;
 
   final ProfileQuery _profileQuery = ProfileQuery.instance;
@@ -80,7 +84,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
 
   bool _guardAuthenticated() => guardAuthenticated(
     context,
-    message: 'Cal iniciar sessió per veure el teu llistat d\'amics.',
+    message: AppLocalizations.of(context).loginRequired,
     requireUserId: true,
   );
 
@@ -111,8 +115,10 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage =
-            'No s\'ha pogut carregar el llistat d\'amics. Comprova la teva connexió.';
+        _errorMessage = userMessageFromError(
+          e,
+          fallback: 'No s\'ha pogut carregar el llistat d\'amics.',
+        );
       });
     }
   }
@@ -228,10 +234,10 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Els meus amics',
-                        style: TextStyle(
+                        l10n.myFriends,
+                        style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
@@ -239,7 +245,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Tanca',
+                      tooltip: l10n.close,
                       onPressed: () {
                         if (widget.onClose != null) {
                           widget.onClose!();
@@ -262,8 +268,8 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text(
-          'Els meus amics',
+        title: Text(
+          l10n.myFriends,
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -285,12 +291,12 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       focusNode: _filterFocusNode,
       onChanged: _onFilterChanged,
       decoration: InputDecoration(
-        hintText: 'Filtra els teus amics',
+        hintText: l10n.filterFriendsHint,
         prefixIcon: const Icon(Icons.search, color: Colors.black54),
         suffixIcon: _filter.isEmpty
             ? null
             : IconButton(
-                tooltip: 'Esborra',
+                tooltip: l10n.deleteTooltip,
                 icon: const Icon(Icons.close, color: Colors.black54),
                 onPressed: _clearFilter,
               ),
@@ -329,7 +335,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           _buildCenteredMessage(
             icon: Icons.error_outline,
             title: _errorMessage!,
-            actionLabel: 'Reintentar',
+            actionLabel: l10n.retry,
             onAction: () => _loadFriends(forceRefresh: true),
           ),
         ],
@@ -347,9 +353,8 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           const SizedBox(height: 80),
           _buildCenteredMessage(
             icon: Icons.group_outlined,
-            title: 'Encara no tens cap amic a la teva xarxa.',
-            subtitle:
-                'Cerca usuaris i envia\'ls una sol·licitud per ampliar la teva xarxa.',
+            title: l10n.noFriendsYet,
+            subtitle: l10n.noFriendsYetSubtitle,
           ),
         ],
       );
@@ -363,7 +368,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           const SizedBox(height: 80),
           _buildCenteredMessage(
             icon: Icons.search_off,
-            title: 'Cap amic coincideix amb el filtre.',
+            title: l10n.noFriendsMatchSearch,
           ),
         ],
       );

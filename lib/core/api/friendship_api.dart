@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/api/api_client.dart';
 import 'package:agendat/core/models/friend_recommendation.dart';
 import 'package:agendat/core/models/user_summary.dart';
@@ -158,11 +159,13 @@ FriendActionResult _mapFriendActionApiException(ApiException e) {
     return FriendActionUserNotFound();
   }
   if (e.statusCode == 409) {
-    return FriendActionConflict(message: _extractErrorMessage(e.body));
+    return FriendActionConflict(
+      message: extractApiErrorMessageFromBody(e.body),
+    );
   }
   return FriendActionFailure(
     statusCode: e.statusCode,
-    message: _extractErrorMessage(e.body),
+    message: extractApiErrorMessageFromBody(e.body),
     error: e,
   );
 }
@@ -307,11 +310,13 @@ Future<BlockActionResult> _postBlockAction(String path) async {
       return BlockActionUserNotFound();
     }
     if (e.statusCode == 409) {
-      return BlockActionConflict(message: _extractErrorMessage(e.body));
+      return BlockActionConflict(
+        message: extractApiErrorMessageFromBody(e.body),
+      );
     }
     return BlockActionFailure(
       statusCode: e.statusCode,
-      message: _extractErrorMessage(e.body),
+      message: extractApiErrorMessageFromBody(e.body),
       error: e,
     );
   } catch (e) {
@@ -340,18 +345,4 @@ Future<List<UserSummary>> fetchBlockedUsers(int userId) async {
         .toList();
   }
   return const [];
-}
-
-String? _extractErrorMessage(String body) {
-  if (body.isEmpty) return null;
-  try {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) {
-      for (final key in const ['detail', 'message', 'error']) {
-        final value = decoded[key];
-        if (value is String && value.trim().isNotEmpty) return value;
-      }
-    }
-  } catch (_) {}
-  return null;
 }

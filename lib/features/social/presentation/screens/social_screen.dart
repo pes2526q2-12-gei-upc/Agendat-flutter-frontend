@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/api/api_error_utils.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -23,6 +25,7 @@ import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/features/social/presentation/widgets/social_list_tiles.dart';
 import 'package:agendat/core/state/root_tab_state.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class SocialScreen extends StatefulWidget {
   const SocialScreen({super.key});
@@ -33,6 +36,8 @@ class SocialScreen extends StatefulWidget {
 
 class _SocialScreenState extends State<SocialScreen>
     with SingleTickerProviderStateMixin {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
   static const _kPrimaryRed = AppThemeTokens.brandPrimary;
   static const Duration _debounceDuration = Duration(milliseconds: 350);
   final ChatsQuery _chatsQuery = ChatsQuery.instance;
@@ -178,7 +183,7 @@ class _SocialScreenState extends State<SocialScreen>
   void _guardAuthenticated() {
     guardAuthenticated(
       context,
-      message: 'Cal iniciar sessió per accedir al cercador d\'usuaris.',
+      message: AppLocalizations.of(context).loginRequired,
     );
   }
 
@@ -233,8 +238,13 @@ class _SocialScreenState extends State<SocialScreen>
           _isLoading = false;
           _results = const [];
           _errorMessage = error != null
-              ? 'Error de connexió. Comprova la teva connexió a internet.'
-              : 'Error del servidor (codi $statusCode).';
+              ? userMessageFromError(
+                  error,
+                  fallback: AppLocalizations.of(
+                    context,
+                  ).serverErrorWithCode(statusCode),
+                )
+              : AppLocalizations.of(context).serverErrorWithCode(statusCode);
         });
     }
   }
@@ -281,12 +291,14 @@ class _SocialScreenState extends State<SocialScreen>
         _isLoadingRequests = false;
       });
       syncPendingFriendRequestsBadge(pending.length);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoadingRequests = false;
-        _requestsErrorMessage =
-            'No s\'han pogut carregar les sol·licituds. Comprova la teva connexió.';
+        _requestsErrorMessage = userMessageFromError(
+          e,
+          fallback: AppLocalizations.of(context).loadFriendsFailed,
+        );
       });
     }
   }
@@ -318,20 +330,22 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   Future<void> _acceptRequest(PendingFriendRequest request) {
+    final l10n = AppLocalizations.of(context);
     return _runRequestAction(
       request: request,
       action: (userId) => acceptFriendRequest(userId),
-      successMessage: 'Sol·licitud acceptada. Ara sou amics!',
-      genericErrorMessage: 'No s\'ha pogut acceptar la sol·licitud.',
+      successMessage: l10n.friendRequestAccepted,
+      genericErrorMessage: l10n.friendRequestAcceptFailed,
     );
   }
 
   Future<void> _rejectRequest(PendingFriendRequest request) {
+    final l10n = AppLocalizations.of(context);
     return _runRequestAction(
       request: request,
       action: (userId) => rejectFriendRequest(userId),
-      successMessage: 'Sol·licitud rebutjada.',
-      genericErrorMessage: 'No s\'ha pogut rebutjar la sol·licitud.',
+      successMessage: l10n.friendRequestRejected,
+      genericErrorMessage: l10n.friendRequestRejectFailed,
     );
   }
 
@@ -349,7 +363,7 @@ class _SocialScreenState extends State<SocialScreen>
 
     final sender = _senderOf(request);
     if (sender == null) {
-      _showSnack('Aquesta sol·licitud ja no és vàlida.');
+      _showSnack(AppLocalizations.of(context).friendRequestNoLongerValid);
       _removeRequest(request.id);
       return;
     }
@@ -375,24 +389,31 @@ class _SocialScreenState extends State<SocialScreen>
         _guardAuthenticated();
       case FriendActionUserNotFound():
         _removeRequest(request.id);
-        _showSnack('Perfil no vàlid.');
+        _showSnack(AppLocalizations.of(context).profileNotFound);
         _invalidateCaches(targetUserId: sender.id);
       case FriendActionConflict(:final message):
         _removeRequest(request.id);
-        _showSnack(message ?? 'Aquesta sol·licitud ja no és vàlida.');
+        _showSnack(
+          message ?? AppLocalizations.of(context).friendRequestNoLongerValid,
+        );
         _invalidateCaches(targetUserId: sender.id);
-      case FriendActionFailure(:final statusCode, :final error):
+      case FriendActionFailure(:final statusCode, :final message, :final error):
         setState(() => _busyRequestIds.remove(request.id));
         if (_isInvalidRequestStatus(statusCode)) {
           _removeRequest(request.id);
-          _showSnack('Aquesta sol·licitud ja no és vàlida.');
+          _showSnack(AppLocalizations.of(context).friendRequestNoLongerValid);
           _invalidateCaches(targetUserId: sender.id);
           return;
         }
-        final text = error != null && statusCode == -1
-            ? 'Error de connexió. Comprova la teva connexió a internet.'
-            : '$genericErrorMessage (codi $statusCode)';
-        _showSnack(text);
+        _showSnack(
+          message ??
+              userMessageFromError(
+                error ?? Exception('Friend action failed'),
+                fallback: AppLocalizations.of(
+                  context,
+                ).serverErrorWithCode(statusCode),
+              ),
+        );
     }
   }
 
@@ -423,9 +444,7 @@ class _SocialScreenState extends State<SocialScreen>
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   void _openFriendsList() {
@@ -466,12 +485,14 @@ class _SocialScreenState extends State<SocialScreen>
         _isLoadingChats = false;
       });
       syncUnreadChatConversationsBadge(chats);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoadingChats = false;
-        _chatsErrorMessage =
-            'No s\'ha pogut carregar els xats. Comprova la teva connexió.';
+        _chatsErrorMessage = userMessageFromError(
+          e,
+          fallback: l10n.loadChatsFailed,
+        );
       });
     }
   }
@@ -533,8 +554,10 @@ class _SocialScreenState extends State<SocialScreen>
       if (!mounted) return;
       setState(() {
         _isLoadingRecommendations = false;
-        _recommendationsErrorMessage =
-            'No s\'han pogut carregar les recomanacions.';
+        _recommendationsErrorMessage = userMessageFromError(
+          e,
+          fallback: l10n.loadRecommendationsFailed,
+        );
       });
     }
   }
@@ -619,7 +642,7 @@ class _SocialScreenState extends State<SocialScreen>
           ProfileQuery.instance.invalidateFriendRequestsList(myId);
         }
         ProfileQuery.instance.invalidateFriendRecommendations();
-        _showSnack('Sol·licitud d\'amistat enviada.');
+        _showSnack(AppLocalizations.of(context).friendRequestSent);
       case FriendActionUnauthorized():
         setState(() => _busyRecommendationIds.remove(rec.id));
         _guardAuthenticated();
@@ -627,27 +650,36 @@ class _SocialScreenState extends State<SocialScreen>
         _removeRecommendation(rec.id);
         ProfileQuery.instance.invalidateUser(rec.id);
         ProfileQuery.instance.invalidateFriendRecommendations();
-        _showSnack('Perfil no vàlid.');
+        _showSnack(AppLocalizations.of(context).profileNotFound);
       case FriendActionConflict(:final message):
         _removeRecommendation(rec.id);
         ProfileQuery.instance.invalidateUser(rec.id);
         ProfileQuery.instance.invalidateFriendRecommendations();
-        _showSnack(message ?? 'Aquesta recomanació ja no és vàlida.');
+        _showSnack(
+          message ??
+              AppLocalizations.of(context).friendRecommendationNoLongerValid,
+        );
       case FriendActionFailure(:final statusCode, :final message, :final error):
         setState(() => _busyRecommendationIds.remove(rec.id));
         if (_isInvalidRequestStatus(statusCode)) {
           _removeRecommendation(rec.id);
           ProfileQuery.instance.invalidateUser(rec.id);
           ProfileQuery.instance.invalidateFriendRecommendations();
-          _showSnack(message ?? 'Aquesta recomanació ja no és vàlida.');
+          _showSnack(
+            message ??
+                AppLocalizations.of(context).friendRecommendationNoLongerValid,
+          );
           return;
         }
-        final text =
-            message ??
-            (error != null && statusCode == -1
-                ? 'Error de connexió. Comprova la teva connexió a internet.'
-                : 'No s\'ha pogut enviar la sol·licitud.');
-        _showSnack(text);
+        _showSnack(
+          message ??
+              userMessageFromError(
+                error ?? Exception('Friend action failed'),
+                fallback: AppLocalizations.of(
+                  context,
+                ).serverErrorWithCode(statusCode),
+              ),
+        );
     }
   }
 
@@ -716,16 +748,19 @@ class _SocialScreenState extends State<SocialScreen>
           padding: AppThemeTokens.socialHeaderPadding,
           child: Row(
             children: [
-              const Expanded(
-                child: Text('Social', style: AppThemeTokens.appBarTitle),
+              Expanded(
+                child: Text(
+                  l10n.socialTitle,
+                  style: AppThemeTokens.appBarTitle,
+                ),
               ),
               IconButton(
-                tooltip: 'Actualitza',
+                tooltip: l10n.refresh,
                 onPressed: _refreshSocialOverview,
                 icon: const Icon(Icons.refresh, color: Colors.black87),
               ),
               IconButton(
-                tooltip: 'Els meus amics',
+                tooltip: l10n.myFriends,
                 onPressed: _openFriendsList,
                 icon: const Icon(Icons.group_outlined, color: Colors.black87),
               ),
@@ -743,12 +778,12 @@ class _SocialScreenState extends State<SocialScreen>
       focusNode: _focusNode,
       onChanged: _onQueryChanged,
       textInputAction: TextInputAction.search,
-      hintText: 'Cerca usuaris pel nom d\'usuari',
+      hintText: l10n.searchChatHint,
       margin: EdgeInsets.zero,
       suffixIcon: _query.isEmpty
           ? null
           : IconButton(
-              tooltip: 'Esborra',
+              tooltip: l10n.deleteTooltip,
               icon: const Icon(Icons.close, color: Colors.black54),
               onPressed: _clearSearch,
             ),
@@ -766,7 +801,7 @@ class _SocialScreenState extends State<SocialScreen>
       return _buildCenteredMessage(
         icon: Icons.error_outline,
         title: _requestsErrorMessage!,
-        actionLabel: 'Reintentar',
+        actionLabel: l10n.retry,
         onAction: () => _loadPendingRequestsCount(forceRefresh: true),
       );
     }
@@ -807,7 +842,7 @@ class _SocialScreenState extends State<SocialScreen>
         return _buildCenteredMessage(
           icon: Icons.error_outline,
           title: _chatsErrorMessage!,
-          actionLabel: 'Reintentar',
+          actionLabel: l10n.retry,
           onAction: () => _loadChats(forceRefresh: true),
         );
       }
@@ -832,7 +867,7 @@ class _SocialScreenState extends State<SocialScreen>
             if (_chats.isEmpty)
               _buildCenteredMessage(
                 icon: Icons.chat_bubble_outline,
-                title: 'Encara no tens cap conversa activa.',
+                title: l10n.noChatsYet,
               )
             else
               ..._chats.map(
@@ -857,7 +892,7 @@ class _SocialScreenState extends State<SocialScreen>
       return _buildCenteredMessage(
         icon: Icons.error_outline,
         title: _errorMessage!,
-        actionLabel: 'Reintentar',
+        actionLabel: l10n.retry,
         onAction: () => _runSearch(_query),
       );
     }
@@ -865,7 +900,7 @@ class _SocialScreenState extends State<SocialScreen>
     if (_results.isEmpty) {
       return _buildCenteredMessage(
         icon: Icons.search_off,
-        title: 'No s\'ha trobat cap usuari amb aquest nom.',
+        title: l10n.noUsersFoundWithThisName,
       );
     }
 
@@ -908,8 +943,7 @@ class _SocialScreenState extends State<SocialScreen>
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                _recommendationsErrorMessage ??
-                    'No hi ha recomanacions disponibles.',
+                _recommendationsErrorMessage ?? l10n.noRecommendationsAvailable,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -917,7 +951,7 @@ class _SocialScreenState extends State<SocialScreen>
             ),
             TextButton(
               onPressed: () => _loadFriendRecommendations(forceRefresh: true),
-              child: const Text('Reintentar'),
+              child: Text(l10n.retry),
             ),
           ],
         ),
@@ -946,16 +980,16 @@ class _SocialScreenState extends State<SocialScreen>
           ),
           child: const Icon(Icons.people_outline, color: _kPrimaryRed),
         ),
-        title: const Text(
-          'Recomanacions d\'amics',
+        title: Text(
+          l10n.friendRecommendationsTitle,
           style: TextStyle(fontWeight: FontWeight.w700),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
           _recommendations.length == 1
-              ? '1 recomanació'
-              : '${_recommendations.length} recomanacions',
+              ? l10n.friendRecommendationsOne
+              : l10n.friendRecommendationsMany(_recommendations.length),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1000,9 +1034,9 @@ class _SocialScreenState extends State<SocialScreen>
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Persones que podries conèixer',
+                              l10n.peopleYouMightKnowTitle,
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -1012,7 +1046,7 @@ class _SocialScreenState extends State<SocialScreen>
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Tanca',
+                            tooltip: l10n.close,
                             onPressed: () => Navigator.of(sheetContext).pop(),
                             icon: const Icon(Icons.close),
                           ),
@@ -1084,12 +1118,12 @@ class _SocialScreenState extends State<SocialScreen>
           ),
           child: const Icon(Icons.person_add_alt_1, color: _kPrimaryRed),
         ),
-        title: const Text(
-          'Sol·licituds d\'amistat',
+        title: Text(
+          l10n.friendRequestsTitle,
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          '${_pendingRequests.length} pendents per revisar',
+          l10n.pendingRequestsToReview(_pendingRequests.length),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),

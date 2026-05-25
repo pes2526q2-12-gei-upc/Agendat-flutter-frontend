@@ -22,6 +22,7 @@ import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,7 @@ Future<void> main() async {
     final myId = currentLoggedInUser?['id'];
     if (myId is int) {
       await ProfileQuery.instance.bootstrapForAuthenticatedUser(myId);
+      await syncAuthenticatedUserLanguageFromBackend(myId);
     }
   }
 
@@ -69,17 +71,22 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           navigatorKey: appNavigatorKey,
           debugShowCheckedModeBanner: false,
-          title: 'Agenda\'t',
+          onGenerateTitle: (context) => AppLocalizations.of(context).appName,
           localizationsDelegates: const [
+            AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [Locale('ca'), Locale('es'), Locale('en')],
+          supportedLocales: AppLocalizations.supportedLocales,
           locale: AppLanguage.toLocale(),
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color.fromARGB(255, 255, 105, 105),
+            ),
+            snackBarTheme: const SnackBarThemeData(
+              behavior: SnackBarBehavior.floating,
+              showCloseIcon: true,
             ),
           ),
           home: initialHome,

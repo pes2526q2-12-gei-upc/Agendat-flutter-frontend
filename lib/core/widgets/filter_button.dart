@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/widgets/filter_sheet_launcher.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/widgets/select_filters_card.dart';
 
@@ -10,7 +11,7 @@ class FilterButton extends StatelessWidget {
     this.radius = 40.0,
     this.buttonSize = 48.0,
     this.buttonHeight = 48.0,
-    this.label = 'Filtres',
+    this.label = '',
     this.onSheetVisibilityChanged,
     this.onApplyFilters,
     this.currentFilters = const EventFilters(),
@@ -83,7 +84,9 @@ class FilterButton extends StatelessWidget {
         ),
       ),
       icon: const Icon(Icons.filter_alt_outlined),
-      label: Text(label),
+      label: Text(
+        label.isEmpty ? AppLocalizations.of(context).filtersTitle : label,
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -12,6 +13,7 @@ import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/profile/application/notification_preferences.dart';
 import 'package:agendat/features/profile/presentation/widgets/language_selector_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/notification_alerts_block.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -24,8 +26,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const _unauthenticatedMessage =
-      LanguageSelectorTile.unauthenticatedMessageDefault;
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
+  String get _unauthenticatedMessage => l10n.loginRequired;
 
   late NotificationPreferences _notificationPreferences;
   late bool _calendarSyncAllowed;
@@ -87,9 +90,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (statusCode == 401 || statusCode == 403) {
           _showMessage(_unauthenticatedMessage);
         } else if (statusCode == -1) {
-          _showMessage('Error de connexió. Comprova la teva connexió.');
+          _showMessage(l10n.connectionErrorCheckYourConnection);
         } else {
-          _showMessage('No s\'han pogut desar les preferències d\'alertes.');
+          _showMessage(l10n.actionFailedFallback);
         }
       case UpdateProfileValidationError():
         setState(() {
@@ -97,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
-        _showMessage('No s\'han pogut desar les preferències d\'alertes.');
+        _showMessage(l10n.actionFailedFallback);
     }
   }
 
@@ -175,27 +178,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (statusCode == 401 || statusCode == 403) {
           _showMessage(_unauthenticatedMessage);
         } else if (statusCode == -1) {
-          _showMessage('Error de connexió. Comprova la teva connexió.');
+          _showMessage(l10n.connectionErrorCheckYourConnection);
         } else {
-          _showMessage(
-            'No s\'ha pogut actualitzar la sincronització de calendari.',
-          );
+          _showMessage(l10n.actionFailedFallback);
         }
       case UpdateProfileValidationError():
         setState(() {
           _calendarSyncAllowed = previousCalendarSync;
           _isSaving = false;
         });
-        _showMessage(
-          'No s\'ha pogut actualitzar la sincronització de calendari.',
-        );
+        _showMessage(l10n.actionFailedFallback);
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   @override
@@ -208,9 +205,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final l10n = AppLocalizations.of(context);
     return AppBar(
-      title: const Text(
-        'Configuració',
+      title: Text(
+        l10n.settingsTitle,
         style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.bold,
@@ -225,18 +223,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: AppScreenSpacing.content,
       children: [
-        _buildIntroText(),
+        _buildIntroText(l10n),
         const SizedBox(height: 24),
         LanguageSelectorTile(
           userId: widget.currentProfile.id,
-          unauthenticatedMessage: _unauthenticatedMessage,
+          unauthenticatedMessage: l10n.loginRequired,
           onShowMessage: _showMessage,
         ),
         const SizedBox(height: 12),
-        _buildBlockedUsersShortcut(),
+        _buildBlockedUsersShortcut(l10n),
         const SizedBox(height: 12),
         _buildNotificationBlock(),
         const SizedBox(height: 12),
@@ -247,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildBlockedUsersShortcut() {
+  Widget _buildBlockedUsersShortcut(AppLocalizations l10n) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -270,11 +269,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: const Icon(Icons.block, color: EventTextUtils.kPrimaryRed),
         ),
-        title: const Text(
-          'Usuaris bloquejats',
+        title: Text(
+          l10n.blockedUsersTitle,
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        subtitle: const Text('Revisa els perfils que has bloquejat.'),
+        subtitle: Text(l10n.blockedUsersSubtitle),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           unawaited(FeatureNavigation.openBlockedUsers(context));
@@ -283,14 +282,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildIntroText() {
+  Widget _buildIntroText(AppLocalizations l10n) {
     return Text(
-      'Decideix quines alertes vols rebre. Els canvis s\'apliquen al moment.',
+      l10n.notificationPreferencesIntro,
       style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
     );
   }
 
   Widget _buildNotificationBlock() {
+    final l10n = AppLocalizations.of(context);
     return NotificationAlertsBlock(
       notificationsAllowed: _notificationPreferences.notificationsAllowed,
       enabled: !_isSaving,
@@ -304,8 +304,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         secondChild: Column(
           children: [
             SubalertSwitchTile(
-              title: 'Recordatoris d\'esdeveniments',
-              subtitle: 'Avisos previs per no perdre sessions o activitats.',
+              title: l10n.eventRemindersTitle,
+              subtitle: l10n.eventRemindersSubtitle,
               value: _notificationPreferences.eventRemindersAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
@@ -314,8 +314,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             SubalertSwitchTile(
-              title: 'Canvis en esdeveniments',
-              subtitle: 'Actualitzacions d\'horari, ubicació o cancel·lacions.',
+              title: l10n.eventChangesTitle,
+              subtitle: l10n.eventChangesSubtitle,
               value: _notificationPreferences.eventUpdatesAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
@@ -324,9 +324,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             SubalertSwitchTile(
-              title: 'Alertes socials',
-              subtitle:
-                  'Notificacions relacionades amb amistats i activitat social.',
+              title: l10n.socialAlertsTitle,
+              subtitle: l10n.notificationPreferencesIntro,
               value: _notificationPreferences.socialAlertsAllowed,
               enabled: !_isSaving,
               onChanged: (value) => _updateSubalert(
@@ -355,13 +354,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
       child: SwitchListTile.adaptive(
-        title: const Text(
-          'Sincronitzar amb Google Calendar',
+        title: Text(
+          l10n.calendarSyncTitle,
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        subtitle: const Text(
-          'Afegeix automàticament les sessions que afegeixes a Google Calendar.',
-        ),
+        subtitle: Text(l10n.calendarSyncSubtitle),
         value: _calendarSyncAllowed,
         onChanged: !_isSaving ? _updateCalendarSyncAllowed : null,
         activeThumbColor: EventTextUtils.kPrimaryRed,

@@ -122,8 +122,7 @@ class UserProfile {
       socialAlertsAllowed:
           json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
       calendarSyncAllowed: json['calendar_sync_allowed'] as bool? ?? true,
-      selectedLanguage:
-          (json['selected_language'] as String?)?.trim().toUpperCase() ?? 'CA',
+      selectedLanguage: _selectedLanguageFromJson(json['selected_language']),
       description: json['description'] as String?,
       reputacio: ((json['reputacio'] ?? json['reputation']) as num?)
           ?.toDouble(),
@@ -180,9 +179,17 @@ class UserProfile {
       eventUpdatesAllowed: eventUpdatesAllowed ?? this.eventUpdatesAllowed,
       socialAlertsAllowed: socialAlertsAllowed ?? this.socialAlertsAllowed,
       calendarSyncAllowed: calendarSyncAllowed ?? this.calendarSyncAllowed,
+      selectedLanguage: selectedLanguage,
       description: description,
       friendshipStatus: friendshipStatus,
     );
+  }
+
+  static String _selectedLanguageFromJson(Object? raw) {
+    if (raw is! String || raw.trim().isEmpty) return 'CA';
+    final upper = raw.trim().toUpperCase();
+    if (upper == 'CA' || upper == 'ES' || upper == 'EN') return upper;
+    return 'CA';
   }
 
   /// Vista lleugera (`UserSummary`) que coincideix amb la representació que
