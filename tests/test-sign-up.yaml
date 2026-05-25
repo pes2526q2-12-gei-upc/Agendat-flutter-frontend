@@ -16,15 +16,37 @@ appId: com.example.agendat
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
 - inputText: Casteller16@gmail.com # Augmentar aquí
-- tapOn: Mínim 8 caràcters
+- tapOn: Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial
 - inputText: k.87_oP[
 - pressKey: Enter
 - inputText: k.87_oP[
 - pressKey: Enter
 - waitForAnimationToEnd
-- assertVisible: Revisa el teu correu
+- assertVisible: Verifica el compte
 - tapOn: Enrere
 - waitForAnimationToEnd
+
+# Com que per fer el sign up s'ha de verificar
+# el correu, s'ha de fer un POST /api/users/ a la api
+# per poder crear l'usuari sense la verificació:
+# {
+#  "username": "Casteller15",
+#  "first_name": "Mark",
+#  "last_name": "Zuckerberg",
+#  "email": "user4@example.com",
+#  "phone": "",
+#  "birth_date": "2026-05-24",
+#  "location_allowed": true,
+#  "notifications_allowed": true,
+#  "event_reminders_allowed": true,
+#  "event_updates_allowed": true,
+#  "social_alerts_allowed": true,
+#  "calendar_sync_allowed": true,
+#  "selected_language": "CA",
+#  "description": "",
+#  "password": "k.87_oP[",
+#  "imatge": ""
+#}
 
 # Error 1: falten camps (username buit)
 - tapOn: Registra't

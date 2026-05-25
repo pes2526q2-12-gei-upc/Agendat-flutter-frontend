@@ -331,7 +331,7 @@
   "reviewUpdatedSuccess": "Valoració actualitzada correctament.",
   "reviewDeletedSuccess": "Valoració eliminada.",
   "reviewDeleteFailed": "No s'ha pogut eliminar la valoració.",
-  "reviewModerationThanks": "Moltes gràcies per la teva valoració, quan l'hem validat la publicarem.",
+  "reviewModerationThanks": "Moltes gràcies per la teva valoració, quan l'haguem validat la publicarem.",
   "loginRequiredToLike": "Cal iniciar sessió per fer like.",
   "reviewNoCommentToTranslate": "Aquesta valoració no té comentari per traduir.",
   "reviewAlreadyInLanguage": "La valoració ja està en aquest idioma.",

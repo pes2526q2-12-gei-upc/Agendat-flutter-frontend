@@ -2077,7 +2077,7 @@ abstract class AppLocalizations {
   /// No description provided for @reviewModerationThanks.
   ///
   /// In ca, this message translates to:
-  /// **'Moltes gràcies per la teva valoració, quan l\'hem validat la publicarem.'**
+  /// **'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.'**
   String get reviewModerationThanks;
 
   /// No description provided for @loginRequiredToLike.

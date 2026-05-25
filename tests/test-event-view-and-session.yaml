@@ -6,7 +6,7 @@ appId: com.example.agendat
 
 # Happy path de login
 - tapOn: El teu nom d'usuari
-- inputText: Casteller123
+- inputText: Casteller16
 - tapOn: La teva contrasenya
 - inputText: k.87_oP[
 - pressKey: Enter
@@ -16,6 +16,7 @@ appId: com.example.agendat
 # Testejar cerca sense coincidències
 - tapOn: Cerca...
 - inputText: ponganos un 10 :)
+- pressKey: Enter
 - assertVisible: No hi ha esdeveniments.
 - tapOn: ponganos un 10 :)
 - eraseText
@@ -23,20 +24,19 @@ appId: com.example.agendat
 # Happy path visualize event
 - tapOn: Cerca...
 - inputText: cultura
+- pressKey: Enter
 - tapOn: |-
-    Exposició "El poble gitano de Catalunya: història i cultura"
+    Exposició "Aynu. Una cultura indígena del Japó"
     Exposicions
-    Sense descripció
-    02/10/2025 - 02/08/2026
+    18/12/2025 - 14/06/2026
+    Públic
     De pagament
-    Barcelona, Barcelona
+    Montcada i reixac, Barcelona
 - tapOn: |-
-    VALORACIONS (0)
+    Ressenyes (0)
     Encara no hi ha valoracions.
 - assertVisible: Afegir valoració
 - waitForAnimationToEnd
-- tapOn:
-    point: 84%,52%
 - swipe:
     direction: UP
 - assertVisible: Exposicions
@@ -46,17 +46,26 @@ appId: com.example.agendat
 - tapOn: Assistir
 - tapOn: Canvia
 - tapOn: Canvia a introducció de text
-- inputText: 21/5/2026 # s'ha de posar un dia vàlid diferent cada cop
-- tapOn: D'acord
+- inputText: 24/5/2026 # s'ha de posar un dia vàlid diferent
+# cada cop o canviar l'hora de la sessió
+- tapOn: Confirmar
 - tapOn:
     text: Canvia
     index: 1
-- tapOn: '00'
+- tapOn:
+    point: 44%, 45%
 - eraseText
-- inputText: 10
-- tapOn: D'acord
+- inputText: 13 # <-aquí
+- tapOn: Confirmar
 - tapOn: Confirmar
 - waitForAnimationToEnd
 - tapOn:
     point: 50%, 80%
 - assertVisible: Assistència registrada correctament.
+- tapOn: Enrere
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- assertVisible: |- # Canviar hora i dia de la sessió corresponent
+    Exposició "Aynu. Una cultura indígena del Japó"
+    24/05/2026 · 13:00
