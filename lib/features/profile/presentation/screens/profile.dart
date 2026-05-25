@@ -82,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_isOwnProfile) {
       _tabController = TabController(length: 2, vsync: this);
     }
-    rootTabIndexNotifier.addListener(_onRootTabChanged);
+    rootTabActivationNotifier.addListener(_onRootTabActivated);
     _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
       _onFriendshipChange,
     );
@@ -99,16 +99,15 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
-    rootTabIndexNotifier.removeListener(_onRootTabChanged);
+    rootTabActivationNotifier.removeListener(_onRootTabActivated);
     _friendshipChangeSubscription?.cancel();
     _tabController?.dispose();
     super.dispose();
   }
 
-  void _onRootTabChanged() {
-    if (rootTabIndexNotifier.value == kProfileTabIndex) {
-      _loadProfile(forceRefresh: true);
-    }
+  void _onRootTabActivated() {
+    if (rootTabActivationNotifier.value.index != kProfileTabIndex) return;
+    _loadProfile(forceRefresh: true);
   }
 
   @override

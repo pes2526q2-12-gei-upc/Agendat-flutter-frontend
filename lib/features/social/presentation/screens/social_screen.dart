@@ -96,6 +96,7 @@ class _SocialScreenState extends State<SocialScreen>
         );
     _popupController.addStatusListener(_onPopupStatusChanged);
     rootTabIndexNotifier.addListener(_onRootTabChanged);
+    rootTabActivationNotifier.addListener(_onRootTabActivated);
     _realtimeSubscription = ChatRealtimeService.instance.events.listen(
       _onRealtimeEvent,
     );
@@ -114,6 +115,7 @@ class _SocialScreenState extends State<SocialScreen>
     _realtimeSubscription?.cancel();
     _friendshipChangeSubscription?.cancel();
     rootTabIndexNotifier.removeListener(_onRootTabChanged);
+    rootTabActivationNotifier.removeListener(_onRootTabActivated);
     _popupController.removeStatusListener(_onPopupStatusChanged);
     _popupController.dispose();
     _debounce?.cancel();
@@ -127,15 +129,22 @@ class _SocialScreenState extends State<SocialScreen>
   void _onRootTabChanged() {
     if (rootTabIndexNotifier.value != kSocialTabIndex) {
       _closeFriendsPopup();
-    } else if (_isAuthenticated) {
-      final cached = _chatsQuery.peekCachedChatsList();
-      if (cached != null) {
-        setState(() => _chats = cached);
-        syncUnreadChatConversationsBadge(cached);
-      } else {
-        _loadChats(forceRefresh: false);
-      }
-      _loadFriendRecommendations(forceRefresh: false);
+    }
+  }
+
+  void _onRootTabActivated() {
+    if (rootTabActivationNotifier.value.index != kSocialTabIndex) return;
+    if (!_isAuthenticated) return;
+
+    final cached = _chatsQuery.peekCachedChatsList();
+    if (cached != null && mounted) {
+      setState(() => _chats = cached);
+      syncUnreadChatConversationsBadge(cached);
+    }
+
+    unawaited(_refreshSocialOverview());
+    if (_query.trim().isNotEmpty) {
+      unawaited(_runSearch(_query.trim()));
     }
   }
 
@@ -751,6 +760,8 @@ class _SocialScreenState extends State<SocialScreen>
               Expanded(
                 child: Text(
                   l10n.socialTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppThemeTokens.appBarTitle,
                 ),
               ),

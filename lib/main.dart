@@ -122,7 +122,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
-    rootTabIndexNotifier.value = _selectedIndex;
+    setSelectedRootTabIndex(_selectedIndex);
     _chatRealtimeSubscription = ChatRealtimeService.instance.events.listen(
       _onChatRealtimeEvent,
     );
@@ -177,12 +177,13 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
   }
 
   void _onDestinationSelected(int index) {
-    if (index == _selectedIndex) return;
+    if (index != _selectedIndex) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
 
-    setState(() {
-      _selectedIndex = index;
-    });
-    rootTabIndexNotifier.value = index;
+    notifyRootTabActivated(index);
   }
 
   @override

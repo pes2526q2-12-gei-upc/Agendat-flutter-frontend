@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/core/widgets/avatars.dart';
 
 class BlockedUserTile extends StatelessWidget {
   const BlockedUserTile({
@@ -39,7 +38,7 @@ class BlockedUserTile extends StatelessWidget {
           InkWell(
             borderRadius: BorderRadius.circular(24),
             onTap: () => onOpenProfile(user),
-            child: BlockedUserAvatar(profileImage: user.profileImage),
+            child: BlockedUserAvatar(user: user),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -85,41 +84,24 @@ class BlockedUserTile extends StatelessWidget {
 }
 
 class BlockedUserAvatar extends StatelessWidget {
-  const BlockedUserAvatar({super.key, required this.profileImage});
+  const BlockedUserAvatar({super.key, required this.user});
 
-  final String? profileImage;
+  final UserSummary user;
 
   @override
   Widget build(BuildContext context) {
-    const radius = 24.0;
-    const size = radius * 2;
-    final imageUrl = resolveProfileImageUrl(profileImage);
-
-    if (imageUrl == null) {
-      return CircleAvatar(
-        radius: radius,
+    return ProfileCircleAvatar(
+      radius: 24,
+      profileImage: user.profileImage,
+      fallbackLabel: user.displayName,
+      fallback: CircleAvatar(
+        radius: 24,
         backgroundColor: Colors.grey.shade200,
         child: Icon(Icons.person, size: 26, color: Colors.grey.shade500),
-      );
-    }
-
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) => Container(
-            color: Colors.grey.shade200,
-            alignment: Alignment.center,
-            child: Icon(Icons.person, size: 26, color: Colors.grey.shade400),
-          ),
-        ),
       ),
+      userId: user.id,
+      reputation: user.reputation,
+      showLevelRing: true,
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:agendat/core/api/api_error_utils.dart';
+import 'package:agendat/core/api/reviews_api.dart'
+    show ReviewUploadImage, ReviewsApi;
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
@@ -346,12 +348,97 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     AppSnackBar.show(context, message);
   }
 
+  Future<List<ReviewUploadImage>> _buildReviewUploadImages(
+    List<XFile> media,
+  ) async {
+    final localizations = AppLocalizations.of(context);
+    final images = <ReviewUploadImage>[];
+
+    for (var index = 0; index < media.length; index++) {
+      final file = media[index];
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        throw _ReviewImageError(localizations.emptyImage);
+      }
+
+      final contentType = _reviewImageContentType(file);
+      if (contentType == null) {
+        throw _ReviewImageError(localizations.imageFormatsOnly);
+      }
+
+      images.add(
+        ReviewUploadImage(
+          bytes: bytes,
+          filename: _reviewImageFilename(file, index, contentType),
+          contentType: contentType,
+        ),
+      );
+    }
+
+    return images;
+  }
+
+  String? _reviewImageContentType(XFile file) {
+    final mimeType = file.mimeType?.trim().toLowerCase();
+    switch (mimeType) {
+      case 'image/png':
+        return 'image/png';
+      case 'image/jpeg':
+      case 'image/jpg':
+      case 'image/pjpeg':
+        return 'image/jpeg';
+    }
+
+    final extension = _reviewImageExtension(file);
+    switch (extension) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      default:
+        return null;
+    }
+  }
+
+  String _reviewImageFilename(XFile file, int index, String contentType) {
+    final trimmedName = file.name.trim();
+    if (trimmedName.isNotEmpty) {
+      return trimmedName;
+    }
+
+    final extension =
+        _reviewImageExtension(file) ?? _extensionFromContentType(contentType);
+    return 'review_image_${index + 1}.$extension';
+  }
+
+  String? _reviewImageExtension(XFile file) {
+    String? extensionFrom(String raw) {
+      final normalized = raw.replaceAll('\\', '/');
+      final basename = normalized.split('/').last;
+      final clean = basename.split('?').first.split('#').first;
+      final dotIndex = clean.lastIndexOf('.');
+      if (dotIndex <= 0 || dotIndex >= clean.length - 1) return null;
+      return clean.substring(dotIndex + 1).toLowerCase();
+    }
+
+    return extensionFrom(file.name) ?? extensionFrom(file.path);
+  }
+
+  String _extensionFromContentType(String contentType) {
+    switch (contentType) {
+      case 'image/png':
+        return 'png';
+      case 'image/jpeg':
+        return 'jpg';
+      default:
+        return 'jpg';
+    }
+  }
+
   /// Es crida quan l'usuari prem "Afegir"/"Desar" al formulari.
   /// Envia la petició al servidor (POST/PATCH) i actualitza la llista
   /// amb la resposta.
-  ///
-  /// TODO(backend): quan hi hagi endpoint de pujada de fitxers, convertir
-  /// [media] a URLs abans d'enviar-les al DTO.
   Future<void> _submitReview({
     required int generalRating,
     required int preuRating,
@@ -364,11 +451,20 @@ class _ReviewsSectionState extends State<ReviewsSection> {
 
     final editingIndex = _editingIndex;
     final existing = editingIndex != null ? _reviews[editingIndex] : null;
+    final existingImageCount = existing?.imageUrls.length ?? 0;
+    final totalImageCount = existingImageCount + media.length;
+    if (totalImageCount > ReviewsApi.maxImagesPerReview) {
+      _showSnack(
+        'Màxim ${ReviewsApi.maxImagesPerReview} imatges per valoració.',
+      );
+      return;
+    }
 
     final submittedComment = comment.trim().isEmpty ? null : comment.trim();
 
     setState(() => _isSubmitting = true);
     try {
+      final uploadImages = await _buildReviewUploadImages(media);
       final SaveReviewResult result;
       if (existing?.id != null) {
         result = await _reviewsQuery.updateReview(
@@ -379,6 +475,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           ambient: ambientRating,
           accessibilitat: accessibilitatRating,
           comment: submittedComment,
+          images: uploadImages,
         );
       } else {
         result = await _reviewsQuery.createReview(
@@ -388,6 +485,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           ambient: ambientRating,
           accessibilitat: accessibilitatRating,
           comment: submittedComment,
+          images: uploadImages,
         );
       }
       if (!mounted) return;
@@ -424,6 +522,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       // Refresc silenciós per sincronitzar id real, likes i data del backend.
       // ignore: unawaited_futures
       _fetchReviews(silent: true);
+    } on _ReviewImageError catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      _showSnack(e.message);
     } on ReviewAttendanceRequiredException catch (_) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
@@ -855,8 +957,15 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       initialAmbientRating: editing?.ambient ?? 0,
       initialAccessibilitatRating: editing?.accessibilitat ?? 0,
       initialComment: editing?.comment ?? '',
+      initialImageCount: editing?.imageUrls.length ?? 0,
       onCancel: _isSubmitting ? () {} : () => setState(_closeForm),
       onSubmit: _submitReview,
     );
   }
+}
+
+class _ReviewImageError implements Exception {
+  const _ReviewImageError(this.message);
+
+  final String message;
 }

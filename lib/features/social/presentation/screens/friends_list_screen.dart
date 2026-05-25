@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/api/api_error_utils.dart';
-import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/utils/user_list_utils.dart';
+import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/profile_query.dart';
@@ -469,7 +469,7 @@ class _FriendTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _Avatar(profileImage: user.profileImage),
+              _Avatar(user: user),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -507,41 +507,24 @@ class _FriendTile extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.profileImage});
+  const _Avatar({required this.user});
 
-  final String? profileImage;
+  final UserSummary user;
 
   @override
   Widget build(BuildContext context) {
-    const radius = 24.0;
-    const size = radius * 2;
-    final imageUrl = resolveProfileImageUrl(profileImage);
-
-    if (imageUrl == null) {
-      return CircleAvatar(
-        radius: radius,
+    return ProfileCircleAvatar(
+      radius: 24,
+      profileImage: user.profileImage,
+      fallbackLabel: user.displayName,
+      fallback: CircleAvatar(
+        radius: 24,
         backgroundColor: Colors.grey.shade200,
         child: Icon(Icons.person, size: 26, color: Colors.grey.shade400),
-      );
-    }
-
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) => Container(
-            color: Colors.grey.shade200,
-            alignment: Alignment.center,
-            child: Icon(Icons.person, size: 26, color: Colors.grey.shade400),
-          ),
-        ),
       ),
+      userId: user.id,
+      reputation: user.reputation,
+      showLevelRing: true,
     );
   }
 }

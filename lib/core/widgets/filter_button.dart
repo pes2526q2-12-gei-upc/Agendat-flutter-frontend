@@ -86,6 +86,8 @@ class FilterButton extends StatelessWidget {
       icon: const Icon(Icons.filter_alt_outlined),
       label: Text(
         label.isEmpty ? AppLocalizations.of(context).filtersTitle : label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

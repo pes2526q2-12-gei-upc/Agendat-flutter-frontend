@@ -50,10 +50,7 @@ void main() {
       const notification = NotificationPayload(
         target: NotificationTarget(
           id: 'EVT-2',
-          route: NotificationRoute(
-            name: 'event_session_detail',
-            params: {},
-          ),
+          route: NotificationRoute(name: 'event_session_detail', params: {}),
         ),
       );
 

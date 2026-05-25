@@ -7,6 +7,7 @@ class FriendRecommendation {
   const FriendRecommendation({
     required this.id,
     required this.username,
+    this.reputation,
     this.firstName,
     this.lastName,
     this.profileImage,
@@ -18,6 +19,7 @@ class FriendRecommendation {
 
   final int id;
   final String username;
+  final double? reputation;
   final String? firstName;
   final String? lastName;
   final String? profileImage;
@@ -30,6 +32,8 @@ class FriendRecommendation {
     return FriendRecommendation(
       id: (json['id'] as num?)?.toInt() ?? 0,
       username: (json['username'] as String?) ?? '',
+      reputation: ((json['reputacio'] ?? json['reputation']) as num?)
+          ?.toDouble(),
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
       profileImage: profileImageFromJson(json),
@@ -45,6 +49,7 @@ class FriendRecommendation {
     return UserSummary(
       id: id,
       username: username,
+      reputation: reputation,
       firstName: firstName,
       lastName: lastName,
       profileImage: profileImage,

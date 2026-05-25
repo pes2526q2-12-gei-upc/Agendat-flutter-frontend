@@ -32,19 +32,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _sessionsFuture = _sessionsQuery.getSessions(forceRefresh: true);
-    rootTabIndexNotifier.addListener(_onRootTabChanged);
+    rootTabActivationNotifier.addListener(_onRootTabActivated);
   }
 
   @override
   void dispose() {
-    rootTabIndexNotifier.removeListener(_onRootTabChanged);
+    rootTabActivationNotifier.removeListener(_onRootTabActivated);
     super.dispose();
   }
 
-  void _onRootTabChanged() {
-    if (rootTabIndexNotifier.value == kAgendaTabIndex) {
-      _refresh();
-    }
+  void _onRootTabActivated() {
+    if (rootTabActivationNotifier.value.index != kAgendaTabIndex) return;
+    _refresh();
   }
 
   Future<void> _refresh() async {
@@ -275,6 +274,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Text(
                   monthLabel,
                   textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,

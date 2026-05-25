@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:agendat/core/api/reviews_api.dart' show ReviewsApi;
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 
@@ -24,6 +25,7 @@ class AddReviewForm extends StatefulWidget {
     this.initialAccessibilitatRating = 0,
     this.initialComment = '',
     this.isEditing = false,
+    this.initialImageCount = 0,
   });
 
   /// Callback amb les dades introduïdes. Es crida només si la validació
@@ -47,6 +49,7 @@ class AddReviewForm extends StatefulWidget {
   final int initialAmbientRating;
   final int initialAccessibilitatRating;
   final String initialComment;
+  final int initialImageCount;
 
   /// Si és `true` es mostra el títol "EDITAR VALORACIÓ" i el botó "Desar";
   /// altrament es mostra "AFEGIR VALORACIÓ" i "Afegir".
@@ -59,7 +62,7 @@ class AddReviewForm extends StatefulWidget {
 class _AddReviewFormState extends State<AddReviewForm> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
   static const int _maxCommentLength = 500;
-  static const int _maxMediaCount = 5;
+  static const int _maxMediaCount = ReviewsApi.maxImagesPerReview;
   static const List<String> _allowedExtensions = ['png', 'jpg', 'jpeg'];
 
   late int _generalRating = widget.initialGeneralRating;
@@ -72,6 +75,11 @@ class _AddReviewFormState extends State<AddReviewForm> {
   );
 
   final List<XFile> _selectedMedia = [];
+
+  int get _existingMediaCount =>
+      widget.initialImageCount < 0 ? 0 : widget.initialImageCount;
+
+  int get _totalMediaCount => _existingMediaCount + _selectedMedia.length;
 
   static const _ratingInputStyle = TextStyle(
     fontSize: 14,
@@ -176,7 +184,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
   /// Obre el selector de la galeria i afegeix els fitxers vàlids que
   /// es triïn (respectant la mida màxima i les extensions permeses).
   Future<void> _pickMedia() async {
-    if (_selectedMedia.length >= _maxMediaCount) {
+    if (_totalMediaCount >= _maxMediaCount) {
       _showSnack('Màxim $_maxMediaCount fitxers permesos.');
       return;
     }
@@ -192,7 +200,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
         );
         continue;
       }
-      if (_selectedMedia.length >= _maxMediaCount) break;
+      if (_totalMediaCount >= _maxMediaCount) break;
       setState(() => _selectedMedia.add(file));
     }
   }
@@ -297,7 +305,7 @@ class _AddReviewFormState extends State<AddReviewForm> {
     return OutlinedButton.icon(
       onPressed: _pickMedia,
       icon: const Icon(Icons.add_photo_alternate_outlined),
-      label: Text('Afegir fotos (${_selectedMedia.length}/$_maxMediaCount)'),
+      label: Text('Afegir fotos ($_totalMediaCount/$_maxMediaCount)'),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.black54,
         side: BorderSide(color: Colors.grey.shade300),

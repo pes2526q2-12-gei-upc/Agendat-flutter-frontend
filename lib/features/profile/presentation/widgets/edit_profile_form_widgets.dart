@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/widgets/avatars.dart';
 
 class EditProfileFieldLabel extends StatelessWidget {
   const EditProfileFieldLabel({super.key, required this.text});
@@ -150,37 +151,41 @@ class _AvatarPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (selectedImageBytes != null && selectedImageBytes!.isNotEmpty) {
-      return ClipOval(
-        child: SizedBox(
-          width: _size,
-          height: _size,
-          child: Image.memory(
-            selectedImageBytes!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _fallback(),
-          ),
-        ),
-      );
-    }
+    final avatar = selectedImageBytes != null && selectedImageBytes!.isNotEmpty
+        ? ClipOval(
+            child: SizedBox(
+              width: _size,
+              height: _size,
+              child: Image.memory(
+                selectedImageBytes!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _fallback(),
+              ),
+            ),
+          )
+        : () {
+            final imageUrl = resolveProfileImageUrl(
+              currentProfile.profileImage,
+            );
+            if (imageUrl == null) return _fallback();
 
-    final imageUrl = resolveProfileImageUrl(currentProfile.profileImage);
-    if (imageUrl == null) return _fallback();
+            return ClipOval(
+              child: SizedBox(
+                width: _size,
+                height: _size,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  webHtmlElementStrategy: kIsWeb
+                      ? WebHtmlElementStrategy.prefer
+                      : WebHtmlElementStrategy.never,
+                  errorBuilder: (_, __, ___) => _fallback(),
+                ),
+              ),
+            );
+          }();
 
-    return ClipOval(
-      child: SizedBox(
-        width: _size,
-        height: _size,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) => _fallback(),
-        ),
-      ),
-    );
+    return AvatarLevelRing(reputation: currentProfile.reputacio, child: avatar);
   }
 
   Widget _fallback() {

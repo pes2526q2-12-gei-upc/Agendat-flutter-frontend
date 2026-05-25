@@ -118,8 +118,11 @@ void main() {
       expect(payload.preview!.imageUrl, 'https://example.com/photo.jpg');
     });
 
-    test('returns null when neither structured nor fallback display exists', () {
-      expect(NotificationPayload.fromData({'ignored': 'value'}), isNull);
-    });
+    test(
+      'returns null when neither structured nor fallback display exists',
+      () {
+        expect(NotificationPayload.fromData({'ignored': 'value'}), isNull);
+      },
+    );
   });
 }

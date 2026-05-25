@@ -132,6 +132,8 @@ class _ProfileInfoHeader extends StatelessWidget {
       children: [
         Text(
           profile.displayName,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
@@ -166,8 +168,10 @@ class _ReputationChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -192,9 +196,9 @@ class _ReputationChip extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 8),
         Text(
           tierName,
+          softWrap: true,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,

@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:agendat/core/models/review.dart';
-import 'package:agendat/core/utils/profile_image_url.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/core/widgets/avatars.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
 import 'package:agendat/main.dart' show RootNavigationScreen;
 import 'package:agendat/l10n/app_localizations.dart';
@@ -183,8 +182,6 @@ class _ReviewCardState extends State<ReviewCard> {
   /// Avatar circular. Si hi ha foto de perfil la pintem; altrament mostrem
   /// la inicial del nom com a fallback.
   Widget _buildAuthorAvatar(BuildContext context) {
-    final avatarUrl = resolveProfileImageUrl(widget.review.authorAvatarUrl);
-    final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
     final initial = widget.review.author.isNotEmpty
         ? widget.review.author[0].toUpperCase()
         : '?';
@@ -204,27 +201,17 @@ class _ReviewCardState extends State<ReviewCard> {
       );
     }
 
-    final child = hasAvatar
-        ? ClipOval(
-            child: SizedBox(
-              width: 32,
-              height: 32,
-              child: Image.network(
-                avatarUrl,
-                fit: BoxFit.cover,
-                webHtmlElementStrategy: kIsWeb
-                    ? WebHtmlElementStrategy.prefer
-                    : WebHtmlElementStrategy.never,
-                errorBuilder: (_, __, ___) => fallbackAvatar(),
-              ),
-            ),
-          )
-        : fallbackAvatar();
-
     return InkWell(
       onTap: _canOpenAuthorProfile ? () => _openAuthorProfile(context) : null,
       borderRadius: BorderRadius.circular(18),
-      child: child,
+      child: ProfileCircleAvatar(
+        radius: 16,
+        profileImage: widget.review.authorAvatarUrl,
+        fallbackLabel: widget.review.author,
+        fallback: fallbackAvatar(),
+        userId: _authorUserId,
+        showLevelRing: true,
+      ),
     );
   }
 

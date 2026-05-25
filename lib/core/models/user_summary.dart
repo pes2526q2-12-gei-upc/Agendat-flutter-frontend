@@ -6,6 +6,7 @@ class UserSummary {
   const UserSummary({
     required this.id,
     required this.username,
+    this.reputation,
     this.firstName,
     this.lastName,
     this.profileImage,
@@ -14,6 +15,7 @@ class UserSummary {
 
   final int id;
   final String username;
+  final double? reputation;
   final String? firstName;
   final String? lastName;
   final String? profileImage;
@@ -23,6 +25,8 @@ class UserSummary {
     return UserSummary(
       id: _parseId(json),
       username: (json['username'] as String?) ?? '',
+      reputation: ((json['reputacio'] ?? json['reputation']) as num?)
+          ?.toDouble(),
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
       profileImage: profileImageFromJson(json),
@@ -47,6 +51,7 @@ class UserSummary {
   UserSummary copyWith({
     int? id,
     String? username,
+    double? reputation,
     String? firstName,
     String? lastName,
     String? profileImage,
@@ -55,6 +60,7 @@ class UserSummary {
     return UserSummary(
       id: id ?? this.id,
       username: username ?? this.username,
+      reputation: reputation ?? this.reputation,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       profileImage: profileImage ?? this.profileImage,

@@ -200,6 +200,7 @@ class UserProfile {
     return UserSummary(
       id: id,
       username: username,
+      reputation: reputacio,
       firstName: firstName,
       lastName: lastName,
       profileImage: profileImage,
