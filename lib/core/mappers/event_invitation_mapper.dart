@@ -1,6 +1,6 @@
 import 'package:agendat/core/dto/event_invitation_dto.dart';
 import 'package:agendat/core/models/event_invitation.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 extension EventInvitationDtoMapper on EventInvitationDto {
   EventInvitation toDomain() {

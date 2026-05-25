@@ -1,4 +1,4 @@
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Estat de la relació d'amistat del meu usuari amb un altre usuari.
 ///
@@ -18,8 +18,11 @@ enum FriendshipStatus {
   /// Ja som amics.
   friends,
 
-  /// Tinc aquest usuari bloquejat.
-  blocked,
+  /// He bloquejat aquest usuari.
+  blockedByMe,
+
+  /// Aquest usuari m'ha bloquejat.
+  blockedMe,
 }
 
 FriendshipStatus? friendshipStatusFromString(String? raw) {
@@ -42,8 +45,11 @@ FriendshipStatus? friendshipStatusFromString(String? raw) {
     case 'friend':
     case 'accepted':
       return FriendshipStatus.friends;
+    case 'blocked_by_me':
     case 'blocked':
-      return FriendshipStatus.blocked;
+      return FriendshipStatus.blockedByMe;
+    case 'blocked_me':
+      return FriendshipStatus.blockedMe;
   }
   return null;
 }
@@ -67,6 +73,7 @@ class UserProfile {
     this.eventUpdatesAllowed = true,
     this.socialAlertsAllowed = true,
     this.calendarSyncAllowed = true,
+    this.selectedLanguage = 'CA',
     this.description,
     this.friendshipStatus,
   });
@@ -86,6 +93,7 @@ class UserProfile {
   final bool eventUpdatesAllowed;
   final bool socialAlertsAllowed;
   final bool calendarSyncAllowed;
+  final String selectedLanguage;
   final String? description;
 
   /// Relació d'amistat de l'usuari autenticat envers aquest perfil. Només està
@@ -114,6 +122,8 @@ class UserProfile {
       socialAlertsAllowed:
           json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
       calendarSyncAllowed: json['calendar_sync_allowed'] as bool? ?? true,
+      selectedLanguage:
+          (json['selected_language'] as String?)?.trim().toUpperCase() ?? 'CA',
       description: json['description'] as String?,
       reputacio: ((json['reputacio'] ?? json['reputation']) as num?)
           ?.toDouble(),
@@ -140,6 +150,7 @@ class UserProfile {
       eventUpdatesAllowed: eventUpdatesAllowed,
       socialAlertsAllowed: socialAlertsAllowed,
       calendarSyncAllowed: calendarSyncAllowed,
+      selectedLanguage: selectedLanguage,
       description: description,
       friendshipStatus: status,
     );
@@ -219,6 +230,7 @@ class UserProfile {
     'event_updates_allowed': eventUpdatesAllowed,
     'social_alerts_allowed': socialAlertsAllowed,
     'calendar_sync_allowed': calendarSyncAllowed,
+    'selected_language': selectedLanguage,
   };
 }
 
@@ -350,6 +362,7 @@ class UserReview {
     required this.reviewerId,
     required this.reviewerUsername,
     this.eventCode,
+    this.eventTitle,
   });
 
   final int id;
@@ -359,6 +372,7 @@ class UserReview {
   final int reviewerId;
   final String reviewerUsername;
   final String? eventCode;
+  final String? eventTitle;
 
   factory UserReview.fromJson(Map<String, dynamic> json) {
     final reviewer = json['reviewer'];
@@ -372,6 +386,12 @@ class UserReview {
         eventMap?['code'] ??
         eventMap?['id'];
     final eventCode = rawEventCode?.toString().trim();
+    final rawEventTitle =
+        json['event_title'] ??
+        json['event_name'] ??
+        eventMap?['title'] ??
+        eventMap?['name'];
+    final eventTitle = rawEventTitle?.toString().trim();
     return UserReview(
       id: (json['id'] as num).toInt(),
       rating: (json['rating'] as num).toInt(),
@@ -385,6 +405,9 @@ class UserReview {
           (reviewerMap?['username'] as String?) ??
           '',
       eventCode: (eventCode == null || eventCode.isEmpty) ? null : eventCode,
+      eventTitle: (eventTitle == null || eventTitle.isEmpty)
+          ? null
+          : eventTitle,
     );
   }
 }

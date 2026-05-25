@@ -53,6 +53,7 @@ class EventListDto {
   final String? subtitle;
   final String? description;
   final bool? free;
+  final bool? isPrivate;
   final List<CategoryDto> categories;
   final String? provincia;
   final String? comarca;
@@ -68,6 +69,7 @@ class EventListDto {
     this.subtitle,
     this.description,
     this.free,
+    this.isPrivate,
     this.categories = const [],
     this.provincia,
     this.comarca,
@@ -85,6 +87,7 @@ class EventListDto {
       subtitle: _trimOrNull(json['subtitle']),
       description: _trimOrNull(json['description']),
       free: _parseBool(json['free']),
+      isPrivate: _parseBool(json['is_private']),
       categories: _parseCategories(json['categories']),
       provincia: _trimOrNull(json['provincia']),
       comarca: _trimOrNull(json['comarca']),
@@ -177,6 +180,7 @@ class EventDto {
   final String? denomination;
   final String? subtitle;
   final bool? free;
+  final bool? isPrivate;
   final List<CategoryDto> categories;
   final String? provincia;
   final String? comarca;
@@ -205,6 +209,7 @@ class EventDto {
     this.denomination,
     this.subtitle,
     this.free,
+    this.isPrivate,
     this.categories = const [],
     this.provincia,
     this.comarca,
@@ -237,6 +242,7 @@ class EventDto {
       ),
       subtitle: EventListDto._trimOrNull(json['subtitle']),
       free: EventListDto._parseBool(json['free']),
+      isPrivate: EventListDto._parseBool(json['is_private']),
       categories: EventListDto._parseCategories(json['categories']),
       provincia: EventListDto._trimOrNull(json['provincia']),
       comarca: EventListDto._trimOrNull(json['comarca']),
@@ -268,6 +274,7 @@ class EventDto {
       'denomination': denomination,
       'subtitle': subtitle,
       'free': free,
+      'is_private': isPrivate,
       'categories': categories
           .map((c) => {'id': c.id, 'name': c.name})
           .toList(),

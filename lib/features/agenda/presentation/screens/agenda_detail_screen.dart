@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:flutter/material.dart';
 
 class AgendaDetailScreen extends StatefulWidget {
@@ -145,10 +147,10 @@ class _AgendaDetailScreenState extends State<AgendaDetailScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EventScreen(eventCode: session.event),
+            unawaited(
+              FeatureNavigation.openEventDetail(
+                context,
+                eventCode: session.event,
               ),
             );
           },

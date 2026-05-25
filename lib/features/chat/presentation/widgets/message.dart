@@ -8,6 +8,7 @@ Aquest widget representa un missatge de chat.
 
 */
 
+import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/widgets/avatars.dart';
 import 'package:flutter/material.dart';
@@ -18,8 +19,7 @@ class Message extends StatelessWidget {
     required this.messageText,
     required this.sentAt,
     required this.isSentByMe,
-    this.messageType = 'text',
-    this.fileUrl,
+    this.imageUrl,
     this.avatarUrl,
     this.avatarLabel,
     this.receiptLabel,
@@ -28,8 +28,7 @@ class Message extends StatelessWidget {
   final String messageText;
   final DateTime sentAt;
   final bool isSentByMe;
-  final String messageType;
-  final String? fileUrl;
+  final String? imageUrl;
 
   /// Imatge de perfil del remitent (relativa o URL completa).
   final String? avatarUrl;
@@ -37,7 +36,7 @@ class Message extends StatelessWidget {
   /// Text per inicials si no hi ha foto.
   final String? avatarLabel;
   final String? receiptLabel;
-  static const Color _sentBubbleColor = Color(0xFFB71C1C);
+  static const Color _sentBubbleColor = AppThemeTokens.brandPrimary;
 
   @override
   Widget build(BuildContext context) {
@@ -45,11 +44,9 @@ class Message extends StatelessWidget {
     final bubbleColor = isSentByMe ? _sentBubbleColor : Colors.white;
     final onBubble = isSentByMe ? Colors.white : Colors.black87;
     final timeLabel = ChatTimestampFormat.messageDetail(context, sentAt);
-    final imageUrl = _imageUrl;
-    final hasImage = imageUrl != null;
-    final displayText = messageText.trim().isEmpty && !hasImage
-        ? '(sense text)'
-        : messageText;
+    final resolvedImageUrl = chatMediaUrl(imageUrl);
+    final hasImage = resolvedImageUrl != null;
+    final hasText = messageText.trim().isNotEmpty;
 
     const avatarRadius = 18.0;
     final avatar = ProfileCircleAvatar(
@@ -86,24 +83,19 @@ class Message extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (hasImage)
+          if (hasImage) ...[
             _MessageImage(
-              imageUrl: imageUrl,
+              imageUrl: resolvedImageUrl,
               isSentByMe: isSentByMe,
-            )
-          else
-            SelectableText(
-              displayText,
-              style: theme.textTheme.bodyMedium?.copyWith(color: onBubble),
             ),
-          if (hasImage && displayText.trim().isNotEmpty) ...[
-            const SizedBox(height: 8),
-            SelectableText(
-              displayText,
-              style: theme.textTheme.bodyMedium?.copyWith(color: onBubble),
-            ),
+            if (hasText) const SizedBox(height: 8),
           ],
-          const SizedBox(height: 4),
+          if (hasText)
+            SelectableText(
+              messageText,
+              style: theme.textTheme.bodyMedium?.copyWith(color: onBubble),
+            ),
+          if (hasImage || hasText) const SizedBox(height: 4),
           Text(
             timeLabel,
             style: theme.textTheme.labelSmall?.copyWith(
@@ -158,12 +150,6 @@ class Message extends StatelessWidget {
     );
   }
 
-  String? get _imageUrl {
-    if (messageType.trim().toLowerCase() != 'image') return null;
-    final url = fileUrl?.trim();
-    if (url == null || url.isEmpty) return null;
-    return url;
-  }
 }
 
 class _MessageImage extends StatelessWidget {

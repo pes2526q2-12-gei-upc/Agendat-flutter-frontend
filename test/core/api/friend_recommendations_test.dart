@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 
 void main() {
   group('FriendRecommendationsData.fromJson', () {

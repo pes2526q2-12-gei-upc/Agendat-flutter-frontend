@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:agendat/core/api/events_api.dart';
@@ -5,11 +7,12 @@ import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/event_filters.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
-import 'package:agendat/core/widgets/filterButton.dart';
+import 'package:agendat/core/utils/async_epoch.dart';
+import 'package:agendat/core/widgets/filter_button.dart';
 import 'package:agendat/core/widgets/app_search_bar.dart' as bar;
-import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 
 class VisualizeScreen extends StatefulWidget {
   const VisualizeScreen({super.key});
@@ -38,10 +41,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   bool _hasMore = true;
   Object? _error;
 
-  /// Epoch incremented every time we kick off a fresh first-page load so we
-  /// can ignore the results of in-flight requests that were superseded
-  /// (filters changed, pull-to-refresh, etc.).
-  int _requestEpoch = 0;
+  final AsyncEpoch _requestEpoch = AsyncEpoch();
 
   /// Text de cerca aplicat al backend (paràmetre `name`). Només
   /// s'actualitza quan l'usuari prem Enter / botó de cerca.
@@ -120,7 +120,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
   }
 
   Future<void> _loadFirstPage({bool forceRefresh = false}) async {
-    final epoch = ++_requestEpoch;
+    final epoch = _requestEpoch.bump();
     setState(() {
       _isInitialLoading = true;
       _isLoadingMore = false;
@@ -142,7 +142,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         limit: _pageSize,
         forceRefresh: forceRefresh,
       );
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() {
         _events
           ..clear()
@@ -152,7 +152,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       });
       _eventsQuery.publishEvents(_events);
     } catch (e) {
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() {
         _error = e;
         _isInitialLoading = false;
@@ -162,7 +162,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
 
   Future<void> _loadNextPage() async {
     if (_isLoadingMore || !_hasMore || _isInitialLoading) return;
-    final epoch = _requestEpoch;
+    final epoch = _requestEpoch.current;
     setState(() => _isLoadingMore = true);
 
     try {
@@ -171,7 +171,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         offset: _events.length,
         limit: _pageSize,
       );
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() {
         _events.addAll(page.events);
         _hasMore = page.hasMore;
@@ -179,7 +179,7 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       });
       _eventsQuery.publishEvents(_events);
     } catch (e) {
-      if (!mounted || epoch != _requestEpoch) return;
+      if (!mounted || !_requestEpoch.isCurrent(epoch)) return;
       setState(() => _isLoadingMore = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -325,11 +325,8 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EventScreen(eventCode: event.code),
-            ),
+          unawaited(
+            FeatureNavigation.openEventDetail(context, eventCode: event.code),
           );
         },
         child: Container(
@@ -356,19 +353,27 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
                 ],
               ),
               if (event.subtitle?.trim().isNotEmpty ?? false) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 eventSubtitle(event),
-                const SizedBox(height: 10),
+                const SizedBox(height: 2),
               ] else
-                const SizedBox(height: 10),
+                const SizedBox(height: 2),
               Row(
                 children: [
                   eventDate(event),
                   const Spacer(),
-                  eventPayment(event),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      eventPrivacy(event),
+                      const SizedBox(height: 2),
+                      eventPayment(event),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               eventPlace(event),
             ],
           ),
@@ -394,6 +399,20 @@ class _VisualizeScreenState extends State<VisualizeScreen> {
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: Colors.black,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  Text eventPrivacy(Event event) {
+    return Text(
+      event.displayPrivacy,
+      textAlign: TextAlign.end,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color.fromARGB(255, 109, 109, 109),
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,

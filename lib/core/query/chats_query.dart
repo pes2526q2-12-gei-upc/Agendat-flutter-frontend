@@ -1,13 +1,16 @@
+import 'dart:typed_data';
+
 import 'package:agendat/core/api/chats_api.dart';
+import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/mappers/chat_mapper.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/models/event_invitation.dart';
+import 'package:agendat/core/query/profile_query.dart';
+import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/query_client.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
-import 'package:agendat/core/api/profile_api.dart';
-import 'package:agendat/core/query/profile_query.dart';
 
 export 'package:agendat/core/api/chats_api.dart'
     show ChatMessageType, SendMessageRequest;
@@ -63,6 +66,9 @@ class ChatsQuery {
   List<Chat>? peekCachedChatsList() =>
       _client.getQueryData<List<Chat>>(_listKey);
 
+  Chat? peekCachedChat(int chatId) =>
+      _client.getQueryData<Chat>(_detailKey(chatId));
+
   Future<List<Chat>> getChats({bool forceRefresh = false}) {
     return _client.query<List<Chat>>(
       key: _listKey,
@@ -113,6 +119,29 @@ class ChatsQuery {
     final sent = dto.toDomain();
 
     // Keep message lists and chat summaries fresh after any mutation.
+    _client.invalidate(_messagesKey(chatId));
+    _client.invalidate(_detailKey(chatId));
+    _client.invalidate(_listKey);
+
+    return sent;
+  }
+
+  Future<ChatMessage> sendImageMessage(
+    int chatId, {
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+    String content = '',
+  }) async {
+    final dto = await _api.sendImageMessage(
+      chatId,
+      bytes: bytes,
+      filename: filename,
+      contentType: contentType,
+      content: content,
+    );
+    final sent = dto.toDomain();
+
     _client.invalidate(_messagesKey(chatId));
     _client.invalidate(_detailKey(chatId));
     _client.invalidate(_listKey);
@@ -180,7 +209,13 @@ class ChatsQuery {
     }
 
     final cached = _client.getQueryData<List<Chat>>(_listKey);
-    if (cached == null) return;
+    if (cached == null) {
+      if (!chat.blockedByMe) {
+        _client.setQueryData<List<Chat>>(_listKey, [chat]);
+        syncUnreadChatConversationsBadge([chat]);
+      }
+      return;
+    }
 
     final withoutCurrent = cached.where((item) => item.id != chat.id).toList();
     final next = chat.blockedByMe ? withoutCurrent : [chat, ...withoutCurrent];
@@ -278,26 +313,98 @@ class ChatsQuery {
     int partnerUserId, {
     required bool canSendMessages,
   }) {
-    final cached = _client.getQueryData<List<Chat>>(_listKey);
-    if (cached == null) return;
+    syncPartnerFriendshipStateInCache(
+      partnerUserId,
+      status: canSendMessages
+          ? FriendshipStatus.friends
+          : FriendshipStatus.none,
+    );
+  }
 
-    var changed = false;
-    final next = cached.map((c) {
-      if (c.partner.id != partnerUserId) return c;
-      if (c.canSend == canSendMessages) return c;
-      changed = true;
-      return c.copyWith(canSend: canSendMessages);
-    }).toList();
-
-    if (!changed) return;
-
-    _client.setQueryData(_listKey, next);
-    syncUnreadChatConversationsBadge(next);
-
-    for (final c in next) {
-      if (c.partner.id == partnerUserId) {
-        _client.invalidate(_detailKey(c.id));
+  void syncPartnerFriendshipStateInCache(
+    int partnerUserId, {
+    required FriendshipStatus status,
+  }) {
+    final cachedList = _client.getQueryData<List<Chat>>(_listKey);
+    if (cachedList != null) {
+      if (status == FriendshipStatus.blockedByMe) {
+        final next = cachedList
+            .where((chat) => chat.partner.id != partnerUserId)
+            .toList();
+        _client.setQueryData<List<Chat>>(_listKey, next);
+        syncUnreadChatConversationsBadge(next);
+      } else {
+        var changed = false;
+        final next = cachedList.map((chat) {
+          if (chat.partner.id != partnerUserId) return chat;
+          final updated = _applyFriendshipStatus(chat, status);
+          if (updated == chat) return chat;
+          changed = true;
+          return updated;
+        }).toList();
+        if (changed) {
+          _client.setQueryData<List<Chat>>(_listKey, next);
+          syncUnreadChatConversationsBadge(next);
+        }
       }
+    }
+
+    final detailEntries = _client.getQueryDataByPrefix<Chat>(
+      '$_prefix:detail:',
+    );
+    for (final entry in detailEntries.entries) {
+      final chat = entry.value;
+      if (chat.partner.id != partnerUserId) continue;
+      _client.setQueryData<Chat>(
+        entry.key,
+        _applyFriendshipStatus(chat, status),
+      );
+    }
+  }
+
+  Future<void> hydrateAcceptedFriendshipChat(int? chatId) async {
+    if (chatId == null) {
+      invalidateChatsList();
+      return;
+    }
+
+    try {
+      final chat = await getChat(chatId, forceRefresh: true);
+      _upsertChatSummary(chat);
+    } catch (_) {
+      invalidateChat(chatId);
+      invalidateChatsList();
+    }
+  }
+
+  Chat _applyFriendshipStatus(Chat chat, FriendshipStatus status) {
+    switch (status) {
+      case FriendshipStatus.friends:
+        return chat.copyWith(
+          canSend: true,
+          blockedByMe: false,
+          blockedMe: false,
+        );
+      case FriendshipStatus.blockedByMe:
+        return chat.copyWith(
+          canSend: false,
+          blockedByMe: true,
+          blockedMe: false,
+        );
+      case FriendshipStatus.blockedMe:
+        return chat.copyWith(
+          canSend: false,
+          blockedByMe: false,
+          blockedMe: true,
+        );
+      case FriendshipStatus.none:
+      case FriendshipStatus.requestSent:
+      case FriendshipStatus.requestReceived:
+        return chat.copyWith(
+          canSend: false,
+          blockedByMe: false,
+          blockedMe: false,
+        );
     }
   }
 

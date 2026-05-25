@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/models/user_profile.dart';
+import 'package:agendat/core/utils/reputation_avatar_ring.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
 
 class ProfileSummaryCard extends StatelessWidget {
@@ -80,37 +81,41 @@ class _ProfileViewAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = resolveProfileImageUrl(profile.profileImage);
-    const radius = 45.0;
+    const radius = 47.0;
     const size = radius * 2;
 
-    if (imageUrl == null) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: Colors.grey.shade200,
-        child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
-      );
-    }
+    final avatar = imageUrl == null
+        ? CircleAvatar(
+            radius: radius,
+            backgroundColor: Colors.grey.shade200,
+            child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
+          )
+        : ClipOval(
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                webHtmlElementStrategy: kIsWeb
+                    ? WebHtmlElementStrategy.prefer
+                    : WebHtmlElementStrategy.never,
+                errorBuilder: (_, __, ___) {
+                  return Container(
+                    color: Colors.grey.shade200,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.person,
+                      size: 50,
+                      color: Colors.grey.shade400,
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
 
-    return ClipOval(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          webHtmlElementStrategy: kIsWeb
-              ? WebHtmlElementStrategy.prefer
-              : WebHtmlElementStrategy.never,
-          errorBuilder: (_, __, ___) {
-            return Container(
-              color: Colors.grey.shade200,
-              alignment: Alignment.center,
-              child: Icon(Icons.person, size: 50, color: Colors.grey.shade400),
-            );
-          },
-        ),
-      ),
-    );
+    return ReputationAvatarRing(reputation: profile.reputacio, child: avatar);
   }
 }
 
@@ -130,7 +135,10 @@ class _ProfileInfoHeader extends StatelessWidget {
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        _ReputationChip(reputation: reputation),
+        _ReputationChip(
+          reputation: reputation,
+          tierName: reputationAvatarRingTierName(reputation),
+        ),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,34 +159,49 @@ class _ProfileInfoHeader extends StatelessWidget {
 }
 
 class _ReputationChip extends StatelessWidget {
-  const _ReputationChip({required this.reputation});
+  const _ReputationChip({required this.reputation, required this.tierName});
 
   final double? reputation;
+  final String tierName;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.star, size: 16, color: Colors.amber.shade700),
-          const SizedBox(width: 4),
-          Text(
-            reputation == null ? '—' : reputation!.toStringAsFixed(1),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.star, size: 16, color: Colors.amber.shade700),
+              const SizedBox(width: 4),
+              Text(
+                reputation == null ? '—' : reputation!.toStringAsFixed(1),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          tierName,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ],
     );
   }
 }

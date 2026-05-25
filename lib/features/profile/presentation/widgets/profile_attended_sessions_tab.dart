@@ -8,12 +8,13 @@ import 'package:agendat/core/query/sessions_query.dart';
 class ProfileAttendedSessionsTab extends StatelessWidget {
   const ProfileAttendedSessionsTab({
     super.key,
-    required this.isOwnProfile,
+    this.isOwnProfile = true,
     required this.sessionsQuery,
     required this.eventsQuery,
     required this.onOpenSession,
   });
 
+  /// Només es mostra aquest contingut des del perfil propi (`profile.dart`).
   final bool isOwnProfile;
   final SessionsQuery sessionsQuery;
   final EventsQuery eventsQuery;

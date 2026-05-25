@@ -1,12 +1,31 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/query_client.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/core/realtime/friendship_realtime_event.dart';
+import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/models/user_summary.dart';
+
+class FriendshipChange {
+  const FriendshipChange({
+    required this.type,
+    required this.counterpartId,
+    required this.status,
+    this.friendshipId,
+    this.chatId,
+  });
+
+  final String type;
+  final int counterpartId;
+  final FriendshipStatus status;
+  final int? friendshipId;
+  final int? chatId;
+}
 
 class ProfileQuery {
   static final ProfileQuery instance = ProfileQuery._();
@@ -21,6 +40,12 @@ class ProfileQuery {
   static const Duration _friendshipStaleTime = Duration(minutes: 2);
 
   final QueryClient _client = QueryClient.instance;
+  final StreamController<FriendshipChange> _friendshipChanges =
+      StreamController<FriendshipChange>.broadcast();
+
+  Stream<FriendshipChange> get friendshipChanges => _friendshipChanges.stream;
+
+  int? get _currentUserId => currentLoggedInUser?['id'] as int?;
 
   /// Conjunt local d'ids d'usuaris que jo he bloquejat. Sobreviu a la
   /// invalidació de la query `'$_prefix:blocked:...'` i té tres usos:
@@ -88,7 +113,7 @@ class ProfileQuery {
     // bloquejat. La supressió només passa explícitament a través de
     // [markUserUnblocked] (i de [recordFriendshipStatusChange] quan
     // confirmem un desbloqueig al backend).
-    if (status == FriendshipStatus.blocked) {
+    if (status == FriendshipStatus.blockedByMe) {
       _localBlockedIds.add(profile.id);
     }
 
@@ -106,7 +131,7 @@ class ProfileQuery {
     // assegurem que un usuari bloquejat que casualment encara consti com a
     // amic en una caché vella es retiri.
     final effectiveStatus = _localBlockedIds.contains(profile.id)
-        ? FriendshipStatus.blocked
+        ? FriendshipStatus.blockedByMe
         : status;
     _syncFriendsCacheForUser(
       myId,
@@ -266,7 +291,13 @@ class ProfileQuery {
       key: '$_prefix:friend-requests:$userId',
       staleTime: _friendshipStaleTime,
       forceRefresh: forceRefresh,
-      queryFn: () => fetchFriendRequests(userId),
+      queryFn: () async {
+        final data = await fetchFriendRequests(userId);
+        if (_currentUserId == userId) {
+          _syncPendingFriendRequestsBadge(data);
+        }
+        return data;
+      },
     );
   }
 
@@ -348,47 +379,129 @@ class ProfileQuery {
     FriendshipStatus? status, {
     UserSummary? otherSummary,
   }) {
-    setCachedFriendshipStatus(userId, status);
+    final applied = _applyFriendshipStatusChange(
+      userId,
+      status,
+      otherSummary: otherSummary,
+    );
+    if (!applied || status == null) return;
 
-    if (status == FriendshipStatus.blocked) {
-      _localBlockedIds.add(userId);
-      // Bloquejar trenca l'amistat, però el bloqueig ja és el filtre fort:
-      // no cal mantenir l'usuari a [_localUnfriendedIds] en paral·lel.
-      _localUnfriendedIds.remove(userId);
-    } else if (status == FriendshipStatus.friends) {
-      _localBlockedIds.remove(userId);
-      _localUnfriendedIds.remove(userId);
-    } else if (status == FriendshipStatus.none) {
-      _localBlockedIds.remove(userId);
-      // Marquem l'usuari com a "no amic" per garantir que un popup amb estat
-      // antic no el continuï mostrant a la llista d'amics fins al següent
-      // refetch. És inofensiu si l'usuari mai havia estat amic.
-      _localUnfriendedIds.add(userId);
-    } else {
-      // requestSent / requestReceived: no eren amics i tampoc no ho són,
-      // així que no toquem el set d'eliminats per no introduir falsos
-      // positius en la llista d'amics.
-      _localBlockedIds.remove(userId);
+    _emitFriendshipChange(type: 'local', counterpartId: userId, status: status);
+  }
+
+  Future<void> applyFriendshipRealtimeEvent(
+    FriendshipRealtimeEvent event,
+  ) async {
+    if (event is! FriendshipRealtimeMutationEvent) return;
+
+    final myId = _currentUserId;
+    if (myId == null) return;
+
+    switch (event) {
+      case FriendRequestCreatedEvent():
+        _upsertFriendRequestFromRealtime(
+          myId,
+          event.friendshipStatus,
+          event.counterpart,
+          event.friendshipId,
+          event.requestSnapshot,
+        );
+        _applyFriendshipStatusChange(
+          event.counterpart.id,
+          event.friendshipStatus,
+          otherSummary: event.counterpart,
+        );
+        break;
+      case FriendRequestAcceptedEvent():
+        _removeFriendRequestFromCaches(
+          myId,
+          event.counterpart.id,
+          event.friendshipId,
+        );
+        _applyFriendshipStatusChange(
+          event.counterpart.id,
+          FriendshipStatus.friends,
+          otherSummary: event.counterpart,
+        );
+        await ChatsQuery.instance.hydrateAcceptedFriendshipChat(event.chatId);
+        break;
+      case FriendRequestRejectedEvent():
+        _removeFriendRequestFromCaches(
+          myId,
+          event.counterpart.id,
+          event.friendshipId,
+        );
+        _applyFriendshipStatusChange(
+          event.counterpart.id,
+          FriendshipStatus.none,
+          otherSummary: event.counterpart,
+        );
+        break;
+      case FriendRequestCancelledEvent():
+        _removeFriendRequestFromCaches(
+          myId,
+          event.counterpart.id,
+          event.friendshipId,
+        );
+        _applyFriendshipStatusChange(
+          event.counterpart.id,
+          FriendshipStatus.none,
+          otherSummary: event.counterpart,
+        );
+        break;
+      case FriendshipBlockedEvent():
+        _removeFriendRequestFromCaches(
+          myId,
+          event.counterpart.id,
+          event.friendshipId,
+        );
+        _applyFriendshipStatusChange(
+          event.counterpart.id,
+          event.friendshipStatus,
+          otherSummary: event.counterpart,
+        );
+        if (event.friendshipStatus == FriendshipStatus.blockedByMe) {
+          _upsertBlockedUserCache(myId, event.counterpart);
+        }
+        break;
+      case FriendshipUnblockedEvent():
+        _removeFriendRequestFromCaches(
+          myId,
+          event.counterpart.id,
+          event.friendshipId,
+        );
+        if (event.actorId == myId) {
+          _removeBlockedUserFromCache(myId, event.counterpart.id);
+        }
+        _applyFriendshipStatusChange(
+          event.counterpart.id,
+          FriendshipStatus.none,
+          otherSummary: event.counterpart,
+        );
+        break;
+      case FriendshipUnfriendedEvent():
+        _removeFriendRequestFromCaches(
+          myId,
+          event.counterpart.id,
+          event.friendshipId,
+        );
+        _applyFriendshipStatusChange(
+          event.counterpart.id,
+          FriendshipStatus.none,
+          otherSummary: event.counterpart,
+        );
+        break;
+      default:
+        break;
     }
 
-    final myId = currentLoggedInUser?['id'];
-    if (myId is int && myId != userId) {
-      _syncFriendsCacheForUser(myId, userId, status, otherSummary);
-    }
-
-    if (status == FriendshipStatus.friends) {
-      ChatsQuery.instance.syncPartnerMessagingInChatListCache(
-        userId,
-        canSendMessages: true,
-      );
-    } else if (status == FriendshipStatus.blocked) {
-      ChatsQuery.instance.removePartnerChatFromListCache(userId);
-    } else if (status == FriendshipStatus.none) {
-      ChatsQuery.instance.syncPartnerMessagingInChatListCache(
-        userId,
-        canSendMessages: false,
-      );
-    }
+    _emitFriendshipChange(
+      type: event.type,
+      counterpartId: event.counterpart.id,
+      status: event.friendshipStatus,
+      friendshipId: event.friendshipId,
+      chatId: event.chatId,
+    );
   }
 
   /// Aplica el nou [status] d'amistat amb [otherId] a la llista d'amics
@@ -542,5 +655,238 @@ class ProfileQuery {
       // Best-effort: no volem trencar el flux d'inici de sessió per culpa
       // d'una crida derivada que pot reintentar-se més tard.
     }
+  }
+
+  bool _applyFriendshipStatusChange(
+    int userId,
+    FriendshipStatus? status, {
+    UserSummary? otherSummary,
+  }) {
+    if (status == null) return false;
+
+    setCachedFriendshipStatus(userId, status);
+
+    switch (status) {
+      case FriendshipStatus.blockedByMe:
+        _localBlockedIds.add(userId);
+        _localUnfriendedIds.remove(userId);
+        break;
+      case FriendshipStatus.friends:
+        _localBlockedIds.remove(userId);
+        _localUnfriendedIds.remove(userId);
+        break;
+      case FriendshipStatus.blockedMe:
+        _localBlockedIds.remove(userId);
+        _localUnfriendedIds.add(userId);
+        break;
+      case FriendshipStatus.none:
+        _localBlockedIds.remove(userId);
+        _localUnfriendedIds.add(userId);
+        break;
+      case FriendshipStatus.requestSent:
+      case FriendshipStatus.requestReceived:
+        _localBlockedIds.remove(userId);
+        break;
+    }
+
+    final myId = _currentUserId;
+    if (myId != null && myId != userId) {
+      _syncFriendsCacheForUser(myId, userId, status, otherSummary);
+    }
+
+    switch (status) {
+      case FriendshipStatus.friends:
+      case FriendshipStatus.none:
+      case FriendshipStatus.blockedByMe:
+      case FriendshipStatus.blockedMe:
+        ChatsQuery.instance.syncPartnerFriendshipStateInCache(
+          userId,
+          status: status,
+        );
+        break;
+      case FriendshipStatus.requestSent:
+      case FriendshipStatus.requestReceived:
+        break;
+    }
+
+    _syncRecommendationsForStatusChange(userId, status);
+    return true;
+  }
+
+  void _syncRecommendationsForStatusChange(
+    int userId,
+    FriendshipStatus status,
+  ) {
+    final myId = _currentUserId;
+    if (myId == null) return;
+
+    switch (status) {
+      case FriendshipStatus.none:
+        invalidateFriendRecommendations();
+        break;
+      case FriendshipStatus.requestSent:
+      case FriendshipStatus.requestReceived:
+      case FriendshipStatus.friends:
+      case FriendshipStatus.blockedByMe:
+      case FriendshipStatus.blockedMe:
+        final key = '$_prefix:friend-recommendations:$myId';
+        final cached = _client.getQueryData<FriendRecommendationsData>(key);
+        if (cached == null) return;
+        final next = cached.recommendations
+            .where((recommendation) => recommendation.id != userId)
+            .toList();
+        if (next.length == cached.recommendations.length) return;
+        _client.setQueryData<FriendRecommendationsData>(
+          key,
+          FriendRecommendationsData(
+            count: next.length,
+            recommendations: next,
+            detail: cached.detail,
+          ),
+        );
+        break;
+    }
+  }
+
+  void _upsertFriendRequestFromRealtime(
+    int myId,
+    FriendshipStatus status,
+    UserSummary counterpart,
+    int friendshipId,
+    PendingFriendRequest? requestSnapshot,
+  ) {
+    final current =
+        _client.getQueryData<FriendRequestsData>(
+          '$_prefix:friend-requests:$myId',
+        ) ??
+        FriendRequestsData.empty;
+    final request =
+        requestSnapshot ??
+        PendingFriendRequest(
+          id: friendshipId,
+          status: 'pending',
+          counterpart: counterpart,
+          requestedBy: status == FriendshipStatus.requestReceived
+              ? counterpart
+              : null,
+          createdAt: DateTime.now(),
+        );
+
+    final sent = _removeMatchingRequests(
+      current.sent,
+      counterpart.id,
+      friendshipId,
+    );
+    final received = _removeMatchingRequests(
+      current.received,
+      counterpart.id,
+      friendshipId,
+    );
+
+    final next = switch (status) {
+      FriendshipStatus.requestSent => FriendRequestsData(
+        sent: [request, ...sent],
+        received: received,
+      ),
+      FriendshipStatus.requestReceived => FriendRequestsData(
+        sent: sent,
+        received: [request, ...received],
+      ),
+      _ => FriendRequestsData(sent: sent, received: received),
+    };
+
+    _client.setQueryData<FriendRequestsData>(
+      '$_prefix:friend-requests:$myId',
+      next,
+    );
+    _syncPendingFriendRequestsBadge(next);
+  }
+
+  void _removeFriendRequestFromCaches(
+    int myId,
+    int counterpartId,
+    int friendshipId,
+  ) {
+    final current =
+        _client.getQueryData<FriendRequestsData>(
+          '$_prefix:friend-requests:$myId',
+        ) ??
+        FriendRequestsData.empty;
+    final next = FriendRequestsData(
+      sent: _removeMatchingRequests(current.sent, counterpartId, friendshipId),
+      received: _removeMatchingRequests(
+        current.received,
+        counterpartId,
+        friendshipId,
+      ),
+    );
+    _client.setQueryData<FriendRequestsData>(
+      '$_prefix:friend-requests:$myId',
+      next,
+    );
+    _syncPendingFriendRequestsBadge(next);
+  }
+
+  List<PendingFriendRequest> _removeMatchingRequests(
+    List<PendingFriendRequest> requests,
+    int counterpartId,
+    int friendshipId,
+  ) {
+    return requests
+        .where(
+          (request) =>
+              request.id != friendshipId &&
+              _requestCounterpartId(request) != counterpartId,
+        )
+        .toList();
+  }
+
+  int? _requestCounterpartId(PendingFriendRequest request) {
+    return request.counterpart?.id ??
+        request.requestedBy?.id ??
+        request.blockedBy?.id;
+  }
+
+  void _upsertBlockedUserCache(int myId, UserSummary counterpart) {
+    final key = '$_prefix:blocked:$myId';
+    final cached = _client.getQueryData<List<UserSummary>>(key);
+    if (cached == null) return;
+    if (cached.any((user) => user.id == counterpart.id)) return;
+    _client.setQueryData<List<UserSummary>>(key, [counterpart, ...cached]);
+  }
+
+  void _removeBlockedUserFromCache(int myId, int counterpartId) {
+    final key = '$_prefix:blocked:$myId';
+    final cached = _client.getQueryData<List<UserSummary>>(key);
+    if (cached == null) return;
+    _client.setQueryData<List<UserSummary>>(
+      key,
+      cached.where((user) => user.id != counterpartId).toList(),
+    );
+  }
+
+  void _syncPendingFriendRequestsBadge(FriendRequestsData data) {
+    final pending = data.received
+        .where((request) => request.status.toLowerCase() == 'pending')
+        .length;
+    syncPendingFriendRequestsBadge(pending);
+  }
+
+  void _emitFriendshipChange({
+    required String type,
+    required int counterpartId,
+    required FriendshipStatus status,
+    int? friendshipId,
+    int? chatId,
+  }) {
+    _friendshipChanges.add(
+      FriendshipChange(
+        type: type,
+        counterpartId: counterpartId,
+        status: status,
+        friendshipId: friendshipId,
+        chatId: chatId,
+      ),
+    );
   }
 }

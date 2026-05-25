@@ -4,13 +4,16 @@ import 'package:agendat/core/navigation/app_navigator.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/realtime/chat_realtime_event.dart';
 import 'package:agendat/core/realtime/chat_realtime_service.dart';
+import 'package:agendat/core/realtime/friendship_realtime_event.dart';
+import 'package:agendat/core/realtime/friendship_realtime_service.dart';
 import 'package:agendat/core/state/pending_friend_requests_notifier.dart';
 import 'package:agendat/core/state/unread_chat_conversations_notifier.dart';
 import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
+import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:agendat/core/widgets/app_navigation_bar.dart';
 import 'package:agendat/features/agenda/presentation/screens/calendar.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
 import 'package:agendat/features/events/presentation/screens/visualize.dart';
 import 'package:agendat/features/map/presentation/screens/map.dart';
@@ -19,18 +22,6 @@ import 'package:agendat/features/profile/presentation/screens/profile.dart';
 import 'package:agendat/features/social/presentation/screens/social_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-
-/// Index of the currently selected root tab.
-///
-/// Kept in sync by [RootNavigationScreen] so other screens can react when the
-/// user switches tabs, such as closing transient overlays.
-final ValueNotifier<int> rootTabIndexNotifier = ValueNotifier<int>(0);
-
-/// Index of the `Social` tab inside [RootNavigationScreen].
-const int kSocialTabIndex = 3;
-
-/// Índex que ocupa la pestanya `Agenda` dins de [RootNavigationScreen].
-const int kAgendaTabIndex = 2;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -118,28 +109,34 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
 
   late int _selectedIndex;
   StreamSubscription<ChatRealtimeEvent>? _chatRealtimeSubscription;
+  StreamSubscription<FriendshipRealtimeEvent>? _friendshipRealtimeSubscription;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
     rootTabIndexNotifier.value = _selectedIndex;
-    ChatRealtimeService.instance.connect(token: currentAuthToken);
     _chatRealtimeSubscription = ChatRealtimeService.instance.events.listen(
       _onChatRealtimeEvent,
     );
+    _friendshipRealtimeSubscription = FriendshipRealtimeService.instance.events
+        .listen(_onFriendshipRealtimeEvent);
     WidgetsBinding.instance.addPostFrameCallback((_) => _primeUnreadBadge());
   }
 
   @override
   void dispose() {
     _chatRealtimeSubscription?.cancel();
-    ChatRealtimeService.instance.disconnect();
+    _friendshipRealtimeSubscription?.cancel();
     super.dispose();
   }
 
   void _onChatRealtimeEvent(ChatRealtimeEvent event) {
     ChatsQuery.instance.applyRealtimeEvent(event);
+  }
+
+  void _onFriendshipRealtimeEvent(FriendshipRealtimeEvent event) {
+    unawaited(ProfileQuery.instance.applyFriendshipRealtimeEvent(event));
   }
 
   Future<void> _primeUnreadBadge() async {

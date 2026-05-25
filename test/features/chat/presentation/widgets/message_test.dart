@@ -40,14 +40,13 @@ void main() {
       expect(find.text('Llegit'), findsOneWidget);
     });
 
-    testWidgets('renders image messages from fileUrl', (tester) async {
+    testWidgets('renders image messages from imageUrl', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Message(
               messageText: '',
-              messageType: 'image',
-              fileUrl: 'https://example.com/photo.jpg',
+              imageUrl: 'https://example.com/photo.jpg',
               sentAt: DateTime(2026, 5, 14, 10, 0),
               isSentByMe: false,
               avatarLabel: 'Aina',

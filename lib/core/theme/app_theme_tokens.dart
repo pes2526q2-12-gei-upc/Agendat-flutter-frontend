@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppThemeTokens {
   // Colors
+  static const Color brandPrimary = Color(0xFFB71C1C);
   static const Color screenBackground = Color.fromARGB(255, 247, 240, 240);
   static const Color appBarBackground = Colors.white;
 

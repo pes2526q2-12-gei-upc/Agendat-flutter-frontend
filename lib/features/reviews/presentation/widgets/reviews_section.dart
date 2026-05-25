@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:agendat/features/auth/data/users_api.dart'
     show currentLoggedInUser;
 import 'package:agendat/core/models/review.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/query/reviews_query.dart';
 import 'package:agendat/features/reviews/presentation/widgets/add_review_form.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
@@ -13,12 +14,10 @@ import 'package:agendat/features/reviews/presentation/widgets/reviews_list.dart'
 /// Comportament:
 ///   - Per defecte es mostra col·lapsada, amb el títol i la nota mitjana
 ///     (arrodonida) en forma d'estrelles.
-///   - En desplegar-la, apareix un botó "Afegir valoració" (o "Editar
-///     valoració" si l'usuari ja n'hi ha deixat una) i la llista paginada
-///     amb les ressenyes de la resta d'usuaris.
-///   - Un usuari només pot tenir una valoració per esdeveniment; clicant
-///     "Editar" (o el llapis a la seva pròpia targeta) s'obre el mateix
-///     formulari pre-omplert.
+///   - En desplegar-la, apareix un botó "Afegir valoració" si l'usuari encara
+///     no n'ha deixat cap, i la llista paginada amb les ressenyes.
+///   - Un usuari només pot tenir una valoració per esdeveniment; per editar-la
+///     fa servir el llapis de la seva pròpia targeta.
 class ReviewsSection extends StatefulWidget {
   const ReviewsSection({super.key, required this.eventCode});
 
@@ -33,6 +32,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   static const Color _brandRed = Color.fromARGB(255, 202, 3, 3);
 
   final ReviewsQuery _reviewsQuery = ReviewsQuery.instance;
+  final ProfileQuery _profileQuery = ProfileQuery.instance;
 
   bool _isExpanded = false;
   bool _isFormOpen = false;
@@ -314,7 +314,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         title: const Text('Ja has valorat aquest esdeveniment'),
         content: const Text(
           'Ja tens una valoració per aquest esdeveniment. Si la vols '
-          'canviar, fes servir el botó d\'editar.',
+          'canviar, fes servir el llapis de la teva valoració.',
         ),
         actions: [
           TextButton(
@@ -418,6 +418,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
                   ? 'Valoració actualitzada correctament.'
                   : 'Valoració publicada correctament.'),
       );
+      final currentUserId = currentLoggedInUser?['id'];
+      if (currentUserId is int) {
+        _profileQuery.invalidateUser(currentUserId);
+      }
       // Refresc silenciós per sincronitzar id real, likes i data del backend.
       // ignore: unawaited_futures
       _fetchReviews(silent: true);
@@ -619,7 +623,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     }
     return [
       if (_error != null) _buildErrorBanner(),
-      if (!_isFormOpen) _buildMainActionButton(),
+      if (!_isFormOpen && _userReviewIndex == null) _buildMainActionButton(),
       if (_isFormOpen) _buildReviewForm(),
       ReviewsList(
         reviews: _reviews,
@@ -791,34 +795,18 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     );
   }
 
-  /// Botó principal de la secció desplegada:
-  ///   - "Afegir valoració" si l'usuari encara no n'ha fet cap.
-  ///   - "Editar valoració" si ja en té una (obre el formulari pre-omplert).
+  /// Botó "Afegir valoració" (només si l'usuari encara no n'ha deixat cap).
   Widget _buildMainActionButton() {
-    final userIdx = _userReviewIndex;
-    final isEditing = userIdx != null;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          onPressed: !_isLoggedIn
-              ? null
-              : (isEditing
-                    ? () => _openEditForm(userIdx)
-                    : () => _openAddForm()),
-          icon: Icon(
-            isEditing ? Icons.edit_rounded : Icons.add_rounded,
-            size: 20,
-            color: _brandRed,
-          ),
-          label: Text(
-            isEditing ? 'Editar valoració' : 'Afegir valoració',
-            style: const TextStyle(
-              color: _brandRed,
-              fontWeight: FontWeight.w600,
-            ),
+          onPressed: !_isLoggedIn ? null : _openAddForm,
+          icon: const Icon(Icons.add_rounded, size: 20, color: _brandRed),
+          label: const Text(
+            'Afegir valoració',
+            style: TextStyle(color: _brandRed, fontWeight: FontWeight.w600),
           ),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: _brandRed),

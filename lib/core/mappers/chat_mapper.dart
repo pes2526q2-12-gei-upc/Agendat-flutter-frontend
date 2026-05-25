@@ -4,7 +4,7 @@ import 'package:agendat/core/mappers/event_invitation_mapper.dart';
 import 'package:agendat/core/models/chat.dart';
 import 'package:agendat/core/models/chat_message.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 extension ChatDtoMapper on ChatDto {
   Chat toDomain() {

@@ -6,7 +6,7 @@ import 'package:agendat/core/mappers/session_mapper.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/invitations_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
-import 'package:agendat/core/widgets/mainAppBar.dart';
+import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
@@ -732,6 +732,12 @@ class _EventScreenState extends State<EventScreen> {
                           label: 'Horari',
                           value: event.schedule!.trim(),
                         ),
+
+                      InfoRow(
+                        icon: Icons.lock_outline_rounded,
+                        label: 'Privacitat',
+                        value: event.displayPrivacy,
+                      ),
 
                       InfoRow(
                         icon: Icons.euro_rounded,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/widgets/screen_spacing.dart';
@@ -5,9 +7,8 @@ import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/services/user_preferences_api.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/core/models/user_profile.dart';
-import 'package:agendat/core/api/profile_api.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/profile/application/notification_preferences.dart';
-import 'package:agendat/features/profile/presentation/screens/blockedUsers.dart';
 import 'package:agendat/features/profile/presentation/widgets/language_selector_tile.dart';
 import 'package:agendat/features/profile/presentation/widgets/notification_alerts_block.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -229,6 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildIntroText(),
         const SizedBox(height: 24),
         LanguageSelectorTile(
+          userId: widget.currentProfile.id,
           unauthenticatedMessage: _unauthenticatedMessage,
           onShowMessage: _showMessage,
         ),
@@ -274,9 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: const Text('Revisa els perfils que has bloquejat.'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const BlockedUsersScreen()));
+          unawaited(FeatureNavigation.openBlockedUsers(context));
         },
       ),
     );

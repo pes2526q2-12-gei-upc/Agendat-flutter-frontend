@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/profile_image_url.dart';
-import 'package:agendat/features/auth/data/users_api.dart';
-import 'package:agendat/features/auth/presentation/screens/login_screen.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/user_list_utils.dart';
+import 'package:agendat/core/widgets/require_auth.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/profile/presentation/screens/profile.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Pantalla que llista els amics de l'usuari autenticat.
 ///
@@ -30,7 +34,7 @@ class FriendsListScreen extends StatefulWidget {
 }
 
 class _FriendsListScreenState extends State<FriendsListScreen> {
-  static const _kPrimaryRed = Color(0xFFB71C1C);
+  static const _kPrimaryRed = AppThemeTokens.brandPrimary;
 
   final ProfileQuery _profileQuery = ProfileQuery.instance;
   final TextEditingController _filterController = TextEditingController();
@@ -40,10 +44,14 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   String? _errorMessage;
   List<UserSummary> _friends = const [];
   String _filter = '';
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
 
   @override
   void initState() {
     super.initState();
+    _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
+      _onFriendshipChange,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_guardAuthenticated()) return;
       // Forcem un refetch en muntar: la llista d'amics depèn d'accions que
@@ -57,33 +65,24 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
 
   @override
   void dispose() {
+    _friendshipChangeSubscription?.cancel();
     _filterController.dispose();
     _filterFocusNode.dispose();
     super.dispose();
   }
 
-  bool get _isAuthenticated =>
-      currentAuthToken != null &&
-      currentAuthToken!.trim().isNotEmpty &&
-      currentLoggedInUser?['id'] is int;
-
-  /// Si la sessió no és vàlida, mostra un snackbar i redirigeix al login.
-  /// Retorna `true` si l'usuari està autenticat.
-  bool _guardAuthenticated() {
-    if (_isAuthenticated || !mounted) return _isAuthenticated;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cal iniciar sessió per veure el teu llistat d\'amics.'),
-      ),
-    );
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
-    return false;
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!_isAuthenticated || !mounted) return;
+    unawaited(_refreshFriendsFromCache());
   }
+
+  bool get _isAuthenticated => isAuthenticated(requireUserId: true);
+
+  bool _guardAuthenticated() => guardAuthenticated(
+    context,
+    message: 'Cal iniciar sessió per veure el teu llistat d\'amics.',
+    requireUserId: true,
+  );
 
   Future<void> _loadFriends({bool forceRefresh = false}) async {
     if (!_guardAuthenticated()) return;
@@ -104,7 +103,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       if (!mounted) return;
 
       setState(() {
-        _friends = _sortAlphabetically(friends);
+        _friends = sortUsersByDisplayName(friends);
         _isLoading = false;
       });
     } catch (e) {
@@ -116,21 +115,6 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
             'No s\'ha pogut carregar el llistat d\'amics. Comprova la teva connexió.';
       });
     }
-  }
-
-  /// Ordenació alfabètica per `displayName` (cau a `username` si no hi ha
-  /// nom). Fa servir comparació case-insensitive perquè la barreja de
-  /// majúscules/minúscules no afecti l'ordre percebut.
-  List<UserSummary> _sortAlphabetically(List<UserSummary> users) {
-    final sorted = [...users];
-    sorted.sort((a, b) {
-      final aKey = a.displayName.toLowerCase();
-      final bKey = b.displayName.toLowerCase();
-      final byName = aKey.compareTo(bKey);
-      if (byName != 0) return byName;
-      return a.username.toLowerCase().compareTo(b.username.toLowerCase());
-    });
-    return sorted;
   }
 
   /// Amics actius: tot el que ve del backend menys els usuaris que la sessió
@@ -150,15 +134,8 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   }
 
   /// Llistat finalment visible: amics actius + filtre de text si està actiu.
-  List<UserSummary> get _visibleFriends {
-    final unblocked = _unblockedFriends;
-    if (_filter.isEmpty) return unblocked;
-    final lowered = _filter.toLowerCase();
-    return unblocked.where((u) {
-      return u.username.toLowerCase().contains(lowered) ||
-          u.displayName.toLowerCase().contains(lowered);
-    }).toList();
-  }
+  List<UserSummary> get _visibleFriends =>
+      filterUsersByQuery(_unblockedFriends, _filter);
 
   void _onFilterChanged(String value) {
     setState(() => _filter = value.trim());
@@ -171,9 +148,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   }
 
   Future<void> _openProfile(UserSummary user) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+    await FeatureNavigation.openUserProfile(context, userId: user.id);
     if (!mounted) return;
 
     // En tornar del perfil, l'estat local pot haver canviat: el `ProfileScreen`
@@ -196,7 +171,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
       final friends = await _profileQuery.getFriends(myId);
       if (!mounted) return;
       setState(() {
-        _friends = _sortAlphabetically(friends);
+        _friends = sortUsersByDisplayName(friends);
       });
     } catch (e) {
       if (kDebugMode) debugPrint('[friends-list] silent refresh failed: $e');

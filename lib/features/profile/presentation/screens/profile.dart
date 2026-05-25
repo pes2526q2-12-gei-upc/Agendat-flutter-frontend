@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
@@ -6,16 +8,17 @@ import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/profile_query.dart';
-import 'package:agendat/features/events/presentation/screens/eventView.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_interests_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:agendat/features/profile/presentation/screens/settings_screen.dart';
-import 'package:agendat/features/social/data/social_api.dart';
+import 'package:agendat/core/api/friendship_api.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_attended_sessions_tab.dart';
@@ -23,6 +26,7 @@ import 'package:agendat/features/profile/presentation/widgets/profile_friendship
 import 'package:agendat/features/profile/presentation/widgets/profile_interests_section.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_reviews_tab.dart';
 import 'package:agendat/features/profile/presentation/widgets/profile_summary_card.dart';
+import 'package:agendat/features/profile/presentation/widgets/profile_screen_widgets.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.userId});
@@ -37,7 +41,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  TabController? _tabController;
   bool _isLoading = true;
   bool _isLoggingOut = false;
   UserProfile? _profile;
@@ -51,6 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   final CategoriesQuery _categoriesQuery = CategoriesQuery.instance;
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
   final EventsQuery _eventsQuery = EventsQuery.instance;
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
 
   FriendshipStatus? _friendshipStatus;
   bool _isFriendshipActionInProgress = false;
@@ -69,7 +74,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    if (_isOwnProfile) {
+      _tabController = TabController(length: 2, vsync: this);
+    }
+    rootTabIndexNotifier.addListener(_onRootTabChanged);
+    _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
+      _onFriendshipChange,
+    );
     // Quan visitem el perfil d'un altre usuari forcem un refetch: el seu
     // `friendship_status` pot haver canviat sense que en rebéssim cap
     // notificació (per exemple, l'altre ens ha eliminat com a amic, o ha
@@ -83,8 +94,38 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
-    _tabController.dispose();
+    rootTabIndexNotifier.removeListener(_onRootTabChanged);
+    _friendshipChangeSubscription?.cancel();
+    _tabController?.dispose();
     super.dispose();
+  }
+
+  void _onRootTabChanged() {
+    if (rootTabIndexNotifier.value == kProfileTabIndex) {
+      _loadProfile(forceRefresh: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final wasOwn = oldWidget.userId == null;
+    final isOwn = widget.userId == null;
+    if (wasOwn == isOwn) return;
+    _tabController?.dispose();
+    _tabController = isOwn ? TabController(length: 2, vsync: this) : null;
+  }
+
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!mounted || widget.userId == null) return;
+    if (change.counterpartId != widget.userId) return;
+
+    setState(() {
+      _friendshipStatus = change.status;
+      if (_profile != null) {
+        _profile = _profile!.copyWithFriendshipStatus(change.status);
+      }
+    });
   }
 
   Future<void> _loadProfile({bool forceRefresh = false}) async {
@@ -287,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     final isBlockedLocally = _profileQuery.isUserLocallyBlocked(profile.id);
-    if (isBlockedLocally) return FriendshipStatus.blocked;
+    if (isBlockedLocally) return FriendshipStatus.blockedByMe;
     return profile.friendshipStatus ?? FriendshipStatus.none;
   }
 
@@ -634,24 +675,24 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (profile == null) return null;
     if (_currentUserId == null || profile.id == _currentUserId) return null;
 
-    final isBlocked = _friendshipStatus == FriendshipStatus.blocked;
+    final isBlocked = _friendshipStatus == FriendshipStatus.blockedByMe;
     final actionLabel = isBlocked ? 'Desbloquejar' : 'Bloquejar';
     final actionIcon = isBlocked ? Icons.lock_open : Icons.block;
 
     return [
-      PopupMenuButton<_ProfileMenuAction>(
+      PopupMenuButton<ProfileMenuAction>(
         tooltip: 'Més opcions',
         icon: const Icon(Icons.more_vert, color: Colors.black87),
         enabled: !_isBlockActionInProgress,
         onSelected: (action) {
           switch (action) {
-            case _ProfileMenuAction.toggleBlock:
+            case ProfileMenuAction.toggleBlock:
               _toggleBlockStatus();
           }
         },
         itemBuilder: (context) => [
-          PopupMenuItem<_ProfileMenuAction>(
-            value: _ProfileMenuAction.toggleBlock,
+          PopupMenuItem<ProfileMenuAction>(
+            value: ProfileMenuAction.toggleBlock,
             child: Row(
               children: [
                 Icon(
@@ -690,7 +731,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (_isBlockActionInProgress) return;
     if (!_ensureAuthenticatedForBlocking()) return;
 
-    if (_friendshipStatus == FriendshipStatus.blocked) {
+    if (_friendshipStatus == FriendshipStatus.blockedByMe) {
       await _confirmAndUnblockUser();
     } else {
       await _confirmAndBlockUser();
@@ -716,7 +757,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   /// Demana confirmació i, si l'usuari accepta, executa la crida POST
   /// `/api/users/{id}/block/`. En cas d'èxit:
-  /// - Marca el perfil com a `FriendshipStatus.blocked` localment.
+  /// - Marca el perfil com a `FriendshipStatus.blockedByMe` localment.
   /// - Invalida les llistes d'amistat (l'amistat es trenca al backend) i la
   ///   llista de bloquejats per refrescar la propera consulta.
   Future<void> _confirmAndBlockUser() async {
@@ -753,7 +794,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (confirmed != true || !mounted) return;
     await _runBlockAction(
       action: () => blockUser(profile.id),
-      successStatus: FriendshipStatus.blocked,
+      successStatus: FriendshipStatus.blockedByMe,
       successMessage: 'Has bloquejat aquest usuari.',
       genericErrorMessage: 'No s\'ha pogut bloquejar l\'usuari.',
       isUnblock: false,
@@ -914,7 +955,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     if (_errorMessage != null) {
-      return _ProfileLoadErrorBody(
+      return ProfileLoadErrorBody(
         message: _errorMessage!,
         onRetry: () => _loadProfile(forceRefresh: true),
       );
@@ -960,7 +1001,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             _buildTabSection(reviewsResponse: _reviewsResponse),
             if (_isOwnProfile) ...[
               const SizedBox(height: AppScreenSpacing.section),
-              _ProfileLogoutButton(
+              ProfileLogoutButton(
                 isLoggingOut: _isLoggingOut,
                 onPressed: _isLoggingOut ? null : _requestLogOut,
               ),
@@ -986,73 +1027,92 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
       child: Column(
         children: [
-          TabBar(
-            controller: _tabController,
-            labelColor: EventTextUtils.kPrimaryRed,
-            unselectedLabelColor: Colors.grey.shade600,
-            indicatorColor: EventTextUtils.kPrimaryRed,
-            indicatorWeight: 3,
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            labelStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-            labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-            tabs: [
-              Tab(
-                child: _ProfileAttendedTabLabel(
-                  isOwnProfile: _isOwnProfile,
-                  sessionsQuery: _sessionsQuery,
-                ),
+          if (_isOwnProfile) ...[
+            TabBar(
+              controller: _tabController!,
+              labelColor: EventTextUtils.kPrimaryRed,
+              unselectedLabelColor: Colors.grey.shade600,
+              indicatorColor: EventTextUtils.kPrimaryRed,
+              indicatorWeight: 3,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Ressenyes'),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${reviewsResponse?.count ?? 0}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+              tabs: [
+                Tab(
+                  child: ProfileAttendedTabLabel(sessionsQuery: _sessionsQuery),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Ressenyes'),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${reviewsResponse?.count ?? 0}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(
-            height: 280,
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                ProfileAttendedSessionsTab(
-                  isOwnProfile: _isOwnProfile,
-                  sessionsQuery: _sessionsQuery,
-                  eventsQuery: _eventsQuery,
-                  onOpenSession: _openSessionEvent,
-                ),
-                ProfileReviewsTab(
-                  response: reviewsResponse,
-                  onReviewTap: _openReviewEvent,
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
+            SizedBox(
+              height: 280,
+              child: TabBarView(
+                controller: _tabController!,
+                children: [
+                  ProfileAttendedSessionsTab(
+                    isOwnProfile: true,
+                    sessionsQuery: _sessionsQuery,
+                    eventsQuery: _eventsQuery,
+                    onOpenSession: _openSessionEvent,
+                  ),
+                  ProfileReviewsTab(
+                    response: reviewsResponse,
+                    eventsQuery: _eventsQuery,
+                    onReviewTap: _openReviewEvent,
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Ressenyes',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 280,
+              child: ProfileReviewsTab(
+                response: reviewsResponse,
+                eventsQuery: _eventsQuery,
+                onReviewTap: _openReviewEvent,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1067,9 +1127,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => EventScreen(eventCode: eventCode)),
-    );
+    FeatureNavigation.openEventDetail(context, eventCode: eventCode).then((_) {
+      if (mounted) {
+        _loadProfile(forceRefresh: true);
+      }
+    });
   }
 
   void _openSessionEvent(Session session) {
@@ -1080,135 +1142,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => EventScreen(eventCode: session.event)),
+    unawaited(
+      FeatureNavigation.openEventDetail(context, eventCode: session.event),
     );
   }
 }
-
-class _ProfileLoadErrorBody extends StatelessWidget {
-  const _ProfileLoadErrorBody({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: AppScreenSpacing.section),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: AppScreenSpacing.section),
-            ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EventTextUtils.kPrimaryRed,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Reintentar'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileLogoutButton extends StatelessWidget {
-  const _ProfileLogoutButton({
-    required this.isLoggingOut,
-    required this.onPressed,
-  });
-
-  final bool isLoggingOut;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: isLoggingOut
-            ? const SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.logout_outlined),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: EventTextUtils.kPrimaryRed,
-          side: const BorderSide(color: EventTextUtils.kPrimaryRed),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        label: const Text(
-          'Tancar sessió',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileAttendedTabLabel extends StatelessWidget {
-  const _ProfileAttendedTabLabel({
-    required this.isOwnProfile,
-    required this.sessionsQuery,
-  });
-
-  final bool isOwnProfile;
-  final SessionsQuery sessionsQuery;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isOwnProfile) {
-      return const Text('Assistits');
-    }
-
-    return FutureBuilder<List<Session>>(
-      future: sessionsQuery.getSessions(),
-      builder: (context, snapshot) {
-        final count = snapshot.data?.length ?? 0;
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Assistits'),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Accions disponibles al menú contextual del perfil d'un altre usuari.
-/// Es deixa com a `enum` privat al fitxer perquè el menú només té sentit
-/// dins del flux d'aquesta pantalla.
-enum _ProfileMenuAction { toggleBlock }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:agendat/features/map/presentation/models/map_filters.dart';
+import 'package:agendat/core/widgets/filter_sheet_launcher.dart';
+import 'package:agendat/features/map/data/models/map_filters.dart';
 import 'package:agendat/features/map/presentation/widgets/map_filters_card.dart';
 
 /// Map-only filter button that opens the [MapFiltersCard] sheet.
@@ -26,33 +27,17 @@ class MapFilterButton extends StatelessWidget {
   final String label;
 
   Future<void> _openFilters(BuildContext context) async {
-    onSheetVisibilityChanged?.call(true);
-
-    final selectedFilters = await showModalBottomSheet<MapFilters>(
+    final selectedFilters = await showFilterBottomSheet<MapFilters>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-            child: SingleChildScrollView(
-              child: MapFiltersCard(
-                initialFilters: currentFilters,
-                onApply: (filters) {
-                  Navigator.of(sheetContext).pop(filters);
-                },
-                onCancel: () {
-                  Navigator.of(sheetContext).pop();
-                },
-              ),
-            ),
-          ),
+      onSheetVisibilityChanged: onSheetVisibilityChanged,
+      sheetBuilder: (sheetContext, apply) {
+        return MapFiltersCard(
+          initialFilters: currentFilters,
+          onApply: apply,
+          onCancel: () => Navigator.of(sheetContext).pop(),
         );
       },
     );
-
-    onSheetVisibilityChanged?.call(false);
 
     if (selectedFilters != null) {
       onApplyFilters?.call(selectedFilters);

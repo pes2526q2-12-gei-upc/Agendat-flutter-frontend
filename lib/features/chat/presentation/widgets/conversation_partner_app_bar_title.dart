@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:agendat/core/widgets/avatars.dart';
-import 'package:agendat/features/social/data/models/user_summary.dart';
+import 'package:agendat/core/models/user_summary.dart';
 
 /// Capçalera de l'AppBar amb avatar i nom de la persona amb qui es xateja.
 class ConversationPartnerAppBarTitle extends StatelessWidget {
