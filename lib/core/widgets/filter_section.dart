@@ -321,6 +321,7 @@ class DateRangeFilterSection extends StatelessWidget {
   }
 
   Future<void> _pickFrom(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final first = DateTime(2020);
     final last = dateTo ?? DateTime(2030);
     final picked = await showDatePicker(
@@ -328,13 +329,13 @@ class DateRangeFilterSection extends StatelessWidget {
       initialDate: _clamp(dateFrom ?? DateTime.now(), first, last),
       firstDate: first,
       lastDate: last,
-      confirmText: "D'acord",
-      locale: const Locale('ca'),
+      confirmText: l10n.confirm,
     );
     if (picked != null) onDateFromChanged(picked);
   }
 
   Future<void> _pickTo(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final first = dateFrom ?? DateTime(2020);
     final last = DateTime(2030);
     final picked = await showDatePicker(
@@ -342,29 +343,26 @@ class DateRangeFilterSection extends StatelessWidget {
       initialDate: _clamp(dateTo ?? DateTime.now(), first, last),
       firstDate: first,
       lastDate: last,
-      confirmText: "D'acord",
-      locale: const Locale('ca'),
+      confirmText: l10n.confirm,
     );
     if (picked != null) onDateToChanged(picked);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final errorColor = Theme.of(context).colorScheme.error;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Dates',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
+        Text(l10n.dateRange, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: _DateChip(
-                label: dateFrom != null ? _format(dateFrom!) : 'Inici',
+                label: dateFrom != null ? _format(dateFrom!) : l10n.dateFrom,
                 hasValue: dateFrom != null,
                 hasError: _hasError,
                 onTap: () => _pickFrom(context),
@@ -383,7 +381,7 @@ class DateRangeFilterSection extends StatelessWidget {
             ),
             Expanded(
               child: _DateChip(
-                label: dateTo != null ? _format(dateTo!) : 'Fi',
+                label: dateTo != null ? _format(dateTo!) : l10n.dateTo,
                 hasValue: dateTo != null,
                 hasError: _hasError,
                 onTap: () => _pickTo(context),
@@ -396,7 +394,7 @@ class DateRangeFilterSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              'La data d\'inici ha de ser anterior a la data fi',
+              l10n.dateRangeInvalid,
               style: TextStyle(color: errorColor, fontSize: 12),
             ),
           ),

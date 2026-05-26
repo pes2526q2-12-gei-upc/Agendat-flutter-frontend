@@ -144,6 +144,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get date => 'Date';
 
   @override
+  String get dateRange => 'Dates';
+
+  @override
+  String get dateFrom => 'Start';
+
+  @override
+  String get dateTo => 'End';
+
+  @override
+  String get dateRangeInvalid => 'The start date must be before the end date';
+
+  @override
   String get time => 'Time';
 
   @override
