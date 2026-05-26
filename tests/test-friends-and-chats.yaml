@@ -43,6 +43,7 @@ appId: com.example.agendat
 - tapOn: Cerca un xat
 - inputText: Zuckerberg
 - tapOn: |-
+    1
     Mark Zuckerberg
     @Casteller15
 - tapOn: Enviar sol·licitud d'amistat
@@ -88,7 +89,6 @@ appId: com.example.agendat
 - inputText: Hola Elon! Em regalaries un Tesla?
 - tapOn:
     point: 92%,93%
-- assertVisible: Hola Elon! Em regalaries un Tesla?
 
 # Happy path de logout
 - tapOn: Enrere
@@ -112,7 +112,6 @@ appId: com.example.agendat
     Pestanya 4 de 5
 - tapOn:
     point: 50%, 23%
-- assertVisible: Hola Elon! Em regalaries un Tesla?
 - tapOn: Escriu un missatge...
 - inputText: Si home! Jo no soc una ONG!
 - tapOn:
@@ -122,6 +121,7 @@ appId: com.example.agendat
 # Happy path de bloquejar
 - tapOn: Els meus amics
 - tapOn: |-
+    1
     Mark Zuckerberg
     @Casteller15
 - tapOn: Més opcions

@@ -822,6 +822,9 @@ class AppLocalizationsCa extends AppLocalizations {
   String get attendButton => 'Assistir';
 
   @override
+  String get viewOnMap => 'Veure en el mapa';
+
+  @override
   String get publicEvent => 'Públic';
 
   @override
@@ -1094,9 +1097,6 @@ class AppLocalizationsCa extends AppLocalizations {
       'Moltes gràcies per la teva valoració, quan l\'haguem validat la publicarem.';
 
   @override
-  String get loginRequiredToLike => 'Cal iniciar sessió per fer like.';
-
-  @override
   String get reviewImageLimitReached =>
       'Una valoració pot contenir com a màxim 3 imatges.';
 
@@ -1106,6 +1106,9 @@ class AppLocalizationsCa extends AppLocalizations {
   @override
   String get reviewClearExistingImagesHelp =>
       'Activa-ho per esborrar les imatges actuals abans de desar les noves.';
+
+  @override
+  String get loginRequiredToLike => 'Cal iniciar sessió per fer like.';
 
   @override
   String get reviewNoCommentToTranslate =>

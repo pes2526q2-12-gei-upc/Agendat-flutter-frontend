@@ -816,6 +816,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attendButton => 'Attend';
 
   @override
+  String get viewOnMap => 'See on the map';
+
+  @override
   String get publicEvent => 'Public';
 
   @override

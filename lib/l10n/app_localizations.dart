@@ -1600,6 +1600,12 @@ abstract class AppLocalizations {
   /// **'Assistir'**
   String get attendButton;
 
+  /// No description provided for @viewOnMap.
+  ///
+  /// In ca, this message translates to:
+  /// **'Veure en el mapa'**
+  String get viewOnMap;
+
   /// No description provided for @publicEvent.
   ///
   /// In ca, this message translates to:

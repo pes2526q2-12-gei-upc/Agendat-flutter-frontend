@@ -16,6 +16,8 @@ import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/core/state/map_pending_event_selection.dart';
+import 'package:agendat/core/state/root_tab_state.dart';
 import 'package:agendat/l10n/app_localizations.dart';
 import 'package:agendat/features/map/data/models/map_filters.dart';
 import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
@@ -80,16 +82,74 @@ class _MapScreenState extends State<MapScreen> {
     _eventsQuery.translatedContentRevisionListenable.addListener(
       _onTranslatedContentChanged,
     );
+    rootTabActivationNotifier.addListener(_onRootTabActivated);
     _loadCurrentLocation();
     _loadPins(forceRefresh: true);
   }
 
   @override
   void dispose() {
+    rootTabActivationNotifier.removeListener(_onRootTabActivated);
     _eventsQuery.translatedContentRevisionListenable.removeListener(
       _onTranslatedContentChanged,
     );
     super.dispose();
+  }
+
+  void _onRootTabActivated() {
+    if (rootTabActivationNotifier.value.index != kMapTabIndex) return;
+    unawaited(_applyPendingEventSelection());
+  }
+
+  Future<void> _applyPendingEventSelection() async {
+    final pending = consumeMapPendingEventSelection();
+    if (pending == null || !mounted) return;
+
+    final filterDate = pending.filterDate;
+    if (filterDate != null) {
+      final dateOnly = DateTime(
+        filterDate.year,
+        filterDate.month,
+        filterDate.day,
+      );
+      final filtersChanged =
+          _filters.date.year != dateOnly.year ||
+          _filters.date.month != dateOnly.month ||
+          _filters.date.day != dateOnly.day ||
+          _filters.category != null;
+      if (filtersChanged) {
+        setState(() {
+          _filters = MapFilters(date: dateOnly);
+          _submittedName = '';
+          _clearSelection();
+        });
+        await _loadPins(forceRefresh: true);
+      }
+    }
+
+    if (!mounted) return;
+    await _selectEventOnMap(pending);
+  }
+
+  Future<void> _selectEventOnMap(MapPendingEventSelection pending) async {
+    MapEventMarker marker;
+    final existing = _markers.where((m) => m.code == pending.eventCode);
+    if (existing.isNotEmpty) {
+      marker = existing.first;
+    } else {
+      marker = MapEventMarker(
+        code: pending.eventCode,
+        point: LatLng(pending.latitude, pending.longitude),
+      );
+      setState(() => _markers = [..._markers, marker]);
+    }
+
+    const targetZoom = 15.0;
+    _mapController.move(
+      marker.point,
+      targetZoom.clamp(_minZoom, _maxZoom).toDouble(),
+    );
+    await _loadPreviewForMarker(marker);
   }
 
   Future<void> _loadCurrentLocation() async {
