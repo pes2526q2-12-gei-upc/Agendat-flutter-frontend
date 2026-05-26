@@ -39,6 +39,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void initState() {
     super.initState();
+    for (final controller in [
+      _usernameController,
+      _nameController,
+      _emailController,
+      _passwordController,
+      _confirmPasswordController,
+    ]) {
+      controller.addListener(_handleFormChanged);
+    }
     _loginTapRecognizer = TapGestureRecognizer()
       ..onTap = () {
         Navigator.pushAndRemoveUntil(
@@ -51,6 +60,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
+    for (final controller in [
+      _usernameController,
+      _nameController,
+      _emailController,
+      _passwordController,
+      _confirmPasswordController,
+    ]) {
+      controller.removeListener(_handleFormChanged);
+    }
     _usernameController.dispose();
     _nameController.dispose();
     _emailController.dispose();
@@ -63,6 +81,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _confirmPasswordFocusNode.dispose();
     _loginTapRecognizer.dispose();
     super.dispose();
+  }
+
+  void _handleFormChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  bool get _passwordsMatch =>
+      _passwordController.text.isNotEmpty &&
+      _passwordController.text == _confirmPasswordController.text;
+
+  bool get _showConfirmPasswordMismatch {
+    return _passwordController.text.isNotEmpty &&
+        _confirmPasswordController.text.isNotEmpty &&
+        !_passwordsMatch;
+  }
+
+  bool get _isFormValid {
+    return _usernameController.text.trim().isNotEmpty &&
+        _nameController.text.trim().isNotEmpty &&
+        _emailController.text.trim().isNotEmpty &&
+        PasswordValidator.validate(_passwordController.text) == null &&
+        _passwordsMatch;
   }
 
   Future<void> _submitSignUp() async {
@@ -149,6 +190,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final headerHeight = screenHeight * (1 / 3);
     final padding = MediaQuery.paddingOf(context);
+    final l10n = AppLocalizations.of(context);
+    final passwordRequirements = [
+      (
+        key: 'too-short',
+        isMet: PasswordValidator.hasMinLength(_passwordController.text),
+        label: l10n.passwordTooShort,
+      ),
+      (
+        key: 'uppercase',
+        isMet: PasswordValidator.hasUppercase(_passwordController.text),
+        label: l10n.passwordNeedsUppercase,
+      ),
+      (
+        key: 'lowercase',
+        isMet: PasswordValidator.hasLowercase(_passwordController.text),
+        label: l10n.passwordNeedsLowercase,
+      ),
+      (
+        key: 'number',
+        isMet: PasswordValidator.hasNumber(_passwordController.text),
+        label: l10n.passwordNeedsNumber,
+      ),
+      (
+        key: 'special-char',
+        isMet: PasswordValidator.hasSpecialChar(_passwordController.text),
+        label: l10n.passwordNeedsSpecialChar,
+      ),
+    ];
 
     return Scaffold(
       body: Column(
@@ -351,7 +420,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final requirement in passwordRequirements) ...[
+                        _PasswordRequirementRow(
+                          requirementKey: requirement.key,
+                          label: requirement.label,
+                          isMet: requirement.isMet,
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 14),
                   _buildLabel(
                     AppLocalizations.of(context).confirmPasswordLabel,
                   ),
@@ -362,6 +445,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     hintText: AppLocalizations.of(
                       context,
                     ).repeatPasswordHintAuth,
+                    errorText: _showConfirmPasswordMismatch
+                        ? l10n.passwordsDoNotMatch
+                        : null,
                     obscureText: _obscureConfirmPassword,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submitWithKeyboard(),
@@ -382,7 +468,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   const SizedBox(height: 28),
                   FilledButton(
-                    onPressed: _isLoading ? null : _submitWithKeyboard,
+                    onPressed: _isLoading || !_isFormValid
+                        ? null
+                        : _submitWithKeyboard,
                     style: FilledButton.styleFrom(
                       backgroundColor: EventTextUtils.kPrimaryRed,
                       foregroundColor: Colors.white,
@@ -487,6 +575,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     required FocusNode focusNode,
     required String hintText,
     TextInputType keyboardType = TextInputType.text,
+    String? errorText,
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputAction? textInputAction,
@@ -516,6 +605,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
           borderRadius: BorderRadius.all(Radius.circular(12)),
           borderSide: BorderSide(color: EventTextUtils.kPrimaryRed, width: 1.5),
         ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red.shade400),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
+        ),
+        errorText: errorText,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -541,6 +639,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
       case PasswordValidationIssue.needsSpecialChar:
         return l10n.passwordNeedsSpecialChar;
     }
+  }
+}
+
+class _PasswordRequirementRow extends StatelessWidget {
+  const _PasswordRequirementRow({
+    required this.requirementKey,
+    required this.label,
+    required this.isMet,
+  });
+
+  final String requirementKey;
+  final String label;
+  final bool isMet;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isMet ? Colors.green.shade700 : Colors.grey.shade500;
+
+    return Row(
+      children: [
+        Icon(
+          isMet ? Icons.check_circle : Icons.radio_button_unchecked,
+          key: Key(
+            'password-requirement-$requirementKey-${isMet ? 'met' : 'unmet'}',
+          ),
+          size: 16,
+          color: color,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: isMet ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
