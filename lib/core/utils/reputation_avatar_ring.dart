@@ -62,17 +62,6 @@ int reputationAvatarRingLevel(double? reputation) {
       reputationAvatarRingNeutralLevel;
 }
 
-String reputationAvatarRingTierName(double? reputation) {
-  final tier = reputationAvatarRingTierFor(reputation);
-  if (tier == null) return 'Nivell';
-  return switch (tier.level) {
-    1 => 'Nivell Bronze',
-    2 => 'Nivell Plata',
-    3 => 'Nivell Or',
-    _ => 'Nivell',
-  };
-}
-
 class ReputationAvatarRing extends StatelessWidget {
   const ReputationAvatarRing({
     super.key,

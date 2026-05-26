@@ -530,6 +530,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get editInterestsTitle => 'Editar intereses';
 
   @override
+  String get registerInterestsTitle => 'Elige tus intereses';
+
+  @override
+  String get registerInterestsSubtitle =>
+      'Personaliza las recomendaciones culturales';
+
+  @override
+  String get selectAtLeastOneInterest =>
+      'Selecciona al menos una categoría para continuar';
+
+  @override
+  String get skipButton => 'Saltar';
+
+  @override
+  String get loadInterestsFailed => 'No se han podido cargar los intereses.';
+
+  @override
   String get showAttended => 'Asistidos';
 
   @override
@@ -952,6 +969,21 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get profileNoDescription => 'Sin descripción';
+
+  @override
+  String get profileLevel => 'Nivel';
+
+  @override
+  String get profileLevelBronze => 'Nivel Bronce';
+
+  @override
+  String get profileLevelSilver => 'Nivel Plata';
+
+  @override
+  String get profileLevelGold => 'Nivel Oro';
+
+  @override
   String get openInterestsEditorFailed =>
       'No se ha podido abrir el editor de intereses. Vuelve a iniciar sesión.';
 
@@ -1055,6 +1087,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get noInterestsAdded => 'Ningún interés añadido';
+
+  @override
+  String selectedInterestsCount(Object count) {
+    return '$count seleccionados';
+  }
+
+  @override
+  String get attendancesOnlyOwnProfile =>
+      'Las asistencias solo están disponibles en tu perfil';
+
+  @override
+  String get loadAttendancesFailed => 'No se han podido cargar las asistencias';
+
+  @override
+  String get noAttendancesYet => 'Todavía no tienes asistencias registradas';
 
   @override
   String get cannotRateEventBody =>

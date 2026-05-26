@@ -1090,6 +1090,36 @@ abstract class AppLocalizations {
   /// **'Editar interessos'**
   String get editInterestsTitle;
 
+  /// No description provided for @registerInterestsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Tria els teus interessos'**
+  String get registerInterestsTitle;
+
+  /// No description provided for @registerInterestsSubtitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Personalitza les recomanacions culturals'**
+  String get registerInterestsSubtitle;
+
+  /// No description provided for @selectAtLeastOneInterest.
+  ///
+  /// In ca, this message translates to:
+  /// **'Selecciona almenys una categoria per continuar'**
+  String get selectAtLeastOneInterest;
+
+  /// No description provided for @skipButton.
+  ///
+  /// In ca, this message translates to:
+  /// **'Saltar'**
+  String get skipButton;
+
+  /// No description provided for @loadInterestsFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'han pogut carregar els interessos.'**
+  String get loadInterestsFailed;
+
   /// No description provided for @showAttended.
   ///
   /// In ca, this message translates to:
@@ -1840,6 +1870,36 @@ abstract class AppLocalizations {
   /// **'Error del servidor (codi {statusCode}).'**
   String profileServerError(Object statusCode);
 
+  /// No description provided for @profileNoDescription.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sense descripció'**
+  String get profileNoDescription;
+
+  /// No description provided for @profileLevel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell'**
+  String get profileLevel;
+
+  /// No description provided for @profileLevelBronze.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell Bronze'**
+  String get profileLevelBronze;
+
+  /// No description provided for @profileLevelSilver.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell Plata'**
+  String get profileLevelSilver;
+
+  /// No description provided for @profileLevelGold.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell Or'**
+  String get profileLevelGold;
+
   /// No description provided for @openInterestsEditorFailed.
   ///
   /// In ca, this message translates to:
@@ -2013,6 +2073,30 @@ abstract class AppLocalizations {
   /// In ca, this message translates to:
   /// **'Cap interès afegit'**
   String get noInterestsAdded;
+
+  /// No description provided for @selectedInterestsCount.
+  ///
+  /// In ca, this message translates to:
+  /// **'{count} seleccionats'**
+  String selectedInterestsCount(Object count);
+
+  /// No description provided for @attendancesOnlyOwnProfile.
+  ///
+  /// In ca, this message translates to:
+  /// **'Assistències només disponibles al teu perfil'**
+  String get attendancesOnlyOwnProfile;
+
+  /// No description provided for @loadAttendancesFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'han pogut carregar les assistències'**
+  String get loadAttendancesFailed;
+
+  /// No description provided for @noAttendancesYet.
+  ///
+  /// In ca, this message translates to:
+  /// **'Encara no tens assistències registrades'**
+  String get noAttendancesYet;
 
   /// No description provided for @cannotRateEventBody.
   ///

@@ -530,6 +530,23 @@ class AppLocalizationsCa extends AppLocalizations {
   String get editInterestsTitle => 'Editar interessos';
 
   @override
+  String get registerInterestsTitle => 'Tria els teus interessos';
+
+  @override
+  String get registerInterestsSubtitle =>
+      'Personalitza les recomanacions culturals';
+
+  @override
+  String get selectAtLeastOneInterest =>
+      'Selecciona almenys una categoria per continuar';
+
+  @override
+  String get skipButton => 'Saltar';
+
+  @override
+  String get loadInterestsFailed => 'No s\'han pogut carregar els interessos.';
+
+  @override
   String get showAttended => 'Assistits';
 
   @override
@@ -953,6 +970,21 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String get profileNoDescription => 'Sense descripció';
+
+  @override
+  String get profileLevel => 'Nivell';
+
+  @override
+  String get profileLevelBronze => 'Nivell Bronze';
+
+  @override
+  String get profileLevelSilver => 'Nivell Plata';
+
+  @override
+  String get profileLevelGold => 'Nivell Or';
+
+  @override
   String get openInterestsEditorFailed =>
       'No s\'ha pogut obrir l\'editor d\'interessos. Torna a iniciar sessió.';
 
@@ -1056,6 +1088,22 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get noInterestsAdded => 'Cap interès afegit';
+
+  @override
+  String selectedInterestsCount(Object count) {
+    return '$count seleccionats';
+  }
+
+  @override
+  String get attendancesOnlyOwnProfile =>
+      'Assistències només disponibles al teu perfil';
+
+  @override
+  String get loadAttendancesFailed =>
+      'No s\'han pogut carregar les assistències';
+
+  @override
+  String get noAttendancesYet => 'Encara no tens assistències registrades';
 
   @override
   String get cannotRateEventBody =>

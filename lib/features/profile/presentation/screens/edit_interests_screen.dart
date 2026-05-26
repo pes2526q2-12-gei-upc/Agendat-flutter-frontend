@@ -67,7 +67,7 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
         _isLoading = false;
         _errorMessage = userMessageFromError(
           e,
-          fallback: 'Error al carregar les categories, refresca la pàgina',
+          fallback: l10n.loadInterestsFailed,
         );
       });
     }

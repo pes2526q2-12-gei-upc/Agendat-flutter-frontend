@@ -4,6 +4,7 @@ import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/models/session.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/core/query/sessions_query.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class ProfileAttendedSessionsTab extends StatelessWidget {
   const ProfileAttendedSessionsTab({
@@ -42,9 +43,11 @@ class ProfileAttendedSessionsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     if (!isOwnProfile) {
       return _tabEmpty(
-        'Assistències només disponibles al teu perfil',
+        l10n.attendancesOnlyOwnProfile,
         Icons.event_outlined,
       );
     }
@@ -58,7 +61,7 @@ class ProfileAttendedSessionsTab extends StatelessWidget {
 
         if (snapshot.hasError) {
           return _tabEmpty(
-            'No s\'han pogut carregar les assistències',
+            l10n.loadAttendancesFailed,
             Icons.error_outline,
           );
         }
@@ -66,7 +69,7 @@ class ProfileAttendedSessionsTab extends StatelessWidget {
         final sessions = sortedSessions(snapshot.data ?? const []);
         if (sessions.isEmpty) {
           return _tabEmpty(
-            'Encara no tens assistències registrades',
+            l10n.noAttendancesYet,
             Icons.event_outlined,
           );
         }

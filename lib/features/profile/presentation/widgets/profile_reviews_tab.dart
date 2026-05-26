@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/query/events_query.dart';
 import 'package:agendat/features/reviews/presentation/widgets/review_rating_row.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class ProfileReviewsTab extends StatelessWidget {
   const ProfileReviewsTab({
@@ -18,6 +19,7 @@ class ProfileReviewsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final reviews = response?.reviews ?? const <UserReview>[];
     if (reviews.isEmpty) {
       return Center(
@@ -31,7 +33,7 @@ class ProfileReviewsTab extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'No hi ha ressenyes',
+              l10n.noReviewsYet,
               style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             ),
           ],
@@ -61,6 +63,7 @@ class ProfileReviewsTab extends StatelessWidget {
                       _ProfileReviewRatingRow(
                         review: review,
                         eventsQuery: eventsQuery,
+                        fallbackLabel: l10n.reviewNoEvent,
                       ),
                       if (comment.isNotEmpty) ...[
                         const SizedBox(height: 6),
@@ -91,10 +94,12 @@ class _ProfileReviewRatingRow extends StatelessWidget {
   const _ProfileReviewRatingRow({
     required this.review,
     required this.eventsQuery,
+    required this.fallbackLabel,
   });
 
   final UserReview review;
   final EventsQuery eventsQuery;
+  final String fallbackLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +110,7 @@ class _ProfileReviewRatingRow extends StatelessWidget {
 
     final eventCode = review.eventCode?.trim();
     if (eventCode == null || eventCode.isEmpty) {
-      return _buildRatingRow('Esdeveniment');
+      return _buildRatingRow(fallbackLabel);
     }
 
     return FutureBuilder(
