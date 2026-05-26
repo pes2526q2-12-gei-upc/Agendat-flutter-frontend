@@ -1,20 +1,21 @@
 import 'package:agendat/core/api/categories_api.dart';
 import 'package:agendat/core/dto/category_dto.dart';
 import 'package:agendat/core/query/query_client.dart';
+import 'package:agendat/core/services/app_language.dart';
 
 class CategoriesQuery {
   static final CategoriesQuery instance = CategoriesQuery._();
   CategoriesQuery._();
 
   static const Duration staleTime = Duration(minutes: 30);
-  static const String _key = 'categories';
+  static const String _keyPrefix = 'categories';
 
   final CategoriesApi _api = CategoriesApi();
   final QueryClient _client = QueryClient.instance;
 
   Future<List<String>> getCategories({bool forceRefresh = false}) {
     return _client.query<List<String>>(
-      key: _key,
+      key: _listKey(),
       staleTime: staleTime,
       forceRefresh: forceRefresh,
       queryFn: () async {
@@ -32,7 +33,7 @@ class CategoriesQuery {
 
   Future<List<CategoryDto>> getCategoryDtos({bool forceRefresh = false}) {
     return _client.query<List<CategoryDto>>(
-      key: '$_key:dtos',
+      key: _dtoKey(),
       staleTime: staleTime,
       forceRefresh: forceRefresh,
       queryFn: () async {
@@ -47,8 +48,11 @@ class CategoriesQuery {
     );
   }
 
-  void invalidate() {
-    _client.invalidate(_key);
-    _client.invalidate('$_key:dtos');
-  }
+  void invalidate() => _client.invalidatePrefix(_keyPrefix);
+
+  String _listKey() => '$_keyPrefix:${_languageCode()}';
+
+  String _dtoKey() => '${_listKey()}:dtos';
+
+  String _languageCode() => AppLanguage.code.trim().toUpperCase();
 }
