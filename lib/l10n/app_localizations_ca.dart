@@ -143,6 +143,19 @@ class AppLocalizationsCa extends AppLocalizations {
   String get date => 'Data';
 
   @override
+  String get dateRange => 'Dates';
+
+  @override
+  String get dateFrom => 'Inici';
+
+  @override
+  String get dateTo => 'Fi';
+
+  @override
+  String get dateRangeInvalid =>
+      'La data d\'inici ha de ser anterior a la data fi';
+
+  @override
   String get time => 'Hora';
 
   @override

@@ -64,13 +64,13 @@ class _MapFiltersCardState extends State<MapFiltersCard> {
   }
 
   Future<void> _pickDate() async {
+    final l10n = AppLocalizations.of(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: _filters.date,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      confirmText: "D'acord",
-      locale: const Locale('ca'),
+      confirmText: l10n.confirm,
     );
     if (picked == null) return;
     setState(() {

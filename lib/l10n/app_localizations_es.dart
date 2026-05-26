@@ -143,6 +143,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get date => 'Fecha';
 
   @override
+  String get dateRange => 'Fechas';
+
+  @override
+  String get dateFrom => 'Inicio';
+
+  @override
+  String get dateTo => 'Fin';
+
+  @override
+  String get dateRangeInvalid =>
+      'La fecha de inicio debe ser anterior a la fecha de fin';
+
+  @override
   String get time => 'Hora';
 
   @override

@@ -358,6 +358,30 @@ abstract class AppLocalizations {
   /// **'Data'**
   String get date;
 
+  /// No description provided for @dateRange.
+  ///
+  /// In ca, this message translates to:
+  /// **'Dates'**
+  String get dateRange;
+
+  /// No description provided for @dateFrom.
+  ///
+  /// In ca, this message translates to:
+  /// **'Inici'**
+  String get dateFrom;
+
+  /// No description provided for @dateTo.
+  ///
+  /// In ca, this message translates to:
+  /// **'Fi'**
+  String get dateTo;
+
+  /// No description provided for @dateRangeInvalid.
+  ///
+  /// In ca, this message translates to:
+  /// **'La data d\'inici ha de ser anterior a la data fi'**
+  String get dateRangeInvalid;
+
   /// No description provided for @time.
   ///
   /// In ca, this message translates to:
