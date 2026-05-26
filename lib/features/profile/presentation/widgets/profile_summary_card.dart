@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/models/user_profile.dart';
 import 'package:agendat/core/utils/reputation_avatar_ring.dart';
 import 'package:agendat/core/utils/profile_image_url.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class ProfileSummaryCard extends StatelessWidget {
   const ProfileSummaryCard({
@@ -127,6 +128,9 @@ class _ProfileInfoHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final description = profile.description?.trim();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -139,7 +143,7 @@ class _ProfileInfoHeader extends StatelessWidget {
         const SizedBox(height: 4),
         _ReputationChip(
           reputation: reputation,
-          tierName: reputationAvatarRingTierName(reputation),
+          tierName: _reputationTierName(l10n, reputation),
         ),
         const SizedBox(height: 8),
         Row(
@@ -147,7 +151,9 @@ class _ProfileInfoHeader extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                profile.displayDescription,
+                description == null || description.isEmpty
+                    ? l10n.profileNoDescription
+                    : description,
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -157,6 +163,16 @@ class _ProfileInfoHeader extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _reputationTierName(AppLocalizations l10n, double? reputation) {
+    final tier = reputationAvatarRingTierFor(reputation);
+    return switch (tier?.level) {
+      1 => l10n.profileLevelBronze,
+      2 => l10n.profileLevelSilver,
+      3 => l10n.profileLevelGold,
+      _ => l10n.profileLevel,
+    };
   }
 }
 

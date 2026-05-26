@@ -217,12 +217,6 @@ class UserProfile {
     return parts.isNotEmpty ? parts.join(' ') : username;
   }
 
-  // Retorna la descripció o un text per defecte.
-  String get displayDescription {
-    final desc = description?.trim();
-    return (desc == null || desc.isEmpty) ? 'Sense descripció' : desc;
-  }
-
   Map<String, dynamic> toJson() => {
     'reputacio': reputacio,
     'username': username,

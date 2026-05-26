@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/core/dto/category_dto.dart';
+import 'package:agendat/l10n/app_localizations.dart';
 
 class EditInterestsHeaderCard extends StatelessWidget {
   const EditInterestsHeaderCard({super.key, required this.selectedCount});
@@ -10,6 +11,7 @@ class EditInterestsHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -35,7 +37,7 @@ class EditInterestsHeaderCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '$selectedCount seleccionats',
+              l10n.interestsSelectedCount(selectedCount),
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,

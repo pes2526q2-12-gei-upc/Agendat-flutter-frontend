@@ -87,7 +87,7 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
         _isLoading = false;
         _errorMessage = userMessageFromError(
           e,
-          fallback: 'No s\'han pogut carregar els interessos.',
+          fallback: AppLocalizations.of(context).registerInterestsLoadFailed,
         );
       });
     }
@@ -107,7 +107,7 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
     }
 
     setState(() => _isSaving = false);
-    _showSnackBar('No s\'han pogut guardar els interessos.');
+    _showSnackBar(AppLocalizations.of(context).saveInterestsFailed);
   }
 
   void _skip() {
@@ -143,6 +143,7 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final headerHeight = screenHeight * (1 / 3);
     final padding = MediaQuery.paddingOf(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: Column(
@@ -181,17 +182,17 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
                                   ? null
                                   : () => Navigator.of(context).maybePop(),
                               behavior: HitTestBehavior.opaque,
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.arrow_back_ios_new,
                                     color: Colors.white,
                                     size: 18,
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    'Enrere',
-                                    style: TextStyle(
+                                    l10n.back,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -230,10 +231,10 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
                             children: [
                               const _InterestHeaderIcon(),
                               const SizedBox(height: 12),
-                              const Text(
-                                'Tria els teus interessos',
+                              Text(
+                                l10n.registerInterestsTitle,
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
@@ -241,7 +242,7 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Personalitza les recomanacions culturals',
+                                l10n.registerInterestsSubtitle,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.95),
@@ -314,9 +315,9 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Què t\'interessa?',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).interestsPrompt,
+            style: const TextStyle(
               color: Colors.black87,
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -324,7 +325,7 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Selecciona almenys una categoria per continuar',
+            AppLocalizations.of(context).registerInterestsInstruction,
             style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
           ),
           const SizedBox(height: 24),
@@ -465,9 +466,12 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Saltar',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              child: Text(
+                AppLocalizations.of(context).skip,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -497,9 +501,9 @@ class _RegisterInterestsScreenState extends State<RegisterInterestsScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Continuar',
-                      style: TextStyle(
+                  : Text(
+                      AppLocalizations.of(context).continueButton,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),

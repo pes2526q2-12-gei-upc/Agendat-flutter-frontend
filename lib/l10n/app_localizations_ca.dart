@@ -1058,6 +1058,72 @@ class AppLocalizationsCa extends AppLocalizations {
   String get noInterestsAdded => 'Cap interès afegit';
 
   @override
+  String get profileNoDescription => 'Sense descripció';
+
+  @override
+  String get profileLevel => 'Nivell';
+
+  @override
+  String get profileLevelBronze => 'Nivell Bronze';
+
+  @override
+  String get profileLevelSilver => 'Nivell Plata';
+
+  @override
+  String get profileLevelGold => 'Nivell Or';
+
+  @override
+  String get profileAttendedOnlyOwn =>
+      'Assistències només disponibles al teu perfil';
+
+  @override
+  String get profileAttendancesLoadFailed =>
+      'No s\'han pogut carregar les assistències';
+
+  @override
+  String get profileNoAttendances => 'Encara no tens assistències registrades';
+
+  @override
+  String get profileNoReviews => 'No hi ha ressenyes';
+
+  @override
+  String get profileReviewFallbackEvent => 'Esdeveniment';
+
+  @override
+  String interestsSelectedCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count seleccionats',
+      one: '1 seleccionat',
+      zero: 'Cap seleccionat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get editInterestsLoadCategoriesFailed =>
+      'Error en carregar les categories. Refresca la pàgina.';
+
+  @override
+  String get registerInterestsLoadFailed =>
+      'No s\'han pogut carregar els interessos.';
+
+  @override
+  String get registerInterestsTitle => 'Tria els teus interessos';
+
+  @override
+  String get registerInterestsSubtitle =>
+      'Personalitza les recomanacions culturals';
+
+  @override
+  String get registerInterestsInstruction =>
+      'Selecciona almenys una categoria per continuar';
+
+  @override
+  String get skip => 'Saltar';
+
+  @override
   String get cannotRateEventBody =>
       'Només pots valorar esdeveniments als quals has assistit.';
 
