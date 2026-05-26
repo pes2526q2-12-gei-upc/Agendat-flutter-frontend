@@ -1,96 +1,140 @@
-# Agendat-backend
+<div align="center">
+  <img src="https://s3.eu-south-2.amazonaws.com/agendat.s3/logoAgendatNoFondo.png" alt="Logo d'Agenda't" width="140">
+  <h1>Agenda't Frontend</h1>
+  <p>
+    App Flutter d'Agenda't per descobrir esdeveniments culturals, gestionar l'agenda personal,
+    parlar amb amics i publicar ressenyes.
+  </p>
+  <p>
+    <a href="/Users/polmontanera/Desktop/Q6%202526/PES/Agendat-backend/README.md">Explora la documentació</a>
+  </p>
+  <p>
+    <a href="http://nattech.fib.upc.edu:40410/">Backend de producció</a>
+    ·
+    <a href="assets/icons/logoAgendat.png">Logo</a>
+    ·
+    <a href="/Users/polmontanera/Desktop/Q6%202526/PES/Agendat-backend/README.md">README del backend</a>
+  </p>
+</div>
 
-Aquest és el repositori fronted en flutter del projecte **Agenda't**
 
-Autors:
-* Jordi Abelló --- jordi.abello.sunyer@estudiantat.upc.edu
-* Àngela Buxó --- angela.buxo@estudiantat.upc.edu
-* Noel Freire --- noel.freire@estudiantat.upc.edu
-* Sergi Galan --- sergi.galan.soler@estudiantat.upc.edu
-* Paula Mas --- paula.mas.pascual@estudiantat.upc.edu
-* Pol Montanera --- pol.montanera@estudiantat.upc.edu
-* Víctor Rocha --- victor.rocha@estudiantat.upc.edu
+## Què Inclou L'App
 
-## 📋 Requisits Previs (Instal·lació de Flutter)
+- Feed d'esdeveniments amb cerca i filtres
+- Vista de mapa amb marcadors d'esdeveniments i accessos a navegació
+- Agenda personal amb vista de calendari i de llista
+- Sol·licituds d'amistat, recomanacions, visites de perfil i bloquejos
+- Xat en temps real
+- Invitacions a esdeveniments
+- Ressenyes amb likes, traduccions i multimèdia
+- Configuració de notificacions i idioma
+- Sincronització opcional amb Google Calendar
 
-Abans de començar, assegura't de tenir instal·lat:
+## Idiomes Suportats
 
-* **Flutter SDK**: [Guia d'instal·lació](https://docs.flutter.dev/get-started/install) (es recomana la versió estable més recent).
+- Català
+- Castellà
+- Anglès
 
-#### Instal·lació de **Python** (Necessari per a les eines de control)
-Encara que estiguem programant en Dart/Flutter, utilitzem `pre-commit` per gestionar les revisions de codi. 
+## Requisits
 
-### ⚠️ IMPORTANT: Evita la Microsoft Store
-**No instal·lis Python des de la botiga de Windows.** Dona problemes de rutes.
+- Flutter SDK `>=3.11.0 <4.0.0`
+- Backend d'Agenda't en execució
 
-1. Baixa l'instal·lador oficial de **Python 3.12.10** des de [Python.org](https://www.python.org/downloads/).
-2. **MOLT IMPORTANT:** Durant l'instal·lació, marca la casella **"Add Python 3.12 to PATH"**.
-3. Un cop instal·lat, obre una terminal (PowerShell) i comprova que la ruta és la correcta:
-   ```powershell
-   where.exe python
-* **Pre-commit**: El framework de hooks que ja fem servir al backend. Si no el tens:
-    ```bash
-    pip install pre-commit
-    ```
-
---- 
-
-## Configuració Inicial
-
-Abans de començar a treballar, segueix aquests passos per tenir-ho tot a punt:
-
-### 1. Clona el repositori
-```bash
-git clone [https://github.com/](https://github.com/)[EL-TEU-USUARI]/[NOM-DEL-REPO].git
-cd [NOM-DEL-REPO]
-```
-### 2. Descarrega les dependències de Flutter
+Instal·la les dependències:
 
 ```bash
 flutter pub get
 ```
 
-### 3. Activa els "hooks" de qualitat
+## Connexió Amb El Backend
 
-Això configurarà les revisions automàtiques que s'executaran abans de cada `git commit`:
+Hi ha dos backends disponibles:
+
+En local:
+- `localhost:8080/#/` - Usat per a desenvolupament.
+
+
+
+Al Virtech:
+- `http://nattech.fib.upc.edu:40410/` - Usat a producció
+
+
+Per defecte, es fa servir el backend en local. Per executar l'app en local fent servir el backend de producció, executa `flutter run` amb els flags:
+
 ```bash
-pre-commit install
+--dart-define=API_BASE_URL=http://nattech.fib.upc.edu:40410/ --web-port=5555
+```
+`--web-port=5555`és opcional, només si es volen fer servir els serveis de Google (Google Sign In & Google Calendar.)
+
+## Guia Detallada D'Execució
+
+### 1. Arrenca primer el backend
+
+Des del repositori del backend:
+
+```bash
+docker compose up --build -d
 ```
 
-## 🛡️ Instal·lació de Pre-commit
-Aquest repositori està configurat per passar tres filtres abans de permetre qualsevol commit:
+Comprova que Swagger s'obre a:
 
-1. **Flutter Format**: Revisa que el codi segueixi l'estil oficial de Dart (comes, espais i salts de línia).
-2. **Flutter Analyze**: L'analitzador estàtic (l'equivalent a Pylint). Revisa errors de sintaxi, variables no utilitzades i bones pràctiques definides a analysis_options.yaml.
-3. **Flutter Test**: Executa la suite de tests unitaris per assegurar que els nous canvis no trenquen funcionalitats ja existents.
+```text
+http://localhost:8080/
+```
 
-## 📁 Estructura del Projecte
-* `lib/`: Codi font de l'aplicació.
+### 2. Instal·la les dependències del frontend
 
-* `test/`: Tests unitaris i de widgets
+```bash
+flutter pub get
+```
 
-* `analysis_options.yaml`: Configuració de les regles del linter (analitzador)
+### 3. Executa l'app
 
-* `.pre-commit-config.yaml`: Configuració dels hooks automàtics
+#### Web
 
-### 🔄 Com funciona el flux de treball?
-A partir d'ara, el procés per fer canvis serà aquest:
+```bash
+flutter run -d chrome --web-port=5555
+```
 
-1. Modifica el codi: Escriu les teves millores o correccions.
 
-2. Prepara els fitxers: Fes git add . (o els fitxers que vulguis).
+#### Dispositiu Android físic amb `adb reverse` (per les notificacions)
 
-3. Fes el commit: Executa git commit -m "Descripció del que has fet".
+Comanda directa:
+```powershell
+.\scripts\run_android_docker.ps1 -DeviceId <device-id>
+```
 
-**Què passarà en fer el commit?**
-Automàticament, s'executaran les revisions configurades (neteja d'espais, format de codi, revisió de sintaxi, etc.):
+Exemple fent servir el backend desplegat:
 
-* ✅ **Si tot està bé (Passed)**: El commit es crearà normalment.
+```bash
+flutter run -d chrome --dart-define=API_BASE_URL=http://nattech.fib.upc.edu:40410
+```
 
-* ❌ **Si es troben errors (Failed)**:
 
-    * El sistema t'avisarà i aturarà el commit.
+## Estructura Del Projecte
 
-    * Si l'error era de format (com espais sobrants), el pre-commit els haurà arreglat per tu automàticament. Només hauràs de fer un altre git add . i tornar a intentar el commit.
+- `lib/features/auth`: login, registre, recuperació de contrasenya i onboarding
+- `lib/features/events`: detall d'esdeveniment, assistència i invitacions
+- `lib/features/map`: pantalla de mapa, filtres i previsualitzacions de marcadors
+- `lib/features/agenda`: agenda i vistes de calendari
+- `lib/features/social`: recomanacions, sol·licituds, cerca d'usuaris i amics
+- `lib/features/chat`: missatgeria en temps real
+- `lib/features/profile`: perfil, usuaris bloquejats, configuració i interessos
+- `lib/features/reviews`: creació i interacció amb ressenyes
 
-    * Si l'error és de sintaxi, hauràs de corregir-lo manualment abans de poder fer el commit.
+## Contribucions
+
+Si vols contribuir al frontend, treballa sempre sobre una branca nova i intenta que cada canvi tingui un abast clar.
+
+Flux recomanat:
+
+1. Fes pull de la branca `develop`.
+2. Crea una branca descriptiva per a la funcionalitat o correcció.
+3. Executa `flutter pub get` i valida que el projecte continua compilant.
+4. Obre una pull request amb una explicació breu i concreta.
+
+Abans d'enviar una contribució, assegura't que:
+
+- no s'han introduït URLs, claus o credencials sensibles
+- s'han revisat els canvis amb dispositius de diferents mides 

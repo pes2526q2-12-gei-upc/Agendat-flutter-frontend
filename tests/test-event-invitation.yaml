@@ -1,0 +1,139 @@
+# Fer aquest test després del test-friend-and-chats up ja que així ja estan els
+# comptes creats i després d'haver fet també el test-event-view-and-sessions ja
+# que així ja hi ha una sessió creada
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+# Happy path de login de Mark Zuckerberg
+- tapOn: El teu nom d'usuari
+- inputText: Casteller15
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertNotVisible: Inicia sessió per continuar
+
+# Happy path de friend request
+- tapOn:
+    point: 5%,11%
+
+- tapOn: |-
+    Social
+    Pestanya 4 de 5
+- tapOn: Cerca un xat
+- inputText: Elon
+- tapOn: |-
+    Elon Musk
+    @Casteller16
+- tapOn: Enviar sol·licitud d'amistat
+- assertVisible: Sol·licitud d'amistat enviada.
+- waitForAnimationToEnd
+- tapOn: Sol·licitud enviada · Cancel·lar
+- assertVisible: Sol·licitud d'amistat cancel·lada.
+- tapOn: Enviar sol·licitud d'amistat
+
+# Happy path de logout
+- tapOn: Enrere
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- tapOn: Tancar sessió
+- tapOn: Tancar sessió
+
+# Happy path de login amb Elon Musk
+- tapOn: El teu nom d'usuari
+- inputText: Casteller16
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+
+# Happy path d'acceptar friend request
+- assertVisible: |-
+    1
+    Social
+    Pestanya 4 de 5
+- tapOn: |-
+    1
+    Social
+    Pestanya 4 de 5
+- tapOn: |-
+    Sol·licituds d'amistat
+    1 pendents per revisar
+- tapOn: Acceptar
+
+# Happy path d'enviar invitació a esdeveniment
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- tapOn:
+    point: 50%, 50%
+- swipe:
+    direction: UP
+- tapOn: Convidar
+- tapOn: |- # Sessió de l'esdeveniment de test-event-view-and-session
+    diumenge, 24 de maig de 2026
+    A les 13:00
+- tapOn: |-
+    MZ
+    Mark Zuckerberg
+    @Casteller15
+- tapOn: Enviar 1 invitació
+- assertVisible: Invitació enviada correctament.
+- waitForAnimationToEnd
+- tapOn: Convidar
+- tapOn: |- # Sessió de l'esdeveniment de test-event-view-and-session
+    diumenge, 24 de maig de 2026
+    A les 13:00
+- assertVisible: |-
+    MZ
+    Mark Zuckerberg
+    @Casteller15
+    Pendent
+- tapOn:
+    point: 50%, 15%
+- tapOn: Enrere
+
+# Happy path de logout
+- tapOn: Tancar sessió
+- tapOn: Tancar sessió
+
+# Happy path de login de Mark Zuckerberg
+- tapOn: El teu nom d'usuari
+- inputText: Casteller15
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+
+# Happy path d'acceptar invitació a esdeveniment
+- tapOn: |-
+    1
+    Social
+    Pestanya 4 de 5
+- tapOn:
+    point: 50%, 23%
+- tapOn: Acceptar
+- assertVisible: Invitació acceptada. Assistència registrada.
+- tapOn: Enrere
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- assertNotVisible: |-
+    Assistits
+    0
+    Pestanya 1 de 2
+
+# Happy path d'eliminar amistat
+- tapOn: |-
+    Social
+    Pestanya 4 de 5
+- tapOn: Els meus amics
+- tapOn: |-
+    Elon Musk
+    @Casteller16
+- tapOn: Eliminar amistat
+- tapOn:
+    text: Eliminar amistat
+    index: 1
+- assertVisible: Amistat eliminada.

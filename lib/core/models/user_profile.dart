@@ -1,0 +1,437 @@
+import 'package:agendat/core/models/user_summary.dart';
+
+/// Estat de la relació d'amistat del meu usuari amb un altre usuari.
+///
+/// El backend hauria de retornar aquest valor com a camp `friendship_status`
+/// dins de la resposta de `GET /api/users/{id}/` per evitar crides extra i
+/// inconsistències locals. Mentre el backend no l'enviï, es considera `null`.
+enum FriendshipStatus {
+  /// No són amics i no hi ha cap sol·licitud pendent.
+  none,
+
+  /// Jo he enviat una sol·licitud a l'altre usuari i està pendent.
+  requestSent,
+
+  /// L'altre usuari m'ha enviat una sol·licitud que jo encara no he respost.
+  requestReceived,
+
+  /// Ja som amics.
+  friends,
+
+  /// He bloquejat aquest usuari.
+  blockedByMe,
+
+  /// Aquest usuari m'ha bloquejat.
+  blockedMe,
+}
+
+FriendshipStatus? friendshipStatusFromString(String? raw) {
+  if (raw == null) return null;
+  switch (raw.toLowerCase().replaceAll('-', '_')) {
+    case 'none':
+    case '':
+      return FriendshipStatus.none;
+    case 'request_sent':
+    case 'sent':
+    case 'outgoing':
+    case 'pending_sent':
+      return FriendshipStatus.requestSent;
+    case 'request_received':
+    case 'received':
+    case 'incoming':
+    case 'pending_received':
+      return FriendshipStatus.requestReceived;
+    case 'friends':
+    case 'friend':
+    case 'accepted':
+      return FriendshipStatus.friends;
+    case 'blocked_by_me':
+    case 'blocked':
+      return FriendshipStatus.blockedByMe;
+    case 'blocked_me':
+      return FriendshipStatus.blockedMe;
+  }
+  return null;
+}
+
+/// Model d'usuari per a la visualització del perfil.
+/// Coincideix amb la resposta de GET /api/users/{id}/.
+class UserProfile {
+  const UserProfile({
+    required this.id,
+    required this.username,
+    this.reputacio,
+    this.firstName,
+    this.lastName,
+    this.email,
+    this.phone,
+    this.birthDate,
+    this.profileImage,
+    this.locationAllowed = false,
+    this.notificationsAllowed = true,
+    this.eventRemindersAllowed = true,
+    this.eventUpdatesAllowed = true,
+    this.socialAlertsAllowed = true,
+    this.calendarSyncAllowed = true,
+    this.selectedLanguage = 'CA',
+    this.description,
+    this.friendshipStatus,
+  });
+
+  final int id;
+  final String username;
+  final String? firstName;
+  final String? lastName;
+  final String? email;
+  final String? phone;
+  final DateTime? birthDate;
+  final String? profileImage;
+  final double? reputacio;
+  final bool locationAllowed;
+  final bool notificationsAllowed;
+  final bool eventRemindersAllowed;
+  final bool eventUpdatesAllowed;
+  final bool socialAlertsAllowed;
+  final bool calendarSyncAllowed;
+  final String selectedLanguage;
+  final String? description;
+
+  /// Relació d'amistat de l'usuari autenticat envers aquest perfil. Només està
+  /// present si el backend l'inclou a la resposta (camp `friendship_status`).
+  final FriendshipStatus? friendshipStatus;
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    final notificationsAllowed = json['notifications_allowed'] as bool? ?? true;
+    return UserProfile(
+      id: json['id'] as int,
+      username: json['username'] as String,
+      firstName: json['first_name'] as String?,
+      lastName: json['last_name'] as String?,
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+      birthDate: json['birth_date'] != null
+          ? DateTime.tryParse(json['birth_date'] as String)
+          : null,
+      profileImage: json['profile_image'] as String?,
+      locationAllowed: json['location_allowed'] as bool? ?? false,
+      notificationsAllowed: notificationsAllowed,
+      eventRemindersAllowed:
+          json['event_reminders_allowed'] as bool? ?? notificationsAllowed,
+      eventUpdatesAllowed:
+          json['event_updates_allowed'] as bool? ?? notificationsAllowed,
+      socialAlertsAllowed:
+          json['social_alerts_allowed'] as bool? ?? notificationsAllowed,
+      calendarSyncAllowed: json['calendar_sync_allowed'] as bool? ?? true,
+      selectedLanguage: _selectedLanguageFromJson(json['selected_language']),
+      description: json['description'] as String?,
+      reputacio: ((json['reputacio'] ?? json['reputation']) as num?)
+          ?.toDouble(),
+      friendshipStatus: friendshipStatusFromString(
+        json['friendship_status'] as String?,
+      ),
+    );
+  }
+
+  UserProfile copyWithFriendshipStatus(FriendshipStatus? status) {
+    return UserProfile(
+      id: id,
+      username: username,
+      reputacio: reputacio,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      birthDate: birthDate,
+      profileImage: profileImage,
+      locationAllowed: locationAllowed,
+      notificationsAllowed: notificationsAllowed,
+      eventRemindersAllowed: eventRemindersAllowed,
+      eventUpdatesAllowed: eventUpdatesAllowed,
+      socialAlertsAllowed: socialAlertsAllowed,
+      calendarSyncAllowed: calendarSyncAllowed,
+      selectedLanguage: selectedLanguage,
+      description: description,
+      friendshipStatus: status,
+    );
+  }
+
+  UserProfile copyWithPreferences({
+    bool? notificationsAllowed,
+    bool? eventRemindersAllowed,
+    bool? eventUpdatesAllowed,
+    bool? socialAlertsAllowed,
+    bool? calendarSyncAllowed,
+  }) {
+    return UserProfile(
+      id: id,
+      username: username,
+      reputacio: reputacio,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      birthDate: birthDate,
+      profileImage: profileImage,
+      locationAllowed: locationAllowed,
+      notificationsAllowed: notificationsAllowed ?? this.notificationsAllowed,
+      eventRemindersAllowed:
+          eventRemindersAllowed ?? this.eventRemindersAllowed,
+      eventUpdatesAllowed: eventUpdatesAllowed ?? this.eventUpdatesAllowed,
+      socialAlertsAllowed: socialAlertsAllowed ?? this.socialAlertsAllowed,
+      calendarSyncAllowed: calendarSyncAllowed ?? this.calendarSyncAllowed,
+      selectedLanguage: selectedLanguage,
+      description: description,
+      friendshipStatus: friendshipStatus,
+    );
+  }
+
+  static String _selectedLanguageFromJson(Object? raw) {
+    if (raw is! String || raw.trim().isEmpty) return 'CA';
+    final upper = raw.trim().toUpperCase();
+    if (upper == 'CA' || upper == 'ES' || upper == 'EN') return upper;
+    return 'CA';
+  }
+
+  /// Vista lleugera (`UserSummary`) que coincideix amb la representació que
+  /// retornen els endpoints de llistat (cerca, amics, sol·licituds). Útil per
+  /// inserir aquest perfil dins d'una llista cachejada sense haver de
+  /// refetchar de la xarxa.
+  UserSummary toSummary() {
+    return UserSummary(
+      id: id,
+      username: username,
+      reputation: reputacio,
+      firstName: firstName,
+      lastName: lastName,
+      profileImage: profileImage,
+      description: description,
+    );
+  }
+
+  // Retorna el nom complet o el username si no hi ha nom.
+  String get displayName {
+    final parts = [
+      firstName,
+      lastName,
+    ].whereType<String>().where((p) => p.trim().isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(' ') : username;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'reputacio': reputacio,
+    'username': username,
+    'email': email,
+    'description': description,
+    'first_name': firstName,
+    'last_name': lastName,
+    'phone': phone,
+    'birth_date': birthDate?.toIso8601String().split('T').first,
+    'location_allowed': locationAllowed,
+    'notifications_allowed': notificationsAllowed,
+    'event_reminders_allowed': eventRemindersAllowed,
+    'event_updates_allowed': eventUpdatesAllowed,
+    'social_alerts_allowed': socialAlertsAllowed,
+    'calendar_sync_allowed': calendarSyncAllowed,
+    'selected_language': selectedLanguage,
+  };
+}
+
+class UserStats {
+  const UserStats({
+    required this.eventCount,
+    required this.reviewCount,
+    required this.reputation,
+  });
+
+  final int eventCount;
+  final int reviewCount;
+  final double reputation;
+
+  factory UserStats.fromJson(Map<String, dynamic> json) {
+    final root = _unwrapStatsPayload(json);
+    return UserStats(
+      eventCount: _intFromJson(root, const [
+        'attendance_count',
+        'attendances_count',
+        'sessions_count',
+        'event_count',
+        'events_count',
+      ]),
+      reviewCount: _intFromJson(root, const [
+        'reviews_count',
+        'reviews_left_count',
+        'review_count',
+      ]),
+      reputation: _doubleFromJson(root, const [
+        'reputation',
+        'average_reputation',
+        'avg_reputation',
+      ]),
+    );
+  }
+
+  static Map<String, dynamic> _unwrapStatsPayload(Map<String, dynamic> json) {
+    final nested = json['stats'] ?? json['data'] ?? json['result'];
+    if (nested is Map<String, dynamic>) return nested;
+    return json;
+  }
+
+  static int _intFromJson(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toInt();
+    }
+    return 0;
+  }
+
+  static double _doubleFromJson(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toDouble();
+    }
+    return 0.0;
+  }
+}
+
+class UserInterest {
+  const UserInterest({required this.id, required this.name, this.emoji});
+
+  final int id;
+  final String name;
+  final String? emoji;
+
+  factory UserInterest.fromJson(Map<String, dynamic> json) {
+    final category = json['category'];
+    final categoryMap = category is Map<String, dynamic> ? category : null;
+    final emoji =
+        _stringFromJson(json, const ['emoji', 'icon']) ??
+        _stringFromJson(categoryMap, const ['emoji', 'icon']);
+
+    return UserInterest(
+      id:
+          _intFromJson(json, const ['category_id', 'id_category']) ??
+          _intFromJson(categoryMap, const ['id', 'id_category']) ??
+          _intFromJson(json, const ['id']) ??
+          0,
+      name:
+          _stringFromJson(json, const ['name']) ??
+          _stringFromJson(categoryMap, const ['name']) ??
+          '',
+      emoji: emoji,
+    );
+  }
+
+  UserInterest copyWith({int? id, String? name, String? emoji}) {
+    return UserInterest(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      emoji: emoji ?? this.emoji,
+    );
+  }
+
+  static int? _intFromJson(Map<String, dynamic>? json, List<String> keys) {
+    if (json == null) return null;
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toInt();
+      if (value is String) {
+        final parsed = int.tryParse(value);
+        if (parsed != null) return parsed;
+      }
+    }
+    return null;
+  }
+
+  static String? _stringFromJson(
+    Map<String, dynamic>? json,
+    List<String> keys,
+  ) {
+    if (json == null) return null;
+    for (final key in keys) {
+      final value = json[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
+  }
+}
+
+class UserReview {
+  const UserReview({
+    required this.id,
+    required this.rating,
+    required this.comment,
+    required this.createdAt,
+    required this.reviewerId,
+    required this.reviewerUsername,
+    this.eventCode,
+    this.eventTitle,
+  });
+
+  final int id;
+  final int rating;
+  final String comment;
+  final DateTime createdAt;
+  final int reviewerId;
+  final String reviewerUsername;
+  final String? eventCode;
+  final String? eventTitle;
+
+  factory UserReview.fromJson(Map<String, dynamic> json) {
+    final reviewer = json['reviewer'];
+    final reviewerMap = reviewer is Map<String, dynamic> ? reviewer : null;
+    final event = json['event'];
+    final eventMap = event is Map<String, dynamic> ? event : null;
+    final rawEventCode =
+        json['event_code'] ??
+        json['event_id'] ??
+        json['event'] ??
+        eventMap?['code'] ??
+        eventMap?['id'];
+    final eventCode = rawEventCode?.toString().trim();
+    final rawEventTitle =
+        json['event_title'] ??
+        json['event_name'] ??
+        eventMap?['title'] ??
+        eventMap?['name'];
+    final eventTitle = rawEventTitle?.toString().trim();
+    return UserReview(
+      id: (json['id'] as num).toInt(),
+      rating: (json['rating'] as num).toInt(),
+      comment: (json['comment'] as String?) ?? '',
+      createdAt:
+          DateTime.tryParse((json['created_at'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      reviewerId: (json['reviewer_id'] as num?)?.toInt() ?? 0,
+      reviewerUsername:
+          (json['reviewer_username'] as String?) ??
+          (reviewerMap?['username'] as String?) ??
+          '',
+      eventCode: (eventCode == null || eventCode.isEmpty) ? null : eventCode,
+      eventTitle: (eventTitle == null || eventTitle.isEmpty)
+          ? null
+          : eventTitle,
+    );
+  }
+}
+
+class UserReviewsResponse {
+  const UserReviewsResponse({required this.count, required this.reviews});
+
+  final int count;
+  final List<UserReview> reviews;
+
+  factory UserReviewsResponse.fromJson(Map<String, dynamic> json) {
+    final dynamic rawReviewsDynamic =
+        json['reviews'] ?? json['results'] ?? json['items'] ?? json['data'];
+    final rawReviews = rawReviewsDynamic is List
+        ? rawReviewsDynamic
+        : const <dynamic>[];
+    return UserReviewsResponse(
+      count: (json['count'] as num?)?.toInt() ?? rawReviews.length,
+      reviews: rawReviews
+          .whereType<Map<String, dynamic>>()
+          .map(UserReview.fromJson)
+          .toList(),
+    );
+  }
+}

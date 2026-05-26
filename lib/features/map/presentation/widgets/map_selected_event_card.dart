@@ -1,31 +1,82 @@
+import 'package:agendat/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:agendat/core/models/event_map.dart';
 import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
 
 class MapSelectedEventCard extends StatelessWidget {
+  /// Alçada màxima abans d'activar scroll (la card es redueix si n'hi ha menys).
+  static const double _kMaxCardHeight = 280;
+
   const MapSelectedEventCard({
-    required this.event,
+    required this.marker,
     required this.hasCurrentLocation,
     required this.distanceKm,
-    required this.cardHeight,
     required this.onRoutePressed,
     required this.onMoreDetailsPressed,
     required this.onClosePressed,
+    this.preview,
+    this.isLoading = false,
     super.key,
   });
 
-  final MapEventMarkerData event;
+  /// Identifier + coords of the tapped pin. Used as fallback while the
+  /// preview is loading.
+  final MapEventMarker marker;
+
+  /// Translated preview returned by `/api/events/{code}/preview/`. Null until
+  /// it arrives; the card shows the skeleton while [isLoading] is true.
+  final EventPreview? preview;
+
+  /// `true` while the preview is being fetched and there is no response yet.
+  final bool isLoading;
+
   final bool hasCurrentLocation;
   final double distanceKm;
-  final double cardHeight;
   final VoidCallback onRoutePressed;
   final VoidCallback onMoreDetailsPressed;
   final VoidCallback onClosePressed;
 
+  String _localizedPreviewDateRange(
+    BuildContext context,
+    EventPreview? preview,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final startDay = preview?.startDate == null
+        ? null
+        : DateTime(
+            preview!.startDate!.year,
+            preview.startDate!.month,
+            preview.startDate!.day,
+          );
+    final endDay = preview?.endDate == null
+        ? null
+        : DateTime(
+            preview!.endDate!.year,
+            preview.endDate!.month,
+            preview.endDate!.day,
+          );
+    final start = preview?.startDate == null
+        ? null
+        : '${preview!.startDate!.day.toString().padLeft(2, '0')}/${preview.startDate!.month.toString().padLeft(2, '0')}/${preview.startDate!.year}';
+    final end = preview?.endDate == null
+        ? null
+        : '${preview!.endDate!.day.toString().padLeft(2, '0')}/${preview.endDate!.month.toString().padLeft(2, '0')}/${preview.endDate!.year}';
+    if (start == null && end == null) return l10n.toBeDetermined;
+    if (start != null && end != null && startDay == endDay) return start;
+    if (start != null && end != null) return '$start - $end';
+    if (start != null) return '$start - ${l10n.toBeDetermined}';
+    return '${l10n.toBeDetermined} - $end';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final showSkeleton = isLoading && preview == null;
+    final buttonsEnabled = !showSkeleton;
+
     return Container(
-      height: cardHeight,
-      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(maxHeight: _kMaxCardHeight),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -39,82 +90,99 @@ class MapSelectedEventCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Fons de la imatge (PENDENT: quan tinguem fotos reals ho canviem)
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.grey.shade200,
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: 36,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Imatge pendent d\'implementar',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+          // Padding right per no quedar sota la creueta de tancar.
+          Padding(
+            padding: const EdgeInsets.only(top: 6, right: 28),
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showSkeleton)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _skeletonLine(width: double.infinity, height: 18),
+                          const SizedBox(height: 6),
+                          _skeletonLine(width: 160, height: 14),
+                        ],
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            preview?.displayTitle ?? '',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                          Text(
+                            _localizedPreviewDateRange(context, preview),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    if (hasCurrentLocation) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.distanceFromLocation(
+                          distanceKm.toStringAsFixed(1),
                         ),
-                      ],
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: buttonsEnabled ? onRoutePressed : null,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(38),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: Text(l10n.viewRoute),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: buttonsEnabled ? onMoreDetailsPressed : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B1E1E),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(38),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: Text(l10n.viewDetails),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                event.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              ),
-              if (hasCurrentLocation) ...[
-                const SizedBox(height: 4),
-                Text(
-                  // Si tenim GPS, ensenya km des de la ubi de l'usuari.
-                  '${distanceKm.toStringAsFixed(1)} km des de la teva ubicacio',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                ),
-              ],
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onRoutePressed,
-                  child: const Text('Veure ruta'),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onMoreDetailsPressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B1E1E),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Veure detalls'),
-                ),
-              ),
-            ],
+            ),
           ),
           Positioned(
-            top: 0,
-            right: 0,
+            top: -4,
+            right: -4,
             child: IconButton(
-              // Creu per tancar la targeta
+              // Creu per tancar la targeta (queda dins del card per
+              // no ser tallada pel ClipRRect del mapa).
               onPressed: onClosePressed,
               icon: const Icon(Icons.close),
               splashRadius: 18,
@@ -123,6 +191,17 @@ class MapSelectedEventCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _skeletonLine({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }

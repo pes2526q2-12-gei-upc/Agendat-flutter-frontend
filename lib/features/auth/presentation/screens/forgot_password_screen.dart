@@ -1,0 +1,195 @@
+import 'package:agendat/core/utils/app_snackbar.dart';
+import 'package:flutter/material.dart';
+
+import 'package:agendat/core/utils/event_text_utils.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/features/auth/data/models/forgot_password_request.dart';
+import 'package:agendat/features/auth/data/users_api.dart';
+import 'package:agendat/features/auth/presentation/screens/reset_password_screen.dart';
+import 'package:agendat/l10n/app_localizations.dart';
+
+/// Pantalla 1 del flux: l'usuari introdueix el **correu** associat al compte.
+///
+/// Es fa `POST /api/users/password-reset/` amb `{ "email": "..." }`.
+/// Si el backend respon 200, s'envia un codi de 6 dígits al correu i passem
+/// a [ResetPasswordScreen] per introduir codi + nova contrasenya.
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key});
+
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final _emailController = TextEditingController();
+  final _emailFocusNode = FocusNode();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _emailFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _showSnackBar(String message, {bool isError = true}) {
+    AppSnackBar.show(context, message, isError: isError);
+  }
+
+  String _messageForFailure(ForgotPasswordFailure f) {
+    final l10n = AppLocalizations.of(context);
+    if (f.statusCode == -1) {
+      return l10n.connectionErrorCheckYourConnection;
+    }
+    final body = f.body;
+    if (body == null) {
+      return l10n.actionFailedFallback;
+    }
+    if (body['detail'] != null) {
+      return body['detail'].toString();
+    }
+    if (body['email'] != null) {
+      final e = body['email'];
+      return e is List ? e.join(' ') : e.toString();
+    }
+    return l10n.actionFailedFallback;
+  }
+
+  Future<void> _submit() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showSnackBar(AppLocalizations.of(context).enterEmail);
+      return;
+    }
+    if (!email.contains('@')) {
+      _showSnackBar(AppLocalizations.of(context).invalidEmailFormat);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final result = await forgotPassword(ForgotPasswordRequest(email: email));
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    switch (result) {
+      case ForgotPasswordSuccess():
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ResetPasswordScreen(email: email)),
+        );
+      case final ForgotPasswordFailure f:
+        _showSnackBar(_messageForFailure(f));
+    }
+  }
+
+  void _submitWithKeyboard() {
+    FocusScope.of(context).unfocus();
+    _submit();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final padding = MediaQuery.paddingOf(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: EventTextUtils.kPrimaryRed,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(AppLocalizations.of(context).forgotPasswordTitle),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          AppScreenSpacing.horizontal,
+          24,
+          AppScreenSpacing.horizontal,
+          AppScreenSpacing.bottom + padding.bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              AppLocalizations.of(context).recoverAccess,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AppLocalizations.of(context).forgotPasswordPrompt,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              AppLocalizations.of(context).emailAddressLabel,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _emailController,
+              focusNode: _emailFocusNode,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitWithKeyboard(),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context).emailExampleHint,
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: EventTextUtils.kPrimaryRed,
+                    width: 1.5,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: _isLoading ? null : _submitWithKeyboard,
+              style: FilledButton.styleFrom(
+                backgroundColor: EventTextUtils.kPrimaryRed,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(AppLocalizations.of(context).continueButton),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

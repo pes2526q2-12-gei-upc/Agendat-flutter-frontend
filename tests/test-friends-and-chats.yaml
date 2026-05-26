@@ -1,0 +1,162 @@
+# Abans de res s'ha de fer un aquesta crida POST /api/users/ a la api:
+# {
+#  "username": "Casteller15",
+#  "first_name": "Mark",
+#  "last_name": "Zuckerberg",
+#  "email": "user4@example.com",
+#  "phone": "",
+#  "birth_date": "2026-05-24",
+#  "location_allowed": true,
+#  "notifications_allowed": true,
+#  "event_reminders_allowed": true,
+#  "event_updates_allowed": true,
+#  "social_alerts_allowed": true,
+#  "calendar_sync_allowed": true,
+#  "selected_language": "CA",
+#  "description": "",
+#  "password": "k.87_oP[",
+#  "imatge": ""
+#}
+
+# Fer aquest test després del sign up ja que així ja està el compte creat
+appId: com.example.agendat
+---
+- launchApp:
+    clearState: true
+
+# Happy path de login
+- tapOn: El teu nom d'usuari
+- inputText: Casteller16
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertNotVisible: Inicia sessió per continuar
+
+# Happy path de friend request
+- tapOn:
+    point: 5%,11%
+
+- tapOn: |-
+    Social
+    Pestanya 4 de 5
+- tapOn: Cerca un xat
+- inputText: Zuckerberg
+- tapOn: |-
+    1
+    Mark Zuckerberg
+    @Casteller15
+- tapOn: Enviar sol·licitud d'amistat
+- assertVisible: Sol·licitud d'amistat enviada.
+- waitForAnimationToEnd
+- tapOn: Sol·licitud enviada · Cancel·lar
+- assertVisible: Sol·licitud d'amistat cancel·lada.
+- tapOn: Enviar sol·licitud d'amistat
+
+# Happy path de logout
+- tapOn: Enrere
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- tapOn: Tancar sessió
+- tapOn: Tancar sessió
+
+# Happy path de login amb Mark Zuckerberg
+- tapOn: El teu nom d'usuari
+- inputText: Casteller15
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+
+# Happy path d'acceptar friend request
+- assertVisible: |-
+    1
+    Social
+    Pestanya 4 de 5
+- tapOn: |-
+    1
+    Social
+    Pestanya 4 de 5
+- tapOn: |-
+    Sol·licituds d'amistat
+    1 pendents per revisar
+- tapOn: Acceptar
+
+# Happy path d'enviar missatge
+- tapOn:
+    point: 50%, 23%
+- tapOn: Escriu un missatge...
+- inputText: Hola Elon! Em regalaries un Tesla?
+- tapOn:
+    point: 92%,93%
+
+# Happy path de logout
+- tapOn: Enrere
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- tapOn: Tancar sessió
+- tapOn: Tancar sessió
+
+# Happy path de login amb Elon Musk
+- tapOn: El teu nom d'usuari
+- inputText: Casteller16
+- tapOn: La teva contrasenya
+- inputText: k.87_oP[
+- pressKey: Enter
+- waitForAnimationToEnd
+
+# Happy path de llegir missatge
+- tapOn: |-
+    Social
+    Pestanya 4 de 5
+- tapOn:
+    point: 50%, 23%
+- tapOn: Escriu un missatge...
+- inputText: Si home! Jo no soc una ONG!
+- tapOn:
+    point: 92%,93%
+- tapOn: Enrere
+
+# Happy path de bloquejar
+- tapOn: Els meus amics
+- tapOn: |-
+    1
+    Mark Zuckerberg
+    @Casteller15
+- tapOn: Més opcions
+- tapOn: Bloquejar usuari
+- tapOn:
+    text: Bloquejar usuari
+    index: 1
+- assertVisible: Has bloquejat aquest usuari.
+- tapOn: Enrere
+- assertVisible: |-
+    Encara no tens cap amic.
+    Cerca usuaris i envia'ls una sol·licitud d'amistat.
+- tapOn: |-
+    Perfil
+    Pestanya 5 de 5
+- tapOn:
+    point: 94%,6%
+- tapOn: |-
+    Usuaris bloquejats
+    Revisa els perfils que has bloquejat.
+- assertVisible: Mark Zuckerberg
+- tapOn:
+    point: 8%,11%
+- tapOn: Desbloquejar
+- tapOn:
+    text: Desbloquejar usuari
+    index: 1
+- assertVisible: Has desbloquejat aquest usuari.
+- tapOn: Enrere
+- tapOn: Enrere
+- tapOn: Enrere
+- tapOn: |-
+    Social
+    Pestanya 4 de 5
+- tapOn: Els meus amics
+- assertVisible: |-
+    Encara no tens cap amic.
+    Cerca usuaris i envia'ls una sol·licitud d'amistat.

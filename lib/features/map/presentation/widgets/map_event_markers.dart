@@ -1,57 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:agendat/core/models/event_map.dart';
 
-// PENDENT:
-// - Passar de dades fake a dades reals del backend.
-// - Afegir imatge/preu/categoria a cada esdeveniment
+/// Marker data used by the map screen. Mirrors the lightweight payload
+/// returned by `/api/events/map/`: just a code + coordinates.
+class MapEventMarker {
+  const MapEventMarker({required this.code, required this.point});
 
-class MapEventMarkerData {
-  const MapEventMarkerData({
-    required this.id,
-    required this.title,
-    required this.point,
-  });
-
-  final String id;
-  final String title;
+  final String code;
   final LatLng point;
 }
 
-/// Genera esdeveniments de prova per visualitzar al mapa.
-List<MapEventMarkerData> buildDemoEvents(LatLng center) {
-  return <MapEventMarkerData>[
-    MapEventMarkerData(id: 'e1', title: 'Concert al Centre', point: center),
-    MapEventMarkerData(
-      id: 'e2',
-      title: 'Food Market',
-      point: LatLng(center.latitude + 0.012, center.longitude + 0.010),
-    ),
-    MapEventMarkerData(
-      id: 'e3',
-      title: 'Exposicio Urbana',
-      point: LatLng(center.latitude - 0.010, center.longitude - 0.014),
-    ),
-    MapEventMarkerData(
-      id: 'e4',
-      title: 'Meetup Tech',
-      point: LatLng(center.latitude + 0.006, center.longitude - 0.018),
-    ),
-  ];
+/// Converts the domain [EventMapPin] list (already filtered server-side)
+/// into the local marker shape used by [buildEventMarkers].
+List<MapEventMarker> buildMarkersFromPins(List<EventMapPin> pins) {
+  return pins
+      .map(
+        (pin) => MapEventMarker(
+          code: pin.code,
+          point: LatLng(pin.latitude, pin.longitude),
+        ),
+      )
+      .toList();
 }
 
-// Crea els pins vermells
 List<Marker> buildEventMarkers({
-  required List<MapEventMarkerData> events,
-  required ValueChanged<MapEventMarkerData> onMarkerTap,
+  required List<MapEventMarker> markers,
+  required ValueChanged<MapEventMarker> onMarkerTap,
 }) {
-  return events.map((event) {
+  return markers.map((marker) {
     return Marker(
-      point: event.point,
+      point: marker.point,
       width: 80,
       height: 80,
       child: GestureDetector(
-        onTap: () => onMarkerTap(event),
+        onTap: () => onMarkerTap(marker),
         child: const Icon(
           Icons.location_on,
           color: Color.fromARGB(255, 149, 31, 22),

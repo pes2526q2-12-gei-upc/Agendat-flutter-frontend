@@ -1,11 +1,29 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:agendat/core/api/api_error_utils.dart';
+import 'package:agendat/core/models/event_map.dart';
+import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/async_epoch.dart';
+import 'package:agendat/features/map/data/device_location_service.dart';
+import 'package:agendat/features/map/data/map_navigation_service.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:agendat/core/widgets/navigationBar.dart';
-import 'package:agendat/features/map/presentation/widgets/map_widgets.dart';
+import 'package:agendat/core/widgets/app_search_bar.dart';
+import 'package:agendat/core/widgets/main_app_bar.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/core/utils/app_snackbar.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/core/state/map_pending_event_selection.dart';
+import 'package:agendat/core/state/root_tab_state.dart';
+import 'package:agendat/l10n/app_localizations.dart';
+import 'package:agendat/features/map/data/models/map_filters.dart';
+import 'package:agendat/features/map/presentation/widgets/map_controls.dart';
+import 'package:agendat/features/map/presentation/widgets/map_event_markers.dart';
+import 'package:agendat/features/map/presentation/widgets/map_filter_button.dart';
+import 'package:agendat/features/map/presentation/widgets/map_selected_event_card.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -15,170 +33,303 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  // Controller del mapa (per zoom i moviments manuals)
   final MapController _mapController = MapController();
-  // Calcula distancia entre dos punts del mapa
   final Distance _distanceCalculator = const Distance();
+  final EventsQuery _eventsQuery = EventsQuery.instance;
+  final DeviceLocationService _deviceLocationService = DeviceLocationService();
+  final MapNavigationService _mapNavigationService = MapNavigationService();
 
-  int _selectedTabIndex = 1;
-
-  // Punt inicial (Barcelona) si no tenim ubi de l'usuari
   final LatLng _center = const LatLng(41.3851, 2.1734);
   LatLng? _currentUserLocation;
 
-  late final List<MapEventMarkerData> _events;
-  MapEventMarkerData? _selectedEvent;
-  String _searchQuery = '';
+  /// Filtres locals del mapa: per defecte avui i sense categoria.
+  late MapFilters _filters;
+
+  /// Text de cerca aplicat al backend (paràmetre `name` de `/api/events/map/`).
+  /// Només s'actualitza quan l'usuari prem Enter / botó de cerca.
+  String _submittedName = '';
+
+  /// Marcadors actuals construïts a partir de l'última crida a
+  /// `/api/events/map/`.
+  List<MapEventMarker> _markers = const <MapEventMarker>[];
+
+  /// Estat de càrrega de la llista de pins.
+  bool _isLoadingPins = true;
+  Object? _pinsError;
+
+  final AsyncEpoch _pinsEpoch = AsyncEpoch();
+
+  MapEventMarker? _selectedMarker;
+
+  /// Preview retornada per `/api/events/{code}/preview/` quan l'usuari
+  /// toca una xinxeta. Mentre està a `null` i [_isLoadingPreview] és
+  /// `true` la targeta mostra l'esquelet de càrrega.
+  EventPreview? _selectedPreview;
+  bool _isLoadingPreview = false;
+
+  final AsyncEpoch _previewEpoch = AsyncEpoch();
+
+  bool _isFiltersOpen = false;
 
   final double _minZoom = 8.0;
   final double _maxZoom = 18.0;
-  final double _radius = 10.0;
+  final double _radius = 40.0;
 
   @override
   void initState() {
     super.initState();
-    // Carreguem events fake per provar el mapa
-    _events = buildDemoEvents(_center);
-    // Intentem obtenir GPS per mostrar ubi i km reals
+    _filters = MapFilters.today();
+    _eventsQuery.translatedContentRevisionListenable.addListener(
+      _onTranslatedContentChanged,
+    );
+    rootTabActivationNotifier.addListener(_onRootTabActivated);
     _loadCurrentLocation();
+    _loadPins(forceRefresh: true);
+  }
+
+  @override
+  void dispose() {
+    rootTabActivationNotifier.removeListener(_onRootTabActivated);
+    _eventsQuery.translatedContentRevisionListenable.removeListener(
+      _onTranslatedContentChanged,
+    );
+    super.dispose();
+  }
+
+  void _onRootTabActivated() {
+    if (rootTabActivationNotifier.value.index != kMapTabIndex) return;
+    unawaited(_applyPendingEventSelection());
+  }
+
+  Future<void> _applyPendingEventSelection() async {
+    final pending = consumeMapPendingEventSelection();
+    if (pending == null || !mounted) return;
+
+    final filterDate = pending.filterDate;
+    if (filterDate != null) {
+      final dateOnly = DateTime(
+        filterDate.year,
+        filterDate.month,
+        filterDate.day,
+      );
+      final filtersChanged =
+          _filters.date.year != dateOnly.year ||
+          _filters.date.month != dateOnly.month ||
+          _filters.date.day != dateOnly.day ||
+          _filters.category != null;
+      if (filtersChanged) {
+        setState(() {
+          _filters = MapFilters(date: dateOnly);
+          _submittedName = '';
+          _clearSelection();
+        });
+        await _loadPins(forceRefresh: true);
+      }
+    }
+
+    if (!mounted) return;
+    await _selectEventOnMap(pending);
+  }
+
+  Future<void> _selectEventOnMap(MapPendingEventSelection pending) async {
+    MapEventMarker marker;
+    final existing = _markers.where((m) => m.code == pending.eventCode);
+    if (existing.isNotEmpty) {
+      marker = existing.first;
+    } else {
+      marker = MapEventMarker(
+        code: pending.eventCode,
+        point: LatLng(pending.latitude, pending.longitude),
+      );
+      setState(() => _markers = [..._markers, marker]);
+    }
+
+    const targetZoom = 15.0;
+    _mapController.move(
+      marker.point,
+      targetZoom.clamp(_minZoom, _maxZoom).toDouble(),
+    );
+    await _loadPreviewForMarker(marker);
   }
 
   Future<void> _loadCurrentLocation() async {
-    // 1) Mirem si el servei de localitzacio esta actiu.
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    final location = await _deviceLocationService.getCurrentLocation();
+    if (location == null || !mounted) return;
+    setState(() => _currentUserLocation = location);
+  }
 
-    // 2) Mirem permisos i els demanem si cal
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+  Future<void> _loadPins({bool forceRefresh = false}) async {
+    final epoch = _pinsEpoch.bump();
+    setState(() {
+      _isLoadingPins = true;
+      _pinsError = null;
+    });
+
+    try {
+      final pins = await _eventsQuery.getEventMapPins(
+        date: _filters.date,
+        category: _filters.category,
+        name: _submittedName.isEmpty ? null : _submittedName,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted || !_pinsEpoch.isCurrent(epoch)) return;
+      final markers = buildMarkersFromPins(pins);
+      setState(() {
+        _markers = markers;
+        _isLoadingPins = false;
+        // Si l'event seleccionat ja no apareix als marcadors actuals, el
+        // descartem perquè no quedi una targeta orfe.
+        if (_selectedMarker != null &&
+            !markers.any((m) => m.code == _selectedMarker!.code)) {
+          _clearSelection();
+        }
+      });
+    } catch (e) {
+      if (!mounted || !_pinsEpoch.isCurrent(epoch)) return;
+      setState(() {
+        _pinsError = e;
+        _isLoadingPins = false;
+      });
     }
+  }
 
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return;
-    }
-
-    // 3) Si tot esta be, guardem la ubi actual
-    final position = await Geolocator.getCurrentPosition();
+  void _onTranslatedContentChanged() {
     if (!mounted) return;
-
-    setState(() {
-      _currentUserLocation = LatLng(position.latitude, position.longitude);
-    });
+    _loadPins(forceRefresh: true);
+    final selected = _selectedMarker;
+    if (selected != null) {
+      unawaited(_loadPreviewForMarker(selected, forceRefresh: true));
+    }
   }
 
-  void _onNavigationTap(int index) {
-    setState(() {
-      _selectedTabIndex = index;
-    });
+  void _zoomIn() {
+    final currentZoom = _mapController.camera.zoom;
+    final newZoom = (currentZoom + 1).clamp(_minZoom, _maxZoom).toDouble();
+    _mapController.move(_mapController.camera.center, newZoom);
   }
 
-  Future<void> _zoomIn() async {
-    final zoomAra = _mapController.camera.zoom;
-    final zoomNou = (zoomAra + 1).clamp(_minZoom, _maxZoom).toDouble();
-    _mapController.move(_mapController.camera.center, zoomNou);
+  void _zoomOut() {
+    final currentZoom = _mapController.camera.zoom;
+    final newZoom = (currentZoom - 1).clamp(_minZoom, _maxZoom).toDouble();
+    _mapController.move(_mapController.camera.center, newZoom);
   }
 
-  Future<void> _zoomOut() async {
-    final zoomAra = _mapController.camera.zoom;
-    final zoomNou = (zoomAra - 1).clamp(_minZoom, _maxZoom).toDouble();
-    _mapController.move(_mapController.camera.center, zoomNou);
+  void _centerOnCurrentLocation() {
+    final location = _currentUserLocation;
+    if (location == null) return;
+    final targetZoom = _mapController.camera.zoom
+        .clamp(12.0, _maxZoom)
+        .toDouble();
+    _mapController.move(location, targetZoom);
   }
 
-  Future<void> _openNavigationToEvent(MapEventMarkerData event) async {
-    // Si tenim GPS, sortim des d'alla. Si no des del centre
+  Future<void> _openNavigationToEvent(MapEventMarker marker) async {
     final origin = _currentUserLocation ?? _center;
-    final destination = event.point;
-
-    // iOS -> Apple Maps, la resta -> Google Maps
-    final isIOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
-
-    final uri = isIOS
-        ? Uri.parse(
-            'https://maps.apple.com/?'
-            'saddr=${origin.latitude},${origin.longitude}'
-            '&daddr=${destination.latitude},${destination.longitude}'
-            '&dirflg=d',
-          )
-        : Uri.parse(
-            'https://www.google.com/maps/dir/?api=1'
-            '&origin=${origin.latitude},${origin.longitude}'
-            '&destination=${destination.latitude},${destination.longitude}'
-            '&travelmode=driving',
-          );
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final launched = await _mapNavigationService.openNavigation(
+      origin: origin,
+      destination: marker.point,
+    );
     if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No s\'ha pogut obrir la navegacio.')),
+      AppSnackBar.show(
+        context,
+        AppLocalizations.of(context).navigationOpenFailed,
       );
     }
   }
 
-  void _openEventDetails(MapEventMarkerData event) {
-    // PENDENT: Navegar a la pantalla de detall quan estigui feta
+  void _openEventDetails(MapEventMarker marker) {
+    unawaited(
+      FeatureNavigation.openEventDetail(context, eventCode: marker.code),
+    );
+  }
+
+  void _clearSelection() {
+    _selectedMarker = null;
+    _selectedPreview = null;
+    _isLoadingPreview = false;
   }
 
   void _closeSelectedEventCard() {
+    setState(_clearSelection);
+  }
+
+  Future<void> _loadPreviewForMarker(
+    MapEventMarker marker, {
+    bool forceRefresh = false,
+  }) async {
+    final epoch = _previewEpoch.bump();
     setState(() {
-      _selectedEvent = null;
+      _selectedMarker = marker;
+      _selectedPreview = null;
+      _isLoadingPreview = true;
     });
-  }
 
-  bool _eventMatchesSearch(MapEventMarkerData event, String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return true;
-    return event.title.toLowerCase().contains(q);
-  }
-
-  void _onSearchChanged(String value) {
-    setState(() {
-      _searchQuery = value;
-
-      // Si l'esdeveniment seleccionat ja no surt al filtre, tanquem la targeta.
-      final selected = _selectedEvent;
-      if (selected != null && !_eventMatchesSearch(selected, _searchQuery)) {
-        _selectedEvent = null;
+    try {
+      final preview = await _eventsQuery.getEventPreview(
+        marker.code,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted ||
+          !_previewEpoch.isCurrent(epoch) ||
+          _selectedMarker?.code != marker.code) {
+        return;
       }
+      setState(() {
+        _selectedPreview = preview;
+        _isLoadingPreview = false;
+      });
+    } catch (_) {
+      if (!mounted ||
+          !_previewEpoch.isCurrent(epoch) ||
+          _selectedMarker?.code != marker.code) {
+        return;
+      }
+      setState(() => _isLoadingPreview = false);
+    }
+  }
+
+  Future<void> _onMarkerTap(MapEventMarker marker) {
+    return _loadPreviewForMarker(marker);
+  }
+
+  /// Actualitza el paràmetre `name` enviat al backend i recarrega els pins.
+  /// Només es dispara quan l'usuari prem Enter / botó de cerca.
+  void _onSearchSubmitted(String value) {
+    final trimmed = value.trim();
+    if (trimmed == _submittedName) return;
+    _submittedName = trimmed;
+    _loadPins();
+  }
+
+  void _onApplyFilters(MapFilters filters) {
+    if (filters == _filters) return;
+    setState(() {
+      _filters = filters;
+      _clearSelection();
     });
+    _loadPins();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Mides de pantalla per adaptar layout.
+    final l10n = AppLocalizations.of(context);
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
-    final screenHeight = mediaQuery.size.height;
-    final isCompactWidth = screenWidth < 380;
-    final horizontalPadding = isCompactWidth
-        ? 12.0
-        : screenWidth < 720
-        ? 20.0
-        : 28.0;
-    final selectedCardHeight = (screenHeight * 0.33).clamp(220.0, 340.0);
-
-    final filteredEvents = _events
-        .where((event) => _eventMatchesSearch(event, _searchQuery))
-        .toList();
+    final mapContentWidth = math.min(screenWidth, 900.0);
 
     final eventMarkers = buildEventMarkers(
-      events: filteredEvents,
-      onMarkerTap: (event) {
-        setState(() {
-          _selectedEvent = event;
-        });
-      },
+      markers: _markers,
+      onMarkerTap: _onMarkerTap,
     );
 
-    final selectedEvent = _selectedEvent;
+    final selectedMarker = _selectedMarker;
     final hasCurrentLocation = _currentUserLocation != null;
-    // Distancia en km des del GPS real fins a l'esdeveniment seleccionat
     double distanceKm = 0.0;
-    if (selectedEvent != null && _currentUserLocation != null) {
+    if (selectedMarker != null && _currentUserLocation != null) {
       distanceKm = _distanceCalculator.as(
         LengthUnit.Kilometer,
         _currentUserLocation!,
-        selectedEvent.point,
+        selectedMarker.point,
       );
     }
 
@@ -189,7 +340,6 @@ class _MapScreenState extends State<MapScreen> {
           point: _currentUserLocation!,
           width: 24,
           height: 24,
-          // Punt blau petit per ubi actual
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -210,40 +360,43 @@ class _MapScreenState extends State<MapScreen> {
     ];
 
     return Scaffold(
-      bottomNavigationBar: AgendatBottomNavigationBar(
-        currentIndex: _selectedTabIndex,
-        onTap: _onNavigationTap,
-      ),
-      // Evita que es tapi amb notch/barres del mobil
+      appBar: MainAppBar(title: l10n.cultureNearYou),
+      backgroundColor: AppThemeTokens.screenBackground,
       body: SafeArea(
         child: Column(
           children: [
-            // Buscador de dalt.
-            MapSearchBar(
-              onChanged: _onSearchChanged,
-              margin: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                12,
-                horizontalPadding,
-                0,
+            Center(
+              child: SizedBox(
+                width: mapContentWidth,
+                child: AppSearchBar(
+                  onSubmitted: _onSearchSubmitted,
+                  textInputAction: TextInputAction.search,
+                  margin: const EdgeInsets.fromLTRB(
+                    AppScreenSpacing.horizontal,
+                    AppScreenSpacing.section,
+                    AppScreenSpacing.horizontal,
+                    AppScreenSpacing.section,
+                  ),
+                ),
               ),
             ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final maxMapWidth = constraints.maxWidth > 900
-                      ? 900.0
-                      : constraints.maxWidth;
+                  final maxMapWidth = math.min(
+                    constraints.maxWidth,
+                    mapContentWidth,
+                  );
 
                   return Center(
                     child: SizedBox(
                       width: maxMapWidth,
                       child: Container(
-                        margin: EdgeInsets.fromLTRB(
-                          horizontalPadding,
-                          10,
-                          horizontalPadding,
-                          10,
+                        margin: const EdgeInsets.fromLTRB(
+                          AppScreenSpacing.horizontal,
+                          0,
+                          AppScreenSpacing.horizontal,
+                          AppScreenSpacing.section,
                         ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(_radius),
@@ -260,66 +413,130 @@ class _MapScreenState extends State<MapScreen> {
                           borderRadius: BorderRadius.circular(_radius),
                           child: Stack(
                             children: [
-                              // FlutterMap per mostrar el mapa que ens dona flutter
-                              FlutterMap(
-                                mapController: _mapController,
-                                options: MapOptions(
-                                  // Vista inicial.
-                                  initialCenter: _center,
-                                  initialZoom: 13.0,
-                                  minZoom: _minZoom,
-                                  maxZoom: _maxZoom,
-                                  // Per moure el mapa i fer zoom amb els dits
-                                  interactionOptions: const InteractionOptions(
-                                    flags:
-                                        InteractiveFlag.drag |
-                                        InteractiveFlag.pinchZoom |
-                                        InteractiveFlag.doubleTapZoom |
-                                        InteractiveFlag.flingAnimation,
+                              AbsorbPointer(
+                                absorbing: _isFiltersOpen,
+                                child: FlutterMap(
+                                  mapController: _mapController,
+                                  options: MapOptions(
+                                    initialCenter: _center,
+                                    initialZoom: 12.0,
+                                    minZoom: _minZoom,
+                                    maxZoom: _maxZoom,
+                                    interactionOptions:
+                                        const InteractionOptions(
+                                          flags:
+                                              InteractiveFlag.drag |
+                                              InteractiveFlag.pinchZoom |
+                                              InteractiveFlag.doubleTapZoom |
+                                              InteractiveFlag.flingAnimation,
+                                        ),
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate:
+                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName:
+                                          'com.example.agendat',
+                                    ),
+                                    MarkerLayer(markers: mapMarkers),
+                                  ],
+                                ),
+                              ),
+                              if (_isLoadingPins && _markers.isEmpty)
+                                const Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                )
+                              else if (_pinsError != null && _markers.isEmpty)
+                                Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: Text(
+                                          userMessageFromError(
+                                            _pinsError!,
+                                            fallback:
+                                                'No s\'han pogut carregar els esdeveniments.',
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else if (_markers.isEmpty)
+                                const Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: Text(
+                                          'No hi ha esdeveniments per mostrar.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                children: [
-                                  // Capa base d'OpenStreetMap.
-                                  TileLayer(
-                                    urlTemplate:
-                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    userAgentPackageName: 'com.example.agendat',
-                                    maxNativeZoom: 19,
-                                    maxZoom: 19,
-                                  ),
-                                  MarkerLayer(markers: mapMarkers),
-                                ],
-                              ),
-                              // Botons de zoom
                               Positioned(
                                 top: 12,
                                 left: 12,
-                                child: MapZoomControls(
+                                child: MapControls(
                                   onZoomIn: _zoomIn,
                                   onZoomOut: _zoomOut,
+                                  onCenterOnUserLocation:
+                                      _currentUserLocation != null
+                                      ? _centerOnCurrentLocation
+                                      : null,
+                                  radius: _radius,
                                 ),
                               ),
-                              // Filtre (PENDENT: ara encara no fa res)
-                              const Positioned(
+                              Positioned(
                                 top: 12,
                                 right: 12,
-                                child: MapFilterButton(),
+                                child: MapFilterButton(
+                                  currentFilters: _filters,
+                                  onApplyFilters: _onApplyFilters,
+                                  onSheetVisibilityChanged: (isVisible) {
+                                    if (mounted) {
+                                      setState(
+                                        () => _isFiltersOpen = isVisible,
+                                      );
+                                    }
+                                  },
+                                ),
                               ),
-                              // Targeta de l'esdeveniment seleccionat
-                              if (selectedEvent != null)
+                              if (selectedMarker != null)
                                 Positioned(
                                   left: 12,
                                   right: 12,
                                   bottom: 12,
                                   child: MapSelectedEventCard(
-                                    event: selectedEvent,
+                                    marker: selectedMarker,
+                                    preview: _selectedPreview,
+                                    isLoading: _isLoadingPreview,
                                     hasCurrentLocation: hasCurrentLocation,
                                     distanceKm: distanceKm,
-                                    cardHeight: selectedCardHeight,
                                     onRoutePressed: () =>
-                                        _openNavigationToEvent(selectedEvent),
+                                        _openNavigationToEvent(selectedMarker),
                                     onMoreDetailsPressed: () =>
-                                        _openEventDetails(selectedEvent),
+                                        _openEventDetails(selectedMarker),
                                     onClosePressed: _closeSelectedEventCard,
                                   ),
                                 ),

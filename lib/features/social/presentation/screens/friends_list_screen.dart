@@ -1,0 +1,530 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+import 'package:agendat/core/api/api_error_utils.dart';
+import 'package:agendat/core/auth/auth_session_service.dart';
+import 'package:agendat/core/theme/app_theme_tokens.dart';
+import 'package:agendat/core/utils/user_list_utils.dart';
+import 'package:agendat/core/widgets/avatars.dart';
+import 'package:agendat/core/widgets/require_auth.dart';
+import 'package:agendat/core/widgets/screen_spacing.dart';
+import 'package:agendat/core/query/profile_query.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/core/models/user_summary.dart';
+import 'package:agendat/l10n/app_localizations.dart';
+
+/// Pantalla que llista els amics de l'usuari autenticat.
+///
+/// Es nodreix de `GET /api/users/{id}/friends/` (a través de `ProfileQuery`).
+/// Per definició aquest endpoint només retorna relacions d'amistat actives
+/// (acceptades), de manera que els usuaris bloquejats no apareixen aquí: el
+/// bloqueig al backend implica que la relació d'amistat ja no existeix.
+class FriendsListScreen extends StatefulWidget {
+  const FriendsListScreen({super.key, this.asPopup = false, this.onClose});
+
+  final bool asPopup;
+
+  /// Callback opcional invocat quan l'usuari sol·licita tancar la vista en
+  /// mode popup. Si no es proporciona, s'intenta un `Navigator.maybePop`
+  /// (per quan la pantalla es mostra com a ruta normal).
+  final VoidCallback? onClose;
+
+  @override
+  State<FriendsListScreen> createState() => _FriendsListScreenState();
+}
+
+class _FriendsListScreenState extends State<FriendsListScreen> {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
+  static const _kPrimaryRed = AppThemeTokens.brandPrimary;
+
+  final ProfileQuery _profileQuery = ProfileQuery.instance;
+  final TextEditingController _filterController = TextEditingController();
+  final FocusNode _filterFocusNode = FocusNode();
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<UserSummary> _friends = const [];
+  String _filter = '';
+  StreamSubscription<FriendshipChange>? _friendshipChangeSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _friendshipChangeSubscription = _profileQuery.friendshipChanges.listen(
+      _onFriendshipChange,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_guardAuthenticated()) return;
+      // Forcem un refetch en muntar: la llista d'amics depèn d'accions que
+      // fan altres usuaris (acceptacions de sol·licituds, eliminacions
+      // d'amistat) i no en rebem cap senyal en temps real. La caché local
+      // pot tenir 2 minuts de retard, però quan l'usuari obre explícitament
+      // el llistat espera veure l'estat actual del backend.
+      _loadFriends(forceRefresh: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _friendshipChangeSubscription?.cancel();
+    _filterController.dispose();
+    _filterFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onFriendshipChange(FriendshipChange change) {
+    if (!_isAuthenticated || !mounted) return;
+    unawaited(_refreshFriendsFromCache());
+  }
+
+  bool get _isAuthenticated => isAuthenticated(requireUserId: true);
+
+  bool _guardAuthenticated() => guardAuthenticated(
+    context,
+    message: AppLocalizations.of(context).loginRequired,
+    requireUserId: true,
+  );
+
+  Future<void> _loadFriends({bool forceRefresh = false}) async {
+    if (!_guardAuthenticated()) return;
+
+    final myId = currentLoggedInUser!['id'] as int;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final friends = await _profileQuery.getFriends(
+        myId,
+        forceRefresh: forceRefresh,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _friends = sortUsersByDisplayName(friends);
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('[friends-list] load failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = userMessageFromError(
+          e,
+          fallback: 'No s\'ha pogut carregar el llistat d\'amics.',
+        );
+      });
+    }
+  }
+
+  /// Amics actius: tot el que ve del backend menys els usuaris que la sessió
+  /// actual ja sap que no han d'aparèixer (`blocked` o `unfriended`).
+  /// Garanteix que un usuari acabat de bloquejar o d'eliminar com a amic
+  /// desapareixi a l'instant, encara que `getFriends` encara retorni la
+  /// versió antiga des de la caché.
+  List<UserSummary> get _unblockedFriends {
+    final blockedIds = _profileQuery.locallyBlockedUserIds;
+    final unfriendedIds = _profileQuery.locallyUnfriendedUserIds;
+    if (blockedIds.isEmpty && unfriendedIds.isEmpty) return _friends;
+    return _friends
+        .where(
+          (u) => !blockedIds.contains(u.id) && !unfriendedIds.contains(u.id),
+        )
+        .toList();
+  }
+
+  /// Llistat finalment visible: amics actius + filtre de text si està actiu.
+  List<UserSummary> get _visibleFriends =>
+      filterUsersByQuery(_unblockedFriends, _filter);
+
+  void _onFilterChanged(String value) {
+    setState(() => _filter = value.trim());
+  }
+
+  void _clearFilter() {
+    _filterController.clear();
+    _filterFocusNode.unfocus();
+    setState(() => _filter = '');
+  }
+
+  Future<void> _openProfile(UserSummary user) async {
+    await FeatureNavigation.openUserProfile(context, userId: user.id);
+    if (!mounted) return;
+
+    // En tornar del perfil, l'estat local pot haver canviat: el `ProfileScreen`
+    // ha forçat un fetch del perfil, i `_applyBackendFriendshipState` pot
+    // haver afegit/tret aquest usuari de la caché de la llista d'amics. Re-
+    // llegim la caché perquè la pantalla reflecteixi aquests canvis sense
+    // haver de tancar el popup ni mostrar un spinner. Si la caché s'ha
+    // marcat com a obsoleta, `getFriends` farà un refetch implícit.
+    await _refreshFriendsFromCache();
+  }
+
+  /// Re-llegeix la llista d'amics des de la caché compartida i actualitza
+  /// l'estat de la pantalla. No mostra cap spinner: és pensat per casos en
+  /// què ja teníem dades visibles i només cal aplicar l'última versió de la
+  /// caché (que un altre flux pot haver actualitzat optimísticament).
+  Future<void> _refreshFriendsFromCache() async {
+    final myId = currentLoggedInUser?['id'];
+    if (myId is! int) return;
+    try {
+      final friends = await _profileQuery.getFriends(myId);
+      if (!mounted) return;
+      setState(() {
+        _friends = sortUsersByDisplayName(friends);
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('[friends-list] silent refresh failed: $e');
+      // Mantenim la llista actual: és pitjor mostrar un error pel costat
+      // que una llista lleugerament desactualitzada.
+      if (mounted) setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isAuthenticated) {
+      return widget.asPopup
+          ? const SizedBox.shrink()
+          : const Scaffold(body: SizedBox.shrink());
+    }
+
+    final content = Column(
+      children: [
+        if (!_isLoading &&
+            _errorMessage == null &&
+            _unblockedFriends.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppScreenSpacing.horizontal,
+              8,
+              AppScreenSpacing.horizontal,
+              4,
+            ),
+            child: _buildFilterField(),
+          ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => _loadFriends(forceRefresh: true),
+            child: _buildBody(),
+          ),
+        ),
+      ],
+    );
+
+    if (widget.asPopup) {
+      return Material(
+        color: Colors.grey.shade50,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppScreenSpacing.horizontal,
+                  12,
+                  10,
+                  8,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.myFriends,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l10n.close,
+                      onPressed: () {
+                        if (widget.onClose != null) {
+                          widget.onClose!();
+                        } else {
+                          Navigator.of(context).maybePop();
+                        }
+                      },
+                      icon: const Icon(Icons.close, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(child: content),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        title: Text(
+          l10n.myFriends,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: content,
+    );
+  }
+
+  Widget _buildFilterField() {
+    return TextField(
+      controller: _filterController,
+      focusNode: _filterFocusNode,
+      onChanged: _onFilterChanged,
+      decoration: InputDecoration(
+        hintText: l10n.filterFriendsHint,
+        prefixIcon: const Icon(Icons.search, color: Colors.black54),
+        suffixIcon: _filter.isEmpty
+            ? null
+            : IconButton(
+                tooltip: l10n.deleteTooltip,
+                icon: const Icon(Icons.close, color: Colors.black54),
+                onPressed: _clearFilter,
+              ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(28),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: _kPrimaryRed, width: 1.5),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(28),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          _buildCenteredMessage(
+            icon: Icons.error_outline,
+            title: _errorMessage!,
+            actionLabel: l10n.retry,
+            onAction: () => _loadFriends(forceRefresh: true),
+          ),
+        ],
+      );
+    }
+
+    // Considerem la llista buida si no hi ha cap amic actiu (ja descomptats
+    // els bloquejats localment): així si l'únic amic que tenia ha estat
+    // bloquejat, mostrem el missatge buit en comptes de "Cap amic coincideix
+    // amb el filtre".
+    if (_unblockedFriends.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          _buildCenteredMessage(
+            icon: Icons.group_outlined,
+            title: l10n.noFriendsYet,
+            subtitle: l10n.noFriendsYetSubtitle,
+          ),
+        ],
+      );
+    }
+
+    final visible = _visibleFriends;
+    if (visible.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          _buildCenteredMessage(
+            icon: Icons.search_off,
+            title: l10n.noFriendsMatchSearch,
+          ),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(
+        AppScreenSpacing.horizontal,
+        8,
+        AppScreenSpacing.horizontal,
+        AppScreenSpacing.bottom,
+      ),
+      itemCount: visible.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final friend = visible[index];
+        return _FriendTile(user: friend, onTap: () => _openProfile(friend));
+      },
+    );
+  }
+
+  Widget _buildCenteredMessage({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+            ],
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onAction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kPrimaryRed,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(actionLabel),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FriendTile extends StatelessWidget {
+  const _FriendTile({required this.user, required this.onTap});
+
+  final UserSummary user;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              _Avatar(user: user),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.displayName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '@${user.username}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.user});
+
+  final UserSummary user;
+
+  @override
+  Widget build(BuildContext context) {
+    return ProfileCircleAvatar(
+      radius: 24,
+      profileImage: user.profileImage,
+      fallbackLabel: user.displayName,
+      fallback: CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.grey.shade200,
+        child: Icon(Icons.person, size: 26, color: Colors.grey.shade400),
+      ),
+      userId: user.id,
+      reputation: user.reputation,
+      showLevelRing: true,
+    );
+  }
+}
