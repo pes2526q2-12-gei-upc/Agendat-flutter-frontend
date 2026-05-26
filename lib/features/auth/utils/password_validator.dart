@@ -12,20 +12,33 @@ class PasswordValidator {
   static const String passwordNeedsNumberKey = 'passwordNeedsNumber';
   static const String passwordNeedsSpecialCharKey = 'passwordNeedsSpecialChar';
 
+  static bool hasMinLength(String password) => password.length >= minLength;
+
+  static bool hasUppercase(String password) =>
+      password.contains(RegExp(r'[A-Z]'));
+
+  static bool hasLowercase(String password) =>
+      password.contains(RegExp(r'[a-z]'));
+
+  static bool hasNumber(String password) => password.contains(RegExp(r'[0-9]'));
+
+  static bool hasSpecialChar(String password) =>
+      password.contains(RegExp(r'[^a-zA-Z0-9]'));
+
   static PasswordValidationIssue? validate(String password) {
-    if (password.length < minLength) {
+    if (!hasMinLength(password)) {
       return PasswordValidationIssue.tooShort;
     }
-    if (!password.contains(RegExp(r'[A-Z]'))) {
+    if (!hasUppercase(password)) {
       return PasswordValidationIssue.needsUppercase;
     }
-    if (!password.contains(RegExp(r'[a-z]'))) {
+    if (!hasLowercase(password)) {
       return PasswordValidationIssue.needsLowercase;
     }
-    if (!password.contains(RegExp(r'[0-9]'))) {
+    if (!hasNumber(password)) {
       return PasswordValidationIssue.needsNumber;
     }
-    if (!password.contains(RegExp(r'[^a-zA-Z0-9]'))) {
+    if (!hasSpecialChar(password)) {
       return PasswordValidationIssue.needsSpecialChar;
     }
     return null;
