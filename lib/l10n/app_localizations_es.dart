@@ -821,6 +821,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get attendButton => 'Asistir';
 
   @override
+  String get viewOnMap => 'Ver en el mapa';
+
+  @override
   String get publicEvent => 'Público';
 
   @override

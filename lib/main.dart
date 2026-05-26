@@ -123,6 +123,7 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
     super.initState();
     _selectedIndex = widget.initialIndex.clamp(0, _screens.length - 1);
     setSelectedRootTabIndex(_selectedIndex);
+    rootTabIndexNotifier.addListener(_onExternalTabIndexChanged);
     _chatRealtimeSubscription = ChatRealtimeService.instance.events.listen(
       _onChatRealtimeEvent,
     );
@@ -133,9 +134,16 @@ class _RootNavigationScreenState extends State<RootNavigationScreen> {
 
   @override
   void dispose() {
+    rootTabIndexNotifier.removeListener(_onExternalTabIndexChanged);
     _chatRealtimeSubscription?.cancel();
     _friendshipRealtimeSubscription?.cancel();
     super.dispose();
+  }
+
+  void _onExternalTabIndexChanged() {
+    final index = rootTabIndexNotifier.value;
+    if (index == _selectedIndex) return;
+    setState(() => _selectedIndex = index);
   }
 
   void _onChatRealtimeEvent(ChatRealtimeEvent event) {

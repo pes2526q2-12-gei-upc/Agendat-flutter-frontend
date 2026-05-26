@@ -12,6 +12,7 @@ import 'package:agendat/core/widgets/main_app_bar.dart';
 import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
+import 'package:agendat/core/navigation/feature_navigation.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/events/presentation/widgets/info_row.dart';
 import 'package:agendat/features/events/presentation/widgets/link_tile.dart';
@@ -104,6 +105,17 @@ class _EventScreenState extends State<EventScreen> {
         forceRefresh: true,
       );
     });
+  }
+
+  void _handleViewOnMap(EventExtended event) {
+    if (!event.hasCoordinates) return;
+    FeatureNavigation.openEventOnMap(
+      context,
+      eventCode: event.code,
+      latitude: event.latitude!,
+      longitude: event.longitude!,
+      filterDate: event.startDate,
+    );
   }
 
   Future<void> _handleAssistir(EventExtended event) async {
@@ -843,6 +855,34 @@ class _EventScreenState extends State<EventScreen> {
                   ),
 
                 const SizedBox(height: 20),
+                if (event.hasCoordinates) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _handleViewOnMap(event),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        foregroundColor: const Color.fromARGB(255, 202, 3, 3),
+                        side: const BorderSide(
+                          color: Color.fromARGB(255, 202, 3, 3),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.map_outlined),
+                      label: Text(
+                        l10n.viewOnMap,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
