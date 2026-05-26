@@ -1044,6 +1044,71 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noInterestsAdded => 'No interests added yet';
 
   @override
+  String get profileNoDescription => 'No description';
+
+  @override
+  String get profileLevel => 'Level';
+
+  @override
+  String get profileLevelBronze => 'Bronze level';
+
+  @override
+  String get profileLevelSilver => 'Silver level';
+
+  @override
+  String get profileLevelGold => 'Gold level';
+
+  @override
+  String get profileAttendedOnlyOwn =>
+      'Attendances are only available on your profile';
+
+  @override
+  String get profileAttendancesLoadFailed => 'Could not load attendances';
+
+  @override
+  String get profileNoAttendances =>
+      'You do not have any registered attendances yet';
+
+  @override
+  String get profileNoReviews => 'No reviews';
+
+  @override
+  String get profileReviewFallbackEvent => 'Event';
+
+  @override
+  String interestsSelectedCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count selected',
+      one: '1 selected',
+      zero: 'None selected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get editInterestsLoadCategoriesFailed =>
+      'Could not load the categories. Refresh the page.';
+
+  @override
+  String get registerInterestsLoadFailed => 'Could not load the interests.';
+
+  @override
+  String get registerInterestsTitle => 'Choose your interests';
+
+  @override
+  String get registerInterestsSubtitle =>
+      'Personalize your cultural recommendations';
+
+  @override
+  String get registerInterestsInstruction =>
+      'Select at least one category to continue';
+
+  @override
+  String get skip => 'Skip';
+
+  @override
   String get cannotRateEventBody =>
       'You can only rate events you have attended.';
 

@@ -67,7 +67,9 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
         _isLoading = false;
         _errorMessage = userMessageFromError(
           e,
-          fallback: 'Error al carregar les categories, refresca la pàgina',
+          fallback: AppLocalizations.of(
+            context,
+          ).editInterestsLoadCategoriesFailed,
         );
       });
     }
@@ -108,22 +110,23 @@ class _EditInterestsScreenState extends State<EditInterestsScreen> {
   List<UserInterest> _withCategoryEmojis(List<UserInterest> interests) {
     if (interests.isEmpty || _categories.isEmpty) return interests;
 
-    final emojiById = <int, String>{};
+    final dataById = <int, CategoryDto>{};
     for (final category in _categories) {
       final id = category.id;
-      final emoji = category.emoji;
-      if (id != null && emoji != null && emoji.isNotEmpty) {
-        emojiById[id] = emoji;
+      if (id != null) {
+        dataById[id] = category;
       }
     }
-    if (emojiById.isEmpty) return interests;
+    if (dataById.isEmpty) return interests;
 
     return interests.map((interest) {
-      if (interest.emoji != null && interest.emoji!.isNotEmpty) {
-        return interest;
-      }
-      final emoji = emojiById[interest.id];
-      return emoji == null ? interest : interest.copyWith(emoji: emoji);
+      final category = dataById[interest.id];
+      if (category == null) return interest;
+      final emoji = category.emoji;
+      return interest.copyWith(
+        name: category.name.isEmpty ? interest.name : category.name,
+        emoji: emoji == null || emoji.isEmpty ? interest.emoji : emoji,
+      );
     }).toList();
   }
 

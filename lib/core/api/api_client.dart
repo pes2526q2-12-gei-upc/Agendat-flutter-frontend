@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:agendat/core/services/app_language.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -18,7 +19,10 @@ class ApiClient {
   }
 
   static Map<String, String> _headers({bool jsonContentType = false}) {
-    final headers = <String, String>{..._baseHeaders};
+    final headers = <String, String>{
+      ..._baseHeaders,
+      'Accept-Language': _acceptLanguage(),
+    };
     if (jsonContentType) {
       headers['Content-Type'] = 'application/json; charset=utf-8';
     }
@@ -27,6 +31,15 @@ class ApiClient {
       headers['Authorization'] = 'Token $token';
     }
     return headers;
+  }
+
+  static String _acceptLanguage() {
+    return switch (AppLanguage.code) {
+      'ES' => 'es',
+      'EN' => 'en',
+      'CA' => 'ca',
+      _ => 'ca',
+    };
   }
 
   static String get baseUrl {

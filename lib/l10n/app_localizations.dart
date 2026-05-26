@@ -2014,6 +2014,108 @@ abstract class AppLocalizations {
   /// **'Cap interès afegit'**
   String get noInterestsAdded;
 
+  /// No description provided for @profileNoDescription.
+  ///
+  /// In ca, this message translates to:
+  /// **'Sense descripció'**
+  String get profileNoDescription;
+
+  /// No description provided for @profileLevel.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell'**
+  String get profileLevel;
+
+  /// No description provided for @profileLevelBronze.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell Bronze'**
+  String get profileLevelBronze;
+
+  /// No description provided for @profileLevelSilver.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell Plata'**
+  String get profileLevelSilver;
+
+  /// No description provided for @profileLevelGold.
+  ///
+  /// In ca, this message translates to:
+  /// **'Nivell Or'**
+  String get profileLevelGold;
+
+  /// No description provided for @profileAttendedOnlyOwn.
+  ///
+  /// In ca, this message translates to:
+  /// **'Assistències només disponibles al teu perfil'**
+  String get profileAttendedOnlyOwn;
+
+  /// No description provided for @profileAttendancesLoadFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'han pogut carregar les assistències'**
+  String get profileAttendancesLoadFailed;
+
+  /// No description provided for @profileNoAttendances.
+  ///
+  /// In ca, this message translates to:
+  /// **'Encara no tens assistències registrades'**
+  String get profileNoAttendances;
+
+  /// No description provided for @profileNoReviews.
+  ///
+  /// In ca, this message translates to:
+  /// **'No hi ha ressenyes'**
+  String get profileNoReviews;
+
+  /// No description provided for @profileReviewFallbackEvent.
+  ///
+  /// In ca, this message translates to:
+  /// **'Esdeveniment'**
+  String get profileReviewFallbackEvent;
+
+  /// No description provided for @interestsSelectedCount.
+  ///
+  /// In ca, this message translates to:
+  /// **'{count, plural, =0{Cap seleccionat} =1{1 seleccionat} other{{count} seleccionats}}'**
+  String interestsSelectedCount(num count);
+
+  /// No description provided for @editInterestsLoadCategoriesFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'Error en carregar les categories. Refresca la pàgina.'**
+  String get editInterestsLoadCategoriesFailed;
+
+  /// No description provided for @registerInterestsLoadFailed.
+  ///
+  /// In ca, this message translates to:
+  /// **'No s\'han pogut carregar els interessos.'**
+  String get registerInterestsLoadFailed;
+
+  /// No description provided for @registerInterestsTitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Tria els teus interessos'**
+  String get registerInterestsTitle;
+
+  /// No description provided for @registerInterestsSubtitle.
+  ///
+  /// In ca, this message translates to:
+  /// **'Personalitza les recomanacions culturals'**
+  String get registerInterestsSubtitle;
+
+  /// No description provided for @registerInterestsInstruction.
+  ///
+  /// In ca, this message translates to:
+  /// **'Selecciona almenys una categoria per continuar'**
+  String get registerInterestsInstruction;
+
+  /// No description provided for @skip.
+  ///
+  /// In ca, this message translates to:
+  /// **'Saltar'**
+  String get skip;
+
   /// No description provided for @cannotRateEventBody.
   ///
   /// In ca, this message translates to:

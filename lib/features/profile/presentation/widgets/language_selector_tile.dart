@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:agendat/core/api/profile_api.dart';
 import 'package:agendat/core/query/categories_query.dart';
 import 'package:agendat/core/query/events_query.dart';
+import 'package:agendat/core/query/profile_query.dart';
 import 'package:agendat/core/services/app_language.dart';
 import 'package:agendat/core/services/push_notifications_service.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
@@ -73,20 +74,23 @@ class _LanguageSelectorTileState extends State<LanguageSelectorTile> {
               .updateRegisteredDeviceLanguage(code);
           CategoriesQuery.instance.invalidate();
           EventsQuery.instance.refreshTranslatedContent();
+          ProfileQuery.instance.invalidateAll();
         case UpdateProfileFailure(:final statusCode):
           await _revertLanguage(previous);
           if (statusCode == 401 || statusCode == 403) {
             widget.onShowMessage(widget.unauthenticatedMessage);
           } else if (statusCode == -1) {
             widget.onShowMessage(
-              'Error de connexió. Comprova la teva connexió.',
+              AppLocalizations.of(context).languageErrorOffline,
             );
           } else {
-            widget.onShowMessage('No s\'ha pogut desar l\'idioma.');
+            widget.onShowMessage(
+              AppLocalizations.of(context).languageSaveFailed,
+            );
           }
         case UpdateProfileValidationError():
           await _revertLanguage(previous);
-          widget.onShowMessage('No s\'ha pogut desar l\'idioma.');
+          widget.onShowMessage(AppLocalizations.of(context).languageSaveFailed);
       }
     } finally {
       if (mounted) {
