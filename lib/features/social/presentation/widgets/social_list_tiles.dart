@@ -296,73 +296,99 @@ class SocialFriendRequestTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton.icon(
-                        onPressed: isBusy ? null : onAccept,
-                        icon: isBusy
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Icon(Icons.check, size: 18),
-                        label: Text(
-                          AppLocalizations.of(context).accept,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _kPrimaryRed,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: _kPrimaryRed.withValues(
-                            alpha: 0.6,
-                          ),
-                          disabledForegroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: OutlinedButton.icon(
-                        onPressed: isBusy ? null : onReject,
-                        icon: const Icon(Icons.close, size: 18),
-                        label: Text(
-                          AppLocalizations.of(context).reject,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _kPrimaryRed,
-                          side: const BorderSide(color: _kPrimaryRed),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              _buildActions(context),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context) {
+    final acceptButton = _buildAcceptButton(context);
+    final rejectButton = _buildRejectButton(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 300) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              acceptButton,
+              const SizedBox(height: 8),
+              rejectButton,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: acceptButton),
+            const SizedBox(width: 8),
+            Expanded(child: rejectButton),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAcceptButton(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 40),
+      child: ElevatedButton.icon(
+        onPressed: isBusy ? null : onAccept,
+        icon: isBusy
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Icon(Icons.check, size: 18),
+        label: Text(
+          AppLocalizations.of(context).accept,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kPrimaryRed,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _kPrimaryRed.withValues(alpha: 0.6),
+          disabledForegroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          minimumSize: const Size(0, 40),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRejectButton(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 40),
+      child: OutlinedButton.icon(
+        onPressed: isBusy ? null : onReject,
+        icon: const Icon(Icons.close, size: 18),
+        label: Text(
+          AppLocalizations.of(context).reject,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kPrimaryRed,
+          side: const BorderSide(color: _kPrimaryRed),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          minimumSize: const Size(0, 40),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       ),

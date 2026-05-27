@@ -56,10 +56,8 @@ class _SocialScreenState extends State<SocialScreen>
   String? _errorMessage;
 
   bool _isLoadingRequests = false;
-  String? _requestsErrorMessage;
   List<PendingFriendRequest> _pendingRequests = const [];
   final Set<int> _busyRequestIds = <int>{};
-  bool _showPendingRequests = false;
 
   bool _isLoadingChats = false;
   String? _chatsErrorMessage;
@@ -283,7 +281,6 @@ class _SocialScreenState extends State<SocialScreen>
 
     setState(() {
       _isLoadingRequests = true;
-      _requestsErrorMessage = null;
     });
 
     try {
@@ -300,14 +297,10 @@ class _SocialScreenState extends State<SocialScreen>
         _isLoadingRequests = false;
       });
       syncPendingFriendRequestsBadge(pending.length);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isLoadingRequests = false;
-        _requestsErrorMessage = userMessageFromError(
-          e,
-          fallback: AppLocalizations.of(context).loadFriendsFailed,
-        );
       });
     }
   }
@@ -325,7 +318,6 @@ class _SocialScreenState extends State<SocialScreen>
           .toList();
       setState(() {
         _pendingRequests = pending;
-        _requestsErrorMessage = null;
       });
       syncPendingFriendRequestsBadge(pending.length);
     } catch (_) {
@@ -609,12 +601,6 @@ class _SocialScreenState extends State<SocialScreen>
     ]);
   }
 
-  void _togglePendingRequestsView() {
-    setState(() {
-      _showPendingRequests = !_showPendingRequests;
-    });
-  }
-
   Future<void> _openChat(Chat chat) async {
     await FeatureNavigation.openFriendConversation(context, chat: chat);
     if (!mounted) return;
@@ -802,49 +788,6 @@ class _SocialScreenState extends State<SocialScreen>
   }
 
   Widget _buildBody() {
-    if (_query.isEmpty && _showPendingRequests && _isLoadingRequests) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_query.isEmpty &&
-        _showPendingRequests &&
-        _requestsErrorMessage != null) {
-      return _buildCenteredMessage(
-        icon: Icons.error_outline,
-        title: _requestsErrorMessage!,
-        actionLabel: l10n.retry,
-        onAction: () => _loadPendingRequestsCount(forceRefresh: true),
-      );
-    }
-
-    if (_query.isEmpty && _showPendingRequests && _pendingRequests.isNotEmpty) {
-      return ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppScreenSpacing.horizontal,
-          AppScreenSpacing.xxs,
-          AppScreenSpacing.horizontal,
-          AppScreenSpacing.bottom,
-        ),
-        itemBuilder: (context, index) {
-          final request = _pendingRequests[index];
-          return SocialFriendRequestTile(
-            request: request,
-            isBusy: _busyRequestIds.contains(request.id),
-            onAccept: () => _acceptRequest(request),
-            onReject: () => _rejectRequest(request),
-            onTap: () {
-              final sender = _senderOf(request);
-              if (sender != null) _openProfile(sender);
-            },
-          );
-        },
-        separatorBuilder: (_, __) =>
-            const SizedBox(height: AppScreenSpacing.xs),
-        itemCount: _pendingRequests.length,
-      );
-    }
-
     if (_query.isEmpty) {
       if (_isLoadingChats && _chats.isEmpty) {
         return const Center(child: CircularProgressIndicator());
@@ -1138,11 +1081,118 @@ class _SocialScreenState extends State<SocialScreen>
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: Icon(
-          _showPendingRequests ? Icons.expand_less : Icons.expand_more,
-        ),
-        onTap: _togglePendingRequestsView,
+        trailing: _isLoadingRequests
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.chevron_right),
+        onTap: _openPendingRequestsPopup,
       ),
+    );
+  }
+
+  void _openPendingRequestsPopup() {
+    if (_pendingRequests.isEmpty) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            final maxHeight = MediaQuery.of(context).size.height * 0.72;
+
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.friendRequestsTitle,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: l10n.close,
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const BouncingScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            final request = _pendingRequests[index];
+                            return SocialFriendRequestTile(
+                              request: request,
+                              isBusy: _busyRequestIds.contains(request.id),
+                              onAccept: () async {
+                                final action = _acceptRequest(request);
+                                setSheetState(() {});
+                                await action;
+                                if (!mounted || !sheetContext.mounted) return;
+                                if (_pendingRequests.isEmpty) {
+                                  Navigator.of(sheetContext).pop();
+                                } else {
+                                  setSheetState(() {});
+                                }
+                              },
+                              onReject: () async {
+                                final action = _rejectRequest(request);
+                                setSheetState(() {});
+                                await action;
+                                if (!mounted || !sheetContext.mounted) return;
+                                if (_pendingRequests.isEmpty) {
+                                  Navigator.of(sheetContext).pop();
+                                } else {
+                                  setSheetState(() {});
+                                }
+                              },
+                              onTap: () {
+                                final sender = _senderOf(request);
+                                if (sender == null) return;
+                                Navigator.of(sheetContext).pop();
+                                _openProfile(sender);
+                              },
+                            );
+                          },
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemCount: _pendingRequests.length,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
