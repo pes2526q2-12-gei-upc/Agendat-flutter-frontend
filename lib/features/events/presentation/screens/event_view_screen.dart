@@ -13,13 +13,13 @@ import 'package:agendat/core/widgets/screen_spacing.dart';
 import 'package:agendat/core/widgets/section_card.dart';
 import 'package:agendat/core/models/event.dart';
 import 'package:agendat/core/navigation/feature_navigation.dart';
+import 'package:agendat/core/services/attendance_calendar_sync.dart';
 import 'package:agendat/core/utils/event_text_utils.dart';
 import 'package:agendat/features/events/presentation/widgets/info_row.dart';
 import 'package:agendat/features/events/presentation/widgets/link_tile.dart';
 import 'package:agendat/features/events/presentation/widgets/invite_friends_bottom_sheet.dart';
 import 'package:agendat/features/events/presentation/widgets/session_picker_dialog.dart';
 import 'package:agendat/features/reviews/presentation/widgets/reviews_section.dart';
-import 'package:agendat/core/services/google_calendar_service.dart';
 import 'package:agendat/features/auth/data/users_api.dart';
 import 'package:agendat/l10n/app_localizations.dart';
 
@@ -36,7 +36,8 @@ class _EventScreenState extends State<EventScreen> {
   final EventsQuery _eventsQuery = EventsQuery.instance;
   final SessionsQuery _sessionsQuery = SessionsQuery.instance;
   final SessionsApi _sessionsApi = SessionsApi();
-  final GoogleCalendarService _googleCalendarService = GoogleCalendarService();
+  final GoogleAttendanceCalendarClient _calendarSyncClient =
+      GoogleAttendanceCalendarClient();
   late Future<EventExtended> _eventFuture;
   bool _isDescriptionExpanded = false;
   bool _isCreatingSession = false;
@@ -172,27 +173,21 @@ class _EventScreenState extends State<EventScreen> {
       );
       _sessionsQuery.invalidateAll();
 
-      // Add event to Google Calendar if user has given permission
-      if (_addToGoogleCalendar) {
-        final accessToken = await _googleCalendarService.getAccessToken();
-        if (accessToken != null && mounted) {
-          final calendarSuccess = await _googleCalendarService
-              .createCalendarEvent(
-                accessToken: accessToken,
-                eventTitle: '${event.title}',
-                startDateTime: selectedDateTime,
-                endDateTime: endDateTime,
-                description: l10n.attendanceCalendarSyncDescription,
-              );
+      final calendarResult = await syncAttendanceSessionToGoogleCalendar(
+        calendarClient: _calendarSyncClient,
+        calendarSyncAllowed: _addToGoogleCalendar,
+        eventTitle: event.title,
+        startDateTime: selectedDateTime,
+        endDateTime: endDateTime,
+        description: l10n.attendanceCalendarSyncDescription,
+      );
 
-          if (!calendarSuccess && mounted) {
-            AppSnackBar.show(
-              context,
-              l10n.attendanceCalendarSyncPartial,
-              duration: const Duration(seconds: 3),
-            );
-          }
-        }
+      if (calendarResult == AttendanceCalendarSyncResult.failed && mounted) {
+        AppSnackBar.show(
+          context,
+          l10n.attendanceCalendarSyncPartial,
+          duration: const Duration(seconds: 3),
+        );
       }
 
       if (!mounted) return;
@@ -503,6 +498,23 @@ class _EventScreenState extends State<EventScreen> {
       );
       _sessionsQuery.invalidateAll();
       _sessionsQuery.invalidateEvent(event.code);
+      final calendarResult = await syncAttendanceSessionToGoogleCalendar(
+        calendarClient: _calendarSyncClient,
+        calendarSyncAllowed: _addToGoogleCalendar,
+        eventTitle: event.title,
+        startDateTime: selectedDateTime,
+        endDateTime: endDateTime,
+        description: AppLocalizations.of(
+          context,
+        ).attendanceCalendarSyncDescription,
+      );
+      if (calendarResult == AttendanceCalendarSyncResult.failed && mounted) {
+        AppSnackBar.show(
+          context,
+          AppLocalizations.of(context).attendanceCalendarSyncPartial,
+          duration: const Duration(seconds: 3),
+        );
+      }
       return dto.toDomain();
     } on ApiException catch (e) {
       if (!mounted) return null;
