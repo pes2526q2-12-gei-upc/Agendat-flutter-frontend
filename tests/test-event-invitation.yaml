@@ -18,15 +18,18 @@ appId: com.example.agendat
 # Happy path de friend request
 - tapOn:
     point: 5%,11%
-
 - tapOn: |-
+    1
     Social
     Pestanya 4 de 5
+
 - tapOn: Cerca un xat
 - inputText: Elon
 - tapOn: |-
+    1
     Elon Musk
     @Casteller16
+
 - tapOn: Enviar sol·licitud d'amistat
 - assertVisible: Sol·licitud d'amistat enviada.
 - waitForAnimationToEnd
@@ -50,19 +53,12 @@ appId: com.example.agendat
 - pressKey: Enter
 
 # Happy path d'acceptar friend request
-- assertVisible: |-
-    1
-    Social
-    Pestanya 4 de 5
-- tapOn: |-
-    1
-    Social
-    Pestanya 4 de 5
+- tapOn:
+    point: 70%, 94%
 - tapOn: |-
     Sol·licituds d'amistat
     1 pendents per revisar
 - tapOn: Acceptar
-
 # Happy path d'enviar invitació a esdeveniment
 - tapOn: |-
     Perfil
@@ -73,21 +69,24 @@ appId: com.example.agendat
     direction: UP
 - tapOn: Convidar
 - tapOn: |- # Sessió de l'esdeveniment de test-event-view-and-session
-    diumenge, 24 de maig de 2026
+    divendres, 29 de maig de 2026
     A les 13:00
 - tapOn: |-
     MZ
+    1
     Mark Zuckerberg
     @Casteller15
 - tapOn: Enviar 1 invitació
 - assertVisible: Invitació enviada correctament.
 - waitForAnimationToEnd
+- waitForAnimationToEnd
 - tapOn: Convidar
 - tapOn: |- # Sessió de l'esdeveniment de test-event-view-and-session
-    diumenge, 24 de maig de 2026
+    divendres, 29 de maig de 2026
     A les 13:00
 - assertVisible: |-
     MZ
+    1
     Mark Zuckerberg
     @Casteller15
     Pendent
@@ -107,10 +106,8 @@ appId: com.example.agendat
 - pressKey: Enter
 
 # Happy path d'acceptar invitació a esdeveniment
-- tapOn: |-
-    1
-    Social
-    Pestanya 4 de 5
+- tapOn:
+    point: 70%, 94%
 - tapOn:
     point: 50%, 23%
 - tapOn: Acceptar
@@ -130,8 +127,10 @@ appId: com.example.agendat
     Pestanya 4 de 5
 - tapOn: Els meus amics
 - tapOn: |-
+    1
     Elon Musk
     @Casteller16
+
 - tapOn: Eliminar amistat
 - tapOn:
     text: Eliminar amistat

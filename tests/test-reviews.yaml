@@ -58,7 +58,7 @@ appId: com.example.agendat
 - tapOn:
     point: 50%, 32%
 - tapOn:
-    point: 81%, 45%
+    point: 80%, 52%
 - tapOn:
     point: 88%, 49%
 - tapOn:
@@ -78,6 +78,6 @@ appId: com.example.agendat
 - tapOn:
     point: 50%, 32%
 - tapOn:
-    point: 89%, 45%
+    point: 87%, 52%
 - tapOn: Eliminar
 - assertVisible: Valoració eliminada.

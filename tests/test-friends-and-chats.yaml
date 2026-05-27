@@ -11,7 +11,7 @@
 #  "event_reminders_allowed": true,
 #  "event_updates_allowed": true,
 #  "social_alerts_allowed": true,
-#  "calendar_sync_allowed": true,
+#  "calendar_sync_allowed": false,
 #  "selected_language": "CA",
 #  "description": "",
 #  "password": "k.87_oP[",
@@ -81,7 +81,6 @@ appId: com.example.agendat
     Sol·licituds d'amistat
     1 pendents per revisar
 - tapOn: Acceptar
-
 # Happy path d'enviar missatge
 - tapOn:
     point: 50%, 23%
@@ -134,6 +133,8 @@ appId: com.example.agendat
 - assertVisible: |-
     Encara no tens cap amic.
     Cerca usuaris i envia'ls una sol·licitud d'amistat.
+
+# Happy path de desbloquejar
 - tapOn: |-
     Perfil
     Pestanya 5 de 5
