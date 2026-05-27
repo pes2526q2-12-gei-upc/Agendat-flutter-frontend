@@ -1,27 +1,25 @@
-# Augmentar en un número el nom i el correu cada
-# vegada que es vulgui executar el happy path
 appId: com.example.agendat
 ---
 - launchApp:
     clearState: true
 
-- assertVisible: Inicia sessió
 - tapOn: Registra't
 - assertVisible: Crea el teu compte
 
 # Happy path
 - tapOn: Nom d'usuari únic
-- inputText: Casteller16 # Augmentar aquí
+- inputText: Casteller16
 - tapOn: El teu nom
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
-- inputText: Casteller16@gmail.com # Augmentar aquí
+- inputText: Casteller16@gmail.com
 - tapOn: Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial
 - inputText: k.87_oP[
 - pressKey: Enter
 - inputText: k.87_oP[
-- pressKey: Enter
-- waitForAnimationToEnd
+- swipe:
+    direction: UP
+- tapOn: Crear compte
 - assertVisible: Verifica el compte
 - tapOn: Enrere
 - waitForAnimationToEnd
@@ -30,10 +28,10 @@ appId: com.example.agendat
 # el correu, s'ha de fer un POST /api/users/ a la api
 # per poder crear l'usuari sense la verificació:
 # {
-#  "username": "Casteller15",
-#  "first_name": "Mark",
-#  "last_name": "Zuckerberg",
-#  "email": "user4@example.com",
+#  "username": "Casteller16",
+#  "first_name": "Elon",
+#  "last_name": "Musk",
+#  "email": "user2@example.com",
 #  "phone": "",
 #  "birth_date": "2026-05-24",
 #  "location_allowed": true,
@@ -41,7 +39,7 @@ appId: com.example.agendat
 #  "event_reminders_allowed": true,
 #  "event_updates_allowed": true,
 #  "social_alerts_allowed": true,
-#  "calendar_sync_allowed": true,
+#  "calendar_sync_allowed": false,
 #  "selected_language": "CA",
 #  "description": "",
 #  "password": "k.87_oP[",
@@ -52,13 +50,14 @@ appId: com.example.agendat
 - tapOn: Registra't
 - tapOn: exemple@correu.cat
 - inputText: Casteller99@gmail.com
-- tapOn: Mínim 8 caràcters
+- tapOn: Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial
 - inputText: k.87_oP[
 - pressKey: Enter
 - inputText: k.87_oP[
-- pressKey: Enter
-- assertVisible: Introdueix un nom d'usuari.
-- waitForAnimationToEnd
+- swipe:
+    direction: UP
+- tapOn: Crear compte
+- assertVisible: Crea el teu compte
 - tapOn: Enrere
 
 # Error 2: password massa curta
@@ -69,11 +68,13 @@ appId: com.example.agendat
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
 - inputText: Casteller99@gmail.com
-- tapOn: Mínim 8 caràcters
+- tapOn: Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial
 - inputText: k.87_oP
 - pressKey: Enter
 - inputText: k.87_oP
-- pressKey: Enter
+- swipe:
+    direction: UP
+- tapOn: Crear compte
 - assertVisible: La contrasenya ha de tenir almenys 8 caràcters.
 - waitForAnimationToEnd
 - tapOn: Enrere
@@ -81,16 +82,18 @@ appId: com.example.agendat
 # Error 3: usuari duplicat
 - tapOn: Registra't
 - tapOn: Nom d'usuari únic
-- inputText: Casteller98
+- inputText: Casteller16
 - tapOn: El teu nom
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
 - inputText: CastellerNoExistent@gmail.com
-- tapOn: Mínim 8 caràcters
+- tapOn: Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial
 - inputText: k.87_oP[
 - pressKey: Enter
 - inputText: k.87_oP[
-- pressKey: Enter
+- swipe:
+    direction: UP
+- tapOn: Crear compte
 - assertVisible: Ja existeix un usuari amb aquest nom.
 - waitForAnimationToEnd
 - tapOn: Enrere
@@ -102,10 +105,12 @@ appId: com.example.agendat
 - tapOn: El teu nom
 - inputText: Elon Musk
 - tapOn: exemple@correu.cat
-- inputText: Casteller98@gmail.com
-- tapOn: Mínim 8 caràcters
+- inputText: user4@gmail.com
+- tapOn: Mín. 8 caràcters, majúscula, minúscula, número i caràcter especial
 - inputText: k.87_oP[
 - pressKey: Enter
 - inputText: k.87_oP[
-- pressKey: Enter
+- swipe:
+    direction: UP
+- tapOn: Crear compte
 - assertVisible: Ja existeix un usuari amb aquest correu.

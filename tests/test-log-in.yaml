@@ -12,7 +12,7 @@ appId: com.example.agendat
 - tapOn: La teva contrasenya
 - inputText: k.87_oP[
 - pressKey: Enter
-- assertVisible: No s'ha pogut iniciar sessió.
+- assertVisible: Les credencials no son valides.
 - waitForAnimationToEnd
 - tapOn: Casteller100
 - eraseText
@@ -25,9 +25,10 @@ appId: com.example.agendat
 - tapOn: La teva contrasenya
 - inputText: k.87_oP]
 - pressKey: Enter
-- assertVisible: No s'ha pogut iniciar sessió.
+- assertVisible: Les credencials no son valides.
 - waitForAnimationToEnd
 - tapOn: Casteller16
+
 - eraseText
 - tapOn: ••••••••
 - eraseText
