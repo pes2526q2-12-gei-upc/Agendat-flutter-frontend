@@ -356,7 +356,10 @@ class DateRangeFilterSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.dateRange, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(
+          l10n.dateRange,
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [

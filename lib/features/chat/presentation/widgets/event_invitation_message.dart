@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:agendat/core/auth/auth_session_service.dart';
 import 'package:agendat/core/models/event_invitation.dart';
 import 'package:agendat/core/query/chats_query.dart';
 import 'package:agendat/core/query/invitations_query.dart';
+import 'package:agendat/core/services/attendance_calendar_sync.dart';
 import 'package:agendat/core/utils/app_snackbar.dart';
 import 'package:agendat/core/utils/chat_utils.dart';
 import 'package:agendat/core/theme/app_theme_tokens.dart';
@@ -50,6 +52,9 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
   static const Color _sentBubbleColor = AppThemeTokens.brandPrimary;
   static const Color _accentRed = AppThemeTokens.brandPrimary;
 
+  final GoogleAttendanceCalendarClient _calendarSyncClient =
+      GoogleAttendanceCalendarClient();
+
   bool _isResponding = false;
 
   /// Estat local després d'acceptar/rebutjar; prioritari fins que el pare
@@ -74,6 +79,9 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
   /// continua pendent.
   bool get _canRespond =>
       !widget.isSentByMe && _invitation.isPending && !_isResponding;
+
+  bool get _addToGoogleCalendar =>
+      (currentLoggedInUser?['calendar_sync_allowed'] as bool?) ?? true;
 
   Future<void> _accept() => _respond(accept: true);
 
@@ -104,12 +112,33 @@ class _EventInvitationMessageState extends State<EventInvitationMessage> {
           _isResponding = false;
         });
         final accepted = invitation.isAccepted;
+        final calendarResult = accepted
+            ? await syncAttendanceSessionToGoogleCalendar(
+                calendarClient: _calendarSyncClient,
+                calendarSyncAllowed: _addToGoogleCalendar,
+                eventTitle: invitation.eventDenomination.isEmpty
+                    ? AppLocalizations.of(context).eventLabel
+                    : invitation.eventDenomination,
+                startDateTime: invitation.sessionStartTime,
+                endDateTime: invitation.sessionEndTime,
+                description: AppLocalizations.of(
+                  context,
+                ).attendanceCalendarSyncDescription,
+              )
+            : AttendanceCalendarSyncResult.skipped;
+        if (!mounted) return;
+        final responseText =
+            accepted && calendarResult == AttendanceCalendarSyncResult.failed
+            ? AppLocalizations.of(context).attendanceCalendarSyncPartial
+            : accepted
+            ? AppLocalizations.of(context).invitationAcceptedRegistered
+            : AppLocalizations.of(context).invitationRejected;
         AppSnackBar.show(
           context,
-          accepted
-              ? AppLocalizations.of(context).invitationAcceptedRegistered
-              : AppLocalizations.of(context).invitationRejected,
-          isError: !accepted,
+          responseText,
+          isError:
+              !accepted ||
+              calendarResult == AttendanceCalendarSyncResult.failed,
         );
         return;
       case RespondInvitationOutcomeError(:final result):
